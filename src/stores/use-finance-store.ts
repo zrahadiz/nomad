@@ -1,16 +1,16 @@
 import { create } from "zustand";
 
 import {
-    mockAccounts,
-    mockTransactions,
-    mockWorkspaces,
+  mockAccounts,
+  mockTransactions,
+  mockWorkspaces,
 } from "@/data/mock-finance";
 
 import type {
-    createTransactionInput,
-    financialAccount,
-    financialWorkspace,
-    transaction,
+  createTransactionInput,
+  financialAccount,
+  financialWorkspace,
+  transaction,
 } from "@/types/finances";
 
 type financeState = {
@@ -21,6 +21,12 @@ type financeState = {
   transactions: transaction[];
 
   setActiveWorkspace: (workspaceId: string) => void;
+
+  createWorkspace: (input: {
+    name: string;
+    countryCode: string;
+    currency: string;
+  }) => string;
 
   addTransaction: (input: createTransactionInput) => void;
 };
@@ -87,5 +93,41 @@ export const useFinanceStore = create<financeState>((set, get) => ({
     set((state) => ({
       transactions: [newTransaction, ...state.transactions],
     }));
+  },
+
+  createWorkspace: (input) => {
+    const name = input.name.trim();
+    const countryCode = input.countryCode.trim().toUpperCase();
+    const currency = input.currency.trim().toUpperCase();
+
+    if (!name) {
+      throw new Error("Workspace name is required.");
+    }
+
+    if (!/^[A-Z]{2}$/.test(countryCode)) {
+      throw new Error("A valid country code is required.");
+    }
+
+    if (!/^[A-Z]{3}$/.test(currency)) {
+      throw new Error("A valid currency code is required.");
+    }
+
+    const workspaceId = `workspace-${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2, 8)}`;
+
+    const newWorkspace: financialWorkspace = {
+      id: workspaceId,
+      name,
+      countryCode,
+      currency,
+    };
+
+    set((state) => ({
+      workspaces: [...state.workspaces, newWorkspace],
+      activeWorkspaceId: workspaceId,
+    }));
+
+    return workspaceId;
   },
 }));

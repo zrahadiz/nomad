@@ -1,7 +1,7 @@
 import type {
-    financialAccount,
-    financialWorkspace,
-    transaction,
+  financialAccount,
+  financialWorkspace,
+  transaction,
 } from "@/types/finances";
 
 export const mockWorkspaces: financialWorkspace[] = [
@@ -10,6 +10,12 @@ export const mockWorkspaces: financialWorkspace[] = [
     name: "Malaysia",
     countryCode: "MY",
     currency: "MYR",
+  },
+  {
+    id: "id",
+    name: "Indonesia",
+    countryCode: "ID",
+    currency: "IDR",
   },
 ];
 

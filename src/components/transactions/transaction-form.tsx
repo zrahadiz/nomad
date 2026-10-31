@@ -59,7 +59,6 @@ export function TransactionForm() {
   const router = useRouter();
   const amountRef = useRef<ComponentRef<typeof TextInput>>(null);
   const descriptionRef = useRef<ComponentRef<typeof TextInput>>(null);
-  const dateRef = useRef<ComponentRef<typeof TextInput>>(null);
 
   const activeWorkspaceId = useFinanceStore((state) => state.activeWorkspaceId);
   const accounts = useFinanceStore((state) => state.accounts);

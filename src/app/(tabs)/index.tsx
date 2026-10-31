@@ -1,6 +1,7 @@
 import {
   ArrowDownLeft,
   ArrowUpRight,
+  Check,
   ChevronDown,
   ChevronRight,
   Plus,
@@ -8,11 +9,18 @@ import {
 } from "lucide-react-native";
 
 import { useRouter } from "expo-router";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import { useFinanceStore } from "@/stores/use-finance-store";
 
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
 import { colors, radius, spacing, typography } from "@/constants/theme";
 import {
@@ -20,6 +28,18 @@ import {
   getMonthlySpending,
   getWorkspaceBalance,
 } from "@/lib/finance/calculations";
+
+const countryFlags: Record<string, string> = {
+  MY: "🇲🇾",
+  ID: "🇮🇩",
+  SG: "🇸🇬",
+  US: "🇺🇸",
+  JP: "🇯🇵",
+};
+
+function getCountryFlag(countryCode: string): string {
+  return countryFlags[countryCode.toUpperCase()] ?? "🌍";
+}
 
 function SectionHeading({
   title,
@@ -51,6 +71,12 @@ function SectionHeading({
 
 export default function HomeScreen() {
   const router = useRouter();
+
+  const [workspaceSheetVisible, setWorkspaceSheetVisible] = useState(false);
+  const setActiveWorkspace = useFinanceStore(
+    (state) => state.setActiveWorkspace,
+  );
+
   const activeWorkspaceId = useFinanceStore((state) => state.activeWorkspaceId);
 
   const workspaces = useFinanceStore((state) => state.workspaces);
@@ -146,16 +172,23 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      {/* Country selector */}
+      {/* Workspace selector */}
       <Pressable
         style={styles.countrySelector}
         accessibilityRole="button"
-        accessibilityLabel={`Current workspace: ${workspace?.name ?? "Workspace"}`}
+        accessibilityLabel={`Select workspace. Current workspace: ${
+          workspace?.name ?? "Workspace"
+        }`}
+        accessibilityHint="Opens a list of your financial workspaces"
+        onPress={() => setWorkspaceSheetVisible(true)}
       >
-        <Text style={styles.countryFlag}>🇲🇾</Text>
+        <Text style={styles.countryFlag}>
+          {getCountryFlag(workspace?.countryCode ?? "")}
+        </Text>
 
         <View style={styles.countryInfo}>
           <Text style={styles.countryLabel}>YOUR WORKSPACE</Text>
+
           <Text style={styles.countryName}>
             {workspace?.name ?? "Workspace"}
           </Text>
@@ -173,7 +206,7 @@ export default function HomeScreen() {
           </View>
 
           <View style={styles.currencyBadge}>
-            <Text style={styles.currencyBadgeText}>MYR</Text>
+            <Text style={styles.currencyBadgeText}>{currency}</Text>
           </View>
         </View>
 
@@ -332,6 +365,98 @@ export default function HomeScreen() {
       <Text style={styles.footerNote}>
         Small steps today, more freedom tomorrow.
       </Text>
+
+      {/* Workspace selection modal */}
+      <Modal
+        visible={workspaceSheetVisible}
+        transparent
+        animationType="slide"
+        statusBarTranslucent
+        onRequestClose={() => setWorkspaceSheetVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          {/* Tap outside to close */}
+          <Pressable
+            style={styles.modalBackdrop}
+            onPress={() => setWorkspaceSheetVisible(false)}
+            accessibilityRole="button"
+            accessibilityLabel="Close workspace selector"
+          />
+
+          <View style={styles.workspaceSheet}>
+            <View style={styles.sheetHandle} />
+
+            <View style={styles.sheetHeader}>
+              <View>
+                <Text style={styles.sheetTitle}>Your workspaces</Text>
+                <Text style={styles.sheetSubtitle}>
+                  Choose where you want to manage your money.
+                </Text>
+              </View>
+
+              <Pressable
+                onPress={() => setWorkspaceSheetVisible(false)}
+                accessibilityRole="button"
+                accessibilityLabel="Close"
+                hitSlop={8}
+              >
+                <Text style={styles.closeButton}>✕</Text>
+              </Pressable>
+            </View>
+
+            {workspaces.map((item) => {
+              const isActive = item.id === activeWorkspaceId;
+
+              return (
+                <Pressable
+                  key={item.id}
+                  style={[
+                    styles.workspaceOption,
+                    isActive && styles.workspaceOptionActive,
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: isActive }}
+                  accessibilityLabel={`${item.name}, ${item.currency}${
+                    isActive ? ", currently selected" : ""
+                  }`}
+                  onPress={() => {
+                    setActiveWorkspace(item.id);
+                    setWorkspaceSheetVisible(false);
+                  }}
+                >
+                  <View style={styles.workspaceOptionFlag}>
+                    <Text style={styles.workspaceOptionFlagText}>
+                      {getCountryFlag(item.countryCode)}
+                    </Text>
+                  </View>
+
+                  <View style={styles.workspaceOptionInfo}>
+                    <Text style={styles.workspaceOptionName}>{item.name}</Text>
+
+                    <Text style={styles.workspaceOptionCurrency}>
+                      {item.currency}
+                    </Text>
+                  </View>
+
+                  {isActive ? <Check size={20} color={colors.primary} /> : null}
+                </Pressable>
+              );
+            })}
+            <Pressable
+              style={styles.addWorkspaceButton}
+              accessibilityRole="button"
+              onPress={() => {
+                setWorkspaceSheetVisible(false);
+                router.push("/workspaces/new");
+              }}
+            >
+              <Plus size={20} color={colors.primary} />
+
+              <Text style={styles.addWorkspaceButtonText}>Add workspace</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -700,5 +825,126 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontSize: typography.size.xs,
     marginTop: spacing.xs,
+  },
+
+  modalOverlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+
+  modalBackdrop: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: "rgba(0, 0, 0, 0.35)",
+  },
+
+  workspaceSheet: {
+    backgroundColor: colors.background,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xxxl,
+  },
+
+  sheetHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: radius.full,
+    backgroundColor: colors.border,
+    alignSelf: "center",
+    marginBottom: spacing.lg,
+  },
+
+  sheetHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: spacing.md,
+    marginBottom: spacing.lg,
+  },
+
+  sheetTitle: {
+    color: colors.text,
+    fontSize: typography.size.xl,
+    fontWeight: typography.weight.bold,
+  },
+
+  sheetSubtitle: {
+    color: colors.textSecondary,
+    fontSize: typography.size.sm,
+    marginTop: spacing.xs,
+  },
+
+  closeButton: {
+    color: colors.textSecondary,
+    fontSize: typography.size.lg,
+    padding: spacing.xs,
+  },
+
+  addWorkspaceButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm,
+    minHeight: 52,
+    padding: spacing.md,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    borderStyle: "dashed",
+    backgroundColor: colors.surface,
+    marginTop: spacing.xs,
+  },
+
+  addWorkspaceButtonText: {
+    color: colors.primary,
+    fontSize: typography.size.md,
+    fontWeight: typography.weight.semibold,
+  },
+
+  workspaceOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    padding: spacing.md,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    marginBottom: spacing.sm,
+  },
+
+  workspaceOptionActive: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryLight,
+  },
+
+  workspaceOptionFlag: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.md,
+    backgroundColor: colors.background,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  workspaceOptionFlagText: {
+    fontSize: 26,
+  },
+
+  workspaceOptionInfo: {
+    flex: 1,
+    gap: spacing.xs,
+  },
+
+  workspaceOptionName: {
+    color: colors.text,
+    fontSize: typography.size.md,
+    fontWeight: typography.weight.semibold,
+  },
+
+  workspaceOptionCurrency: {
+    color: colors.textSecondary,
+    fontSize: typography.size.sm,
   },
 });
