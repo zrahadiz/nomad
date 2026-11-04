@@ -10,6 +10,7 @@ import {
 
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAuthStore } from "@/stores/use-auth-store";
 import { useFinanceStore } from "@/stores/use-finance-store";
@@ -36,6 +37,7 @@ import { getCountryByCode } from "@/constants/countries";
 import { colors, radius, spacing, typography } from "@/constants/theme";
 
 import { WorkspaceGate } from "@/components/feedbacks/workspace-gate";
+import { SafeScreen } from "@/components/layout/safe-screen";
 
 function getCountryFlag(countryCode: string): string {
   return getCountryByCode(countryCode)?.flag ?? "🌍";
@@ -82,7 +84,7 @@ function SectionHeading({
 
 export default function HomeScreen() {
   const router = useRouter();
-
+  const insets = useSafeAreaInsets();
   const [workspaceSheetVisible, setWorkspaceSheetVisible] = useState(false);
 
   const workspaces = useWorkspaceStore((state) => state.workspaces);
@@ -173,340 +175,349 @@ export default function HomeScreen() {
     formatMoney(amountMinor, currency);
 
   return (
-    <WorkspaceGate>
-      <ScrollView
-        style={styles.container}
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Header */}
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.greeting}>Good morning 👋</Text>
-            <Text style={styles.subtitle}>
-              Your money, wherever life takes you.
-            </Text>
-          </View>
-
-          <Pressable
-            style={styles.avatar}
-            accessibilityRole="button"
-            accessibilityLabel="Open profile settings"
-            onPress={() => router.push("/(tabs)/settings")}
-          >
-            {profile?.avatar_url ? (
-              <Image
-                source={{ uri: profile.avatar_url }}
-                style={styles.avatarImage}
-              />
-            ) : (
-              <Text style={styles.avatarText}>{initials}</Text>
-            )}
-          </Pressable>
-        </View>
-
-        {/* Workspace selector */}
-        <Pressable
-          style={styles.countrySelector}
-          accessibilityRole="button"
-          accessibilityLabel={`Select workspace. Current workspace: ${
-            workspace?.name ?? "Workspace"
-          }`}
-          accessibilityHint="Opens a list of your financial workspaces"
-          onPress={() => setWorkspaceSheetVisible(true)}
+    <SafeScreen backgroundColor={colors.background} edges={["top"]}>
+      <WorkspaceGate>
+        <ScrollView
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.countryFlag}>
-            {getCountryFlag(workspace?.country_code ?? "")}
-          </Text>
-
-          <View style={styles.countryInfo}>
-            <Text style={styles.countryLabel}>YOUR WORKSPACE</Text>
-
-            <Text style={styles.countryName}>
-              {workspace?.name ?? "Workspace"}
-            </Text>
-          </View>
-
-          <ChevronDown size={20} color={colors.textSecondary} />
-        </Pressable>
-
-        {/* Total balance */}
-        <View style={styles.balanceCard}>
-          <View style={styles.balanceHeader}>
-            <View style={styles.balanceLabelRow}>
-              <Wallet size={18} color="#DCE8DD" />
-              <Text style={styles.balanceLabel}>TOTAL BALANCE</Text>
-            </View>
-
-            <View style={styles.currencyBadge}>
-              <Text style={styles.currencyBadgeText}>{currency}</Text>
-            </View>
-          </View>
-
-          <Text style={styles.balanceAmount}>
-            {formatCurrency(totalBalanceMinor)}
-          </Text>
-
-          <Text style={styles.balanceCaption}>Across your accounts</Text>
-
-          <View style={styles.balanceFooter}>
+          {/* Header */}
+          <View style={styles.header}>
             <View>
-              <Text style={styles.balanceFooterLabel}>INCOME</Text>
-              <Text style={styles.balanceFooterValue}>
-                + {formatCurrency(monthlyIncomeMinor)}
+              <Text style={styles.greeting}>Good morning 👋</Text>
+              <Text style={styles.subtitle}>
+                Your money, wherever life takes you.
               </Text>
             </View>
 
-            <View style={styles.balanceDivider} />
-
-            <View>
-              <Text style={styles.balanceFooterLabel}>SPENDING</Text>
-              <Text style={styles.balanceFooterValue}>
-                − {formatCurrency(monthlySpentMinor)}
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Quick actions */}
-        <View style={styles.quickActions}>
-          <Pressable
-            style={styles.primaryAction}
-            accessibilityRole="button"
-            accessibilityLabel="Add transaction"
-            onPress={() => router.push("/transactions/new")}
-          >
-            <Plus size={20} color="#FFFFFF" />
-            <Text style={styles.primaryActionText}>Add transaction</Text>
-          </Pressable>
-
-          <Pressable
-            style={styles.secondaryAction}
-            accessibilityRole="button"
-            accessibilityLabel="View transactions"
-            onPress={() => router.push("/transactions")}
-          >
-            <Wallet size={20} color={colors.primary} />
-          </Pressable>
-        </View>
-
-        {/* Monthly budget */}
-        <SectionHeading title="Monthly budget" />
-
-        <View style={styles.card}>
-          <View style={styles.budgetTopRow}>
-            <View>
-              <Text style={styles.cardEyebrow}>TOTAL SPENT</Text>
-              <Text style={styles.spentAmount}>
-                {formatCurrency(monthlySpentMinor)}
-              </Text>
-            </View>
-
-            <View style={styles.budgetBadge}>
-              <Text style={styles.budgetBadgeText}>
-                {progressPercentage}% used
-              </Text>
-            </View>
-          </View>
-
-          <View
-            style={styles.progressTrack}
-            accessibilityRole="progressbar"
-            accessibilityValue={{
-              min: 0,
-              max: 100,
-              now: progressPercentage,
-            }}
-          >
-            <View
-              style={[styles.progressFill, { width: `${progressPercentage}%` }]}
-            />
-          </View>
-
-          <View style={styles.budgetBottomRow}>
-            <View>
-              <Text style={styles.budgetCaption}>Monthly limit</Text>
-              <Text style={styles.budgetValue}>
-                {formatCurrency(monthlyBudgetMinor)}
-              </Text>
-            </View>
-
-            <View style={styles.remainingContainer}>
-              <Text style={styles.budgetCaption}>Remaining</Text>
-              <Text style={styles.remainingValue}>
-                {formatCurrency(remainingBudgetMinor)}
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Recent transactions */}
-        <SectionHeading
-          title="Recent transactions"
-          action="See all"
-          onPress={() => router.push("/transactions")}
-        />
-
-        <View style={styles.transactionCard}>
-          {recentTransactions.length === 0 ? (
-            <Text style={styles.transactionSubtitle}>No transactions yet.</Text>
-          ) : (
-            recentTransactions.map((transaction, index) => {
-              const isIncome = transaction.type === "income";
-
-              const Icon = isIncome ? ArrowDownLeft : ArrowUpRight;
-
-              return (
-                <View key={transaction.id}>
-                  {index > 0 && <View style={styles.transactionDivider} />}
-
-                  <View style={styles.transactionRow}>
-                    <View style={styles.transactionIcon}>
-                      <Icon size={20} color={colors.primary} />
-                    </View>
-
-                    <View style={styles.transactionDetails}>
-                      <Text style={styles.transactionTitle}>
-                        {transaction.description || "Untitled transaction"}
-                      </Text>
-
-                      <Text style={styles.transactionSubtitle}>
-                        {accounts.find(
-                          (account) => account.id === transaction.accountId,
-                        )?.name ?? "Unknown account"}
-                        {" · "}
-                        {transaction.date}
-                      </Text>
-                    </View>
-
-                    <Text
-                      style={[
-                        styles.transactionAmount,
-                        isIncome && styles.incomeAmount,
-                      ]}
-                    >
-                      {isIncome ? "+" : "−"}
-                      {formatMoney(
-                        transaction.amountMinor,
-                        transaction.currency,
-                      )}
-                    </Text>
-                  </View>
-                </View>
-              );
-            })
-          )}
-        </View>
-
-        <Text style={styles.footerNote}>
-          Small steps today, more freedom tomorrow.
-        </Text>
-
-        {/* Workspace selection modal */}
-        <Modal
-          visible={workspaceSheetVisible}
-          transparent
-          animationType="slide"
-          statusBarTranslucent
-          onRequestClose={() => setWorkspaceSheetVisible(false)}
-        >
-          <View style={styles.modalOverlay}>
-            {/* Tap outside to close */}
             <Pressable
-              style={styles.modalBackdrop}
-              onPress={() => setWorkspaceSheetVisible(false)}
+              style={styles.avatar}
               accessibilityRole="button"
-              accessibilityLabel="Close workspace selector"
-            />
+              accessibilityLabel="Open profile settings"
+              onPress={() => router.push("/(tabs)/settings")}
+            >
+              {profile?.avatar_url ? (
+                <Image
+                  source={{ uri: profile.avatar_url }}
+                  style={styles.avatarImage}
+                />
+              ) : (
+                <Text style={styles.avatarText}>{initials}</Text>
+              )}
+            </Pressable>
+          </View>
 
-            <View style={styles.workspaceSheet}>
-              <View style={styles.sheetHandle} />
+          {/* Workspace selector */}
+          <Pressable
+            style={styles.countrySelector}
+            accessibilityRole="button"
+            accessibilityLabel={`Select workspace. Current workspace: ${
+              workspace?.name ?? "Workspace"
+            }`}
+            accessibilityHint="Opens a list of your financial workspaces"
+            onPress={() => setWorkspaceSheetVisible(true)}
+          >
+            <Text style={styles.countryFlag}>
+              {getCountryFlag(workspace?.country_code ?? "")}
+            </Text>
 
-              <View style={styles.sheetHeader}>
-                <View>
-                  <Text style={styles.sheetTitle}>Your workspaces</Text>
-                  <Text style={styles.sheetSubtitle}>
-                    Choose where you want to manage your money.
-                  </Text>
-                </View>
+            <View style={styles.countryInfo}>
+              <Text style={styles.countryLabel}>YOUR WORKSPACE</Text>
 
-                <Pressable
-                  onPress={() => setWorkspaceSheetVisible(false)}
-                  accessibilityRole="button"
-                  accessibilityLabel="Close"
-                  hitSlop={8}
-                >
-                  <Text style={styles.closeButton}>✕</Text>
-                </Pressable>
+              <Text style={styles.countryName}>
+                {workspace?.name ?? "Workspace"}
+              </Text>
+            </View>
+
+            <ChevronDown size={20} color={colors.textSecondary} />
+          </Pressable>
+
+          {/* Total balance */}
+          <View style={styles.balanceCard}>
+            <View style={styles.balanceHeader}>
+              <View style={styles.balanceLabelRow}>
+                <Wallet size={18} color="#DCE8DD" />
+                <Text style={styles.balanceLabel}>TOTAL BALANCE</Text>
               </View>
 
-              {workspaces.map((item) => {
-                const isActive = item.id === activeWorkspaceId;
+              <View style={styles.currencyBadge}>
+                <Text style={styles.currencyBadgeText}>{currency}</Text>
+              </View>
+            </View>
 
-                return (
-                  <Pressable
-                    key={item.id}
-                    style={[
-                      styles.workspaceOption,
-                      isActive && styles.workspaceOptionActive,
-                    ]}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: isActive }}
-                    accessibilityLabel={`${item.name}, ${item.currency_code}${
-                      isActive ? ", currently selected" : ""
-                    }`}
-                    onPress={() => {
-                      setActiveWorkspace(item.id);
-                      setWorkspaceSheetVisible(false);
-                    }}
-                  >
-                    <View style={styles.workspaceOptionFlag}>
-                      <Text style={styles.workspaceOptionCurrency}>
-                        {item.currency_code}
-                      </Text>
-                    </View>
+            <Text style={styles.balanceAmount}>
+              {formatCurrency(totalBalanceMinor)}
+            </Text>
 
-                    <View style={styles.workspaceOptionInfo}>
-                      <Text style={styles.workspaceOptionName}>
-                        {item.name}
-                      </Text>
+            <Text style={styles.balanceCaption}>Across your accounts</Text>
 
-                      <Text style={styles.workspaceOptionCurrency}>
-                        {item.currency_code}
-                      </Text>
-                    </View>
+            <View style={styles.balanceFooter}>
+              <View>
+                <Text style={styles.balanceFooterLabel}>INCOME</Text>
+                <Text style={styles.balanceFooterValue}>
+                  + {formatCurrency(monthlyIncomeMinor)}
+                </Text>
+              </View>
 
-                    {isActive ? (
-                      <Check size={20} color={colors.primary} />
-                    ) : null}
-                  </Pressable>
-                );
-              })}
-              <Pressable
-                style={styles.addWorkspaceButton}
-                accessibilityRole="button"
-                onPress={() => {
-                  setWorkspaceSheetVisible(false);
-                  router.push("/workspaces/new");
-                }}
-              >
-                <Plus size={20} color={colors.primary} />
+              <View style={styles.balanceDivider} />
 
-                <Text style={styles.addWorkspaceButtonText}>Add workspace</Text>
-              </Pressable>
+              <View>
+                <Text style={styles.balanceFooterLabel}>SPENDING</Text>
+                <Text style={styles.balanceFooterValue}>
+                  − {formatCurrency(monthlySpentMinor)}
+                </Text>
+              </View>
             </View>
           </View>
-        </Modal>
-      </ScrollView>
-    </WorkspaceGate>
+
+          {/* Quick actions */}
+          <View style={styles.quickActions}>
+            <Pressable
+              style={styles.primaryAction}
+              accessibilityRole="button"
+              accessibilityLabel="Add transaction"
+              onPress={() => router.push("/transactions/new")}
+            >
+              <Plus size={20} color="#FFFFFF" />
+              <Text style={styles.primaryActionText}>Add transaction</Text>
+            </Pressable>
+
+            <Pressable
+              style={styles.secondaryAction}
+              accessibilityRole="button"
+              accessibilityLabel="View transactions"
+              onPress={() => router.push("/transactions")}
+            >
+              <Wallet size={20} color={colors.primary} />
+            </Pressable>
+          </View>
+
+          {/* Monthly budget */}
+          <SectionHeading title="Monthly budget" />
+
+          <View style={styles.card}>
+            <View style={styles.budgetTopRow}>
+              <View>
+                <Text style={styles.cardEyebrow}>TOTAL SPENT</Text>
+                <Text style={styles.spentAmount}>
+                  {formatCurrency(monthlySpentMinor)}
+                </Text>
+              </View>
+
+              <View style={styles.budgetBadge}>
+                <Text style={styles.budgetBadgeText}>
+                  {progressPercentage}% used
+                </Text>
+              </View>
+            </View>
+
+            <View
+              style={styles.progressTrack}
+              accessibilityRole="progressbar"
+              accessibilityValue={{
+                min: 0,
+                max: 100,
+                now: progressPercentage,
+              }}
+            >
+              <View
+                style={[
+                  styles.progressFill,
+                  { width: `${progressPercentage}%` },
+                ]}
+              />
+            </View>
+
+            <View style={styles.budgetBottomRow}>
+              <View>
+                <Text style={styles.budgetCaption}>Monthly limit</Text>
+                <Text style={styles.budgetValue}>
+                  {formatCurrency(monthlyBudgetMinor)}
+                </Text>
+              </View>
+
+              <View style={styles.remainingContainer}>
+                <Text style={styles.budgetCaption}>Remaining</Text>
+                <Text style={styles.remainingValue}>
+                  {formatCurrency(remainingBudgetMinor)}
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Recent transactions */}
+          <SectionHeading
+            title="Recent transactions"
+            action="See all"
+            onPress={() => router.push("/transactions")}
+          />
+
+          <View style={styles.transactionCard}>
+            {recentTransactions.length === 0 ? (
+              <Text style={styles.transactionSubtitle}>
+                No transactions yet.
+              </Text>
+            ) : (
+              recentTransactions.map((transaction, index) => {
+                const isIncome = transaction.type === "income";
+
+                const Icon = isIncome ? ArrowDownLeft : ArrowUpRight;
+
+                return (
+                  <View key={transaction.id}>
+                    {index > 0 && <View style={styles.transactionDivider} />}
+
+                    <View style={styles.transactionRow}>
+                      <View style={styles.transactionIcon}>
+                        <Icon size={20} color={colors.primary} />
+                      </View>
+
+                      <View style={styles.transactionDetails}>
+                        <Text style={styles.transactionTitle}>
+                          {transaction.description || "Untitled transaction"}
+                        </Text>
+
+                        <Text style={styles.transactionSubtitle}>
+                          {accounts.find(
+                            (account) => account.id === transaction.accountId,
+                          )?.name ?? "Unknown account"}
+                          {" · "}
+                          {transaction.date}
+                        </Text>
+                      </View>
+
+                      <Text
+                        style={[
+                          styles.transactionAmount,
+                          isIncome && styles.incomeAmount,
+                        ]}
+                      >
+                        {isIncome ? "+" : "−"}
+                        {formatMoney(
+                          transaction.amountMinor,
+                          transaction.currency,
+                        )}
+                      </Text>
+                    </View>
+                  </View>
+                );
+              })
+            )}
+          </View>
+
+          <Text style={styles.footerNote}>
+            Small steps today, more freedom tomorrow.
+          </Text>
+
+          {/* Workspace selection modal */}
+          <Modal
+            visible={workspaceSheetVisible}
+            transparent
+            animationType="slide"
+            statusBarTranslucent
+            onRequestClose={() => setWorkspaceSheetVisible(false)}
+          >
+            <View style={styles.modalOverlay}>
+              {/* Tap outside to close */}
+              <Pressable
+                style={styles.modalBackdrop}
+                onPress={() => setWorkspaceSheetVisible(false)}
+                accessibilityRole="button"
+                accessibilityLabel="Close workspace selector"
+              />
+
+              <View
+                style={[
+                  styles.workspaceSheet,
+                  { paddingBottom: insets.bottom + 24 },
+                ]}
+              >
+                <View style={styles.sheetHandle} />
+
+                <View style={styles.sheetHeader}>
+                  <View>
+                    <Text style={styles.sheetTitle}>Your workspaces</Text>
+                    <Text style={styles.sheetSubtitle}>
+                      Choose where you want to manage your money.
+                    </Text>
+                  </View>
+
+                  <Pressable
+                    onPress={() => setWorkspaceSheetVisible(false)}
+                    accessibilityRole="button"
+                    accessibilityLabel="Close"
+                    hitSlop={8}
+                  >
+                    <Text style={styles.closeButton}>✕</Text>
+                  </Pressable>
+                </View>
+
+                {workspaces.map((item) => {
+                  const isActive = item.id === activeWorkspaceId;
+
+                  return (
+                    <Pressable
+                      key={item.id}
+                      style={[
+                        styles.workspaceOption,
+                        isActive && styles.workspaceOptionActive,
+                      ]}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: isActive }}
+                      accessibilityLabel={`${item.name}, ${item.currency_code}${
+                        isActive ? ", currently selected" : ""
+                      }`}
+                      onPress={() => {
+                        setActiveWorkspace(item.id);
+                        setWorkspaceSheetVisible(false);
+                      }}
+                    >
+                      <View style={styles.workspaceOptionFlag}>
+                        <Text style={styles.workspaceOptionCurrency}>
+                          {item.currency_code}
+                        </Text>
+                      </View>
+
+                      <View style={styles.workspaceOptionInfo}>
+                        <Text style={styles.workspaceOptionName}>
+                          {item.name}
+                        </Text>
+
+                        <Text style={styles.workspaceOptionCurrency}>
+                          {item.currency_code}
+                        </Text>
+                      </View>
+
+                      {isActive ? (
+                        <Check size={20} color={colors.primary} />
+                      ) : null}
+                    </Pressable>
+                  );
+                })}
+                <Pressable
+                  style={styles.addWorkspaceButton}
+                  accessibilityRole="button"
+                  onPress={() => {
+                    setWorkspaceSheetVisible(false);
+                    router.push("/workspaces/new");
+                  }}
+                >
+                  <Plus size={20} color={colors.primary} />
+
+                  <Text style={styles.addWorkspaceButtonText}>
+                    Add workspace
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          </Modal>
+        </ScrollView>
+      </WorkspaceGate>
+    </SafeScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
   avatarImage: {
     width: "100%",
     height: "100%",

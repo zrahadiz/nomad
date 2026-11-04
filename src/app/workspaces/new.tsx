@@ -2,8 +2,6 @@ import { Stack, useRouter } from "expo-router";
 import { ArrowLeft, Check, Search } from "lucide-react-native";
 import { useState } from "react";
 import {
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -16,6 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { countries, type Country } from "@/constants/countries";
 import { colors, radius, spacing, typography } from "@/constants/theme";
 import { useWorkspaceStore } from "@/stores/use-workspace-store";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
 export default function NewWorkspaceScreen() {
   const router = useRouter();
@@ -90,204 +89,199 @@ export default function NewWorkspaceScreen() {
     <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      <KeyboardAwareScrollView
+        contentContainerStyle={[styles.content]}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-        <ScrollView
-          contentContainerStyle={styles.content}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Header */}
-          <View style={styles.header}>
-            <Pressable
-              style={styles.backButton}
-              onPress={() => router.back()}
-              accessibilityRole="button"
-              accessibilityLabel="Go back"
-              hitSlop={8}
-            >
-              <ArrowLeft size={22} color={colors.text} />
-            </Pressable>
+        {/* Header */}
+        <View style={styles.header}>
+          <Pressable
+            style={styles.backButton}
+            onPress={() => router.back()}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+            hitSlop={8}
+          >
+            <ArrowLeft size={22} color={colors.text} />
+          </Pressable>
 
-            <Text style={styles.headerTitle}>New workspace</Text>
+          <Text style={styles.headerTitle}>New workspace</Text>
 
-            <View style={styles.headerSpacer} />
+          <View style={styles.headerSpacer} />
+        </View>
+
+        {/* Introduction */}
+        <View style={styles.intro}>
+          <View style={styles.illustration}>
+            <Text style={styles.illustrationEmoji}>🌏</Text>
           </View>
 
-          {/* Introduction */}
-          <View style={styles.intro}>
-            <View style={styles.illustration}>
-              <Text style={styles.illustrationEmoji}>🌏</Text>
-            </View>
+          <Text style={styles.title}>Manage money across borders</Text>
 
-            <Text style={styles.title}>Manage money across borders</Text>
+          <Text style={styles.description}>
+            Create a separate financial space for each country where you live,
+            study, or travel.
+          </Text>
+        </View>
 
-            <Text style={styles.description}>
-              Create a separate financial space for each country where you live,
-              study, or travel.
-            </Text>
-          </View>
+        {/* Workspace name */}
+        <View style={styles.fieldGroup}>
+          <Text style={styles.label}>Workspace name</Text>
 
-          {/* Workspace name */}
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Workspace name</Text>
+          <TextInput
+            value={name}
+            onChangeText={(value) => {
+              setName(value);
+              setError(null);
+            }}
+            placeholder="e.g. Indonesia"
+            placeholderTextColor={colors.textSecondary}
+            style={styles.input}
+            maxLength={40}
+            autoCapitalize="words"
+            returnKeyType="done"
+            accessibilityLabel="Workspace name"
+          />
+
+          <Text style={styles.helperText}>
+            Give your workspace a name you can recognize.
+          </Text>
+        </View>
+
+        {/* Country selection */}
+        <View style={styles.fieldGroup}>
+          <Text style={styles.label}>Country or region</Text>
+
+          {/* Search */}
+          <View style={styles.searchContainer}>
+            <Search size={20} color={colors.textSecondary} />
 
             <TextInput
-              value={name}
-              onChangeText={(value) => {
-                setName(value);
-                setError(null);
-              }}
-              placeholder="e.g. Indonesia"
+              value={countrySearch}
+              onChangeText={setCountrySearch}
+              placeholder="Search country or currency..."
               placeholderTextColor={colors.textSecondary}
-              style={styles.input}
-              maxLength={40}
-              autoCapitalize="words"
-              returnKeyType="done"
-              accessibilityLabel="Workspace name"
+              style={styles.searchInput}
+              autoCapitalize="none"
+              autoCorrect={false}
             />
-
-            <Text style={styles.helperText}>
-              Give your workspace a name you can recognize.
-            </Text>
           </View>
 
-          {/* Country selection */}
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Country or region</Text>
+          {/* Country list */}
+          <ScrollView
+            style={styles.countryList}
+            nestedScrollEnabled
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator
+          >
+            {filteredCountries.length > 0 ? (
+              filteredCountries.map((country) => {
+                const isSelected = selectedCountry?.code === country.code;
 
-            {/* Search */}
-            <View style={styles.searchContainer}>
-              <Search size={20} color={colors.textSecondary} />
+                return (
+                  <Pressable
+                    key={country.code}
+                    style={[
+                      styles.countryOption,
+                      isSelected && styles.countryOptionSelected,
+                    ]}
+                    onPress={() => {
+                      setSelectedCountry(country);
+                      setError(null);
+                    }}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: isSelected }}
+                  >
+                    <Text style={styles.countryFlag}>{country.flag}</Text>
 
-              <TextInput
-                value={countrySearch}
-                onChangeText={setCountrySearch}
-                placeholder="Search country or currency..."
-                placeholderTextColor={colors.textSecondary}
-                style={styles.searchInput}
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
+                    <View style={styles.countryDetails}>
+                      <Text style={styles.countryName}>{country.name}</Text>
+
+                      <Text style={styles.countryCurrency}>
+                        {country.currencyCode} · {country.currencyName}
+                      </Text>
+                    </View>
+
+                    {isSelected && <Check size={20} color={colors.primary} />}
+                  </Pressable>
+                );
+              })
+            ) : (
+              <View style={styles.noResults}>
+                <Text style={styles.noResultsText}>No countries found.</Text>
+              </View>
+            )}
+          </ScrollView>
+
+          <Text style={styles.helperText}>
+            Select a country to automatically determine your default currency.
+          </Text>
+        </View>
+
+        {/* Currency preview */}
+        {selectedCountry && (
+          <View style={styles.currencyCard}>
+            <View style={styles.currencyIcon}>
+              <Text style={styles.currencyIconText}>
+                {selectedCountry.currencyCode.slice(0, 1)}
+              </Text>
             </View>
 
-            {/* Country list */}
-            <ScrollView
-              style={styles.countryList}
-              nestedScrollEnabled
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator
-            >
-              {filteredCountries.length > 0 ? (
-                filteredCountries.map((country) => {
-                  const isSelected = selectedCountry?.code === country.code;
-
-                  return (
-                    <Pressable
-                      key={country.code}
-                      style={[
-                        styles.countryOption,
-                        isSelected && styles.countryOptionSelected,
-                      ]}
-                      onPress={() => {
-                        setSelectedCountry(country);
-                        setError(null);
-                      }}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected: isSelected }}
-                    >
-                      <Text style={styles.countryFlag}>{country.flag}</Text>
-
-                      <View style={styles.countryDetails}>
-                        <Text style={styles.countryName}>{country.name}</Text>
-
-                        <Text style={styles.countryCurrency}>
-                          {country.currencyCode} · {country.currencyName}
-                        </Text>
-                      </View>
-
-                      {isSelected && <Check size={20} color={colors.primary} />}
-                    </Pressable>
-                  );
-                })
-              ) : (
-                <View style={styles.noResults}>
-                  <Text style={styles.noResultsText}>No countries found.</Text>
-                </View>
-              )}
-            </ScrollView>
-
-            <Text style={styles.helperText}>
-              Select a country to automatically determine your default currency.
-            </Text>
-          </View>
-
-          {/* Currency preview */}
-          {selectedCountry && (
-            <View style={styles.currencyCard}>
-              <View style={styles.currencyIcon}>
-                <Text style={styles.currencyIconText}>
-                  {selectedCountry.currencyCode.slice(0, 1)}
-                </Text>
-              </View>
-
-              <View style={styles.currencyDetails}>
-                <Text style={styles.currencyLabel}>DEFAULT CURRENCY</Text>
-                <Text style={styles.currencyValue}>
-                  {selectedCountry.currencyCode}
-                </Text>
-              </View>
-
-              <View style={styles.automaticBadge}>
-                <Text style={styles.automaticBadgeText}>Automatic</Text>
-              </View>
+            <View style={styles.currencyDetails}>
+              <Text style={styles.currencyLabel}>DEFAULT CURRENCY</Text>
+              <Text style={styles.currencyValue}>
+                {selectedCountry.currencyCode}
+              </Text>
             </View>
-          )}
 
-          {/* Initial state information */}
-          <View style={styles.infoCard}>
-            <Text style={styles.infoTitle}>What happens next?</Text>
-
-            <Text style={styles.infoDescription}>
-              Your new workspace starts with an empty balance. You can add your
-              bank accounts, cash, and e-wallets afterward. Your existing
-              workspaces will remain separate.
-            </Text>
+            <View style={styles.automaticBadge}>
+              <Text style={styles.automaticBadgeText}>Automatic</Text>
+            </View>
           </View>
+        )}
 
-          {error && (
-            <Text style={styles.errorText} accessibilityRole="alert">
-              {error}
-            </Text>
-          )}
+        {/* Initial state information */}
+        <View style={styles.infoCard}>
+          <Text style={styles.infoTitle}>What happens next?</Text>
 
-          {/* Submit */}
-          <Pressable
-            style={[
-              styles.createButton,
-              isSubmitting && styles.createButtonDisabled,
-            ]}
-            onPress={handleCreateWorkspace}
-            disabled={isSubmitting}
-            accessibilityRole="button"
-          >
-            <Text style={styles.createButtonText}>
-              {isSubmitting ? "Creating..." : "Create workspace"}
-            </Text>
-          </Pressable>
+          <Text style={styles.infoDescription}>
+            Your new workspace starts with an empty balance. You can add your
+            bank accounts, cash, and e-wallets afterward. Your existing
+            workspaces will remain separate.
+          </Text>
+        </View>
 
-          <Pressable
-            style={styles.cancelButton}
-            onPress={() => router.back()}
-            disabled={isSubmitting}
-            accessibilityRole="button"
-          >
-            <Text style={styles.cancelButtonText}>Cancel</Text>
-          </Pressable>
-        </ScrollView>
-      </KeyboardAvoidingView>
+        {error && (
+          <Text style={styles.errorText} accessibilityRole="alert">
+            {error}
+          </Text>
+        )}
+
+        {/* Submit */}
+        <Pressable
+          style={[
+            styles.createButton,
+            isSubmitting && styles.createButtonDisabled,
+          ]}
+          onPress={handleCreateWorkspace}
+          disabled={isSubmitting}
+          accessibilityRole="button"
+        >
+          <Text style={styles.createButtonText}>
+            {isSubmitting ? "Creating..." : "Create workspace"}
+          </Text>
+        </Pressable>
+
+        <Pressable
+          style={styles.cancelButton}
+          onPress={() => router.back()}
+          disabled={isSubmitting}
+          accessibilityRole="button"
+        >
+          <Text style={styles.cancelButtonText}>Cancel</Text>
+        </Pressable>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 }

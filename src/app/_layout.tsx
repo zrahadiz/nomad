@@ -5,6 +5,7 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { AuthProvider } from "@/components/auth/auth-provider";
 import { colors } from "@/constants/theme";
 import { useAuthStore } from "@/stores/use-auth-store";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 function RootNavigator() {
   const session = useAuthStore((state) => state.session);
@@ -59,10 +60,12 @@ function RootNavigator() {
 
 export default function RootLayout() {
   return (
-    <KeyboardProvider>
-      <AuthProvider>
-        <RootNavigator />
-      </AuthProvider>
-    </KeyboardProvider>
+    <SafeAreaProvider>
+      <KeyboardProvider>
+        <AuthProvider>
+          <RootNavigator />
+        </AuthProvider>
+      </KeyboardProvider>
+    </SafeAreaProvider>
   );
 }

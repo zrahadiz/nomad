@@ -24,6 +24,7 @@ import { useFinanceStore } from "@/stores/use-finance-store";
 import type { transactionType } from "@/types/finances";
 import { SelectSheet } from "../ui/select-sheet";
 
+import { SafeScreen } from "@/components/layout/safe-screen";
 import { DatePickerField } from "@/components/ui/date-picker-field";
 
 type formType = Extract<transactionType, "income" | "expense">;
@@ -163,119 +164,115 @@ export function TransactionForm() {
   }
 
   return (
-    <KeyboardAwareScrollView
-      style={styles.container}
-      contentContainerStyle={[styles.content, { paddingBottom: 48 }]}
-      bottomOffset={24}
-      keyboardShouldPersistTaps="handled"
-      showsVerticalScrollIndicator={false}
-    >
-      <Text style={styles.heading}>New transaction</Text>
-      <Text style={styles.subtitle}>
-        Record your money, one transaction at a time.
-      </Text>
+    <SafeScreen backgroundColor={colors.background} edges={["bottom"]}>
+      <KeyboardAwareScrollView
+        contentContainerStyle={[styles.content]}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <Text style={styles.heading}>New transaction</Text>
+        <Text style={styles.subtitle}>
+          Record your money, one transaction at a time.
+        </Text>
 
-      {/* Transaction type */}
-      <View style={styles.segment}>
-        {(["expense", "income"] as const).map((item) => (
-          <Pressable
-            key={item}
-            onPress={() => changeType(item)}
-            style={[
-              styles.segmentButton,
-              type === item && styles.segmentActive,
-            ]}
-          >
-            <Text
+        {/* Transaction type */}
+        <View style={styles.segment}>
+          {(["expense", "income"] as const).map((item) => (
+            <Pressable
+              key={item}
+              onPress={() => changeType(item)}
               style={[
-                styles.segmentText,
-                type === item && styles.segmentTextActive,
+                styles.segmentButton,
+                type === item && styles.segmentActive,
               ]}
             >
-              {item === "expense" ? "Expense" : "Income"}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-
-      {/* Amount */}
-      <View style={styles.amountCard}>
-        <Text style={styles.label}>AMOUNT</Text>
-
-        <View style={styles.amountRow}>
-          <Text style={styles.currency}>{workspace?.currency ?? "MYR"}</Text>
-
-          <TextInput
-            ref={amountRef}
-            value={amount}
-            onChangeText={(value) => {
-              setAmount(sanitizeAmountInput(value, currency));
-            }}
-            placeholder={decimalDigits === 0 ? "0" : "0.00"}
-            placeholderTextColor={colors.textSecondary}
-            keyboardType={decimalDigits === 0 ? "number-pad" : "decimal-pad"}
-            style={styles.amountInput}
-            accessibilityLabel={`Transaction amount in ${currency}`}
-          />
+              <Text
+                style={[
+                  styles.segmentText,
+                  type === item && styles.segmentTextActive,
+                ]}
+              >
+                {item === "expense" ? "Expense" : "Income"}
+              </Text>
+            </Pressable>
+          ))}
         </View>
-      </View>
 
-      {/* Account */}
-      <SelectSheet
-        label="Account"
-        value={selectedAccountId}
-        options={availableAccounts.map((account) => ({
-          id: account.id,
-          name: account.name,
-        }))}
-        onChange={setAccountId}
-        placeholder="Select an account"
-      />
+        {/* Amount */}
+        <View style={styles.amountCard}>
+          <Text style={styles.label}>AMOUNT</Text>
 
-      {/* Category */}
-      <SelectSheet
-        label="Category"
-        value={selectedCategoryId}
-        options={transactionCategories[type]}
-        onChange={setCategoryId}
-        placeholder="Select a category"
-      />
+          <View style={styles.amountRow}>
+            <Text style={styles.currency}>{workspace?.currency ?? "MYR"}</Text>
 
-      {/* Date */}
-      <DatePickerField label="Date" value={date} onChange={setDate} />
+            <TextInput
+              ref={amountRef}
+              value={amount}
+              onChangeText={(value) => {
+                setAmount(sanitizeAmountInput(value, currency));
+              }}
+              placeholder={decimalDigits === 0 ? "0" : "0.00"}
+              placeholderTextColor={colors.textSecondary}
+              keyboardType={decimalDigits === 0 ? "number-pad" : "decimal-pad"}
+              style={styles.amountInput}
+              accessibilityLabel={`Transaction amount in ${currency}`}
+            />
+          </View>
+        </View>
 
-      {/* Description */}
-      <Text style={styles.fieldLabel}>Description (optional)</Text>
+        {/* Account */}
+        <SelectSheet
+          label="Account"
+          value={selectedAccountId}
+          options={availableAccounts.map((account) => ({
+            id: account.id,
+            name: account.name,
+          }))}
+          onChange={setAccountId}
+          placeholder="Select an account"
+        />
 
-      <TextInput
-        ref={descriptionRef}
-        value={description}
-        onChangeText={setDescription}
-        placeholder="What was this transaction for?"
-        placeholderTextColor={colors.textSecondary}
-        style={styles.input}
-        maxLength={120}
-        returnKeyType="done"
-      />
+        {/* Category */}
+        <SelectSheet
+          label="Category"
+          value={selectedCategoryId}
+          options={transactionCategories[type]}
+          onChange={setCategoryId}
+          placeholder="Select a category"
+        />
 
-      <Pressable
-        onPress={handleSave}
-        disabled={saving}
-        style={[styles.saveButton, saving && styles.saveButtonDisabled]}
-      >
-        <Text style={styles.saveButtonText}>
-          {saving ? "Saving..." : "Save transaction"}
-        </Text>
-      </Pressable>
-    </KeyboardAwareScrollView>
+        {/* Date */}
+        <DatePickerField label="Date" value={date} onChange={setDate} />
+
+        {/* Description */}
+        <Text style={styles.fieldLabel}>Description (optional)</Text>
+
+        <TextInput
+          ref={descriptionRef}
+          value={description}
+          onChangeText={setDescription}
+          placeholder="What was this transaction for?"
+          placeholderTextColor={colors.textSecondary}
+          style={styles.input}
+          maxLength={120}
+          returnKeyType="done"
+        />
+
+        <Pressable
+          onPress={handleSave}
+          disabled={saving}
+          style={[styles.saveButton, saving && styles.saveButtonDisabled]}
+        >
+          <Text style={styles.saveButtonText}>
+            {saving ? "Saving..." : "Save transaction"}
+          </Text>
+        </Pressable>
+      </KeyboardAwareScrollView>
+    </SafeScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
   content: {
     padding: spacing.lg,
     paddingBottom: spacing.xxxl,
