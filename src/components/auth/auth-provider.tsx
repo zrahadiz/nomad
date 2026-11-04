@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabase/client";
 import { getMyProfile } from "@/services/profile-service";
 import { useAuthStore } from "@/stores/use-auth-store";
 import { useProfileStore } from "@/stores/use-profile-store";
+import { useWorkspaceStore } from "@/stores/use-workspace-store";
 
 export function AuthProvider({ children }: PropsWithChildren) {
   const setSession = useAuthStore((state) => state.setSession);
@@ -66,6 +67,20 @@ export function AuthProvider({ children }: PropsWithChildren) {
     return () => {
       active = false;
     };
+  }, [userId]);
+
+  // Load the user's workspaces
+  useEffect(() => {
+    const workspaceStore = useWorkspaceStore.getState();
+
+    // Clear previous user's workspace data and invalidate old requests.
+    workspaceStore.resetWorkspaces();
+
+    // Don't fetch if there is no authenticated user.
+    if (!userId) return;
+
+    // Fetch workspaces for the current user.
+    void useWorkspaceStore.getState().fetchWorkspaces();
   }, [userId]);
 
   return <>{children}</>;

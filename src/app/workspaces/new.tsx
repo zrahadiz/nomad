@@ -1,5 +1,5 @@
 import { Stack, useRouter } from "expo-router";
-import { ArrowLeft, Check, ChevronDown } from "lucide-react-native";
+import { ArrowLeft, Check, Search } from "lucide-react-native";
 import { useState } from "react";
 import {
   KeyboardAvoidingView,
@@ -13,79 +13,33 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { countries, type Country } from "@/constants/countries";
 import { colors, radius, spacing, typography } from "@/constants/theme";
-import { useFinanceStore } from "@/stores/use-finance-store";
-
-type CountryOption = {
-  code: string;
-  name: string;
-  flag: string;
-  currency: string;
-};
-
-const countryOptions: CountryOption[] = [
-  {
-    code: "MY",
-    name: "Malaysia",
-    flag: "🇲🇾",
-    currency: "MYR",
-  },
-  {
-    code: "ID",
-    name: "Indonesia",
-    flag: "🇮🇩",
-    currency: "IDR",
-  },
-  {
-    code: "SG",
-    name: "Singapore",
-    flag: "🇸🇬",
-    currency: "SGD",
-  },
-  {
-    code: "US",
-    name: "United States",
-    flag: "🇺🇸",
-    currency: "USD",
-  },
-  {
-    code: "JP",
-    name: "Japan",
-    flag: "🇯🇵",
-    currency: "JPY",
-  },
-];
+import { useWorkspaceStore } from "@/stores/use-workspace-store";
 
 export default function NewWorkspaceScreen() {
   const router = useRouter();
 
-  const createWorkspace = useFinanceStore((state) => state.createWorkspace);
+  const addWorkspace = useWorkspaceStore((state) => state.addWorkspace);
 
   const [name, setName] = useState("");
-  const [selectedCountry, setSelectedCountry] = useState<CountryOption | null>(
-    null,
-  );
-  const [countryPickerVisible, setCountryPickerVisible] = useState(false);
+  const [selectedCountry, setSelectedCountry] = useState<Country | null>(null);
+  const [countrySearch, setCountrySearch] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  function handleSelectCountry(country: CountryOption) {
-    setSelectedCountry(country);
+  const filteredCountries = countries.filter((country) => {
+    const query = countrySearch.trim().toLowerCase();
 
-    // Use the country name as the initial workspace name.
-    // The user can still customize it afterward.
-    if (
-      !name.trim() ||
-      countryOptions.some((option) => option.name === name.trim())
-    ) {
-      setName(country.name);
-    }
+    return (
+      country.name.toLowerCase().includes(query) ||
+      country.code.toLowerCase().includes(query) ||
+      country.currencyCode.toLowerCase().includes(query) ||
+      country.currencyName.toLowerCase().includes(query)
+    );
+  });
 
-    setCountryPickerVisible(false);
-    setError(null);
-  }
-
-  function handleCreateWorkspace() {
+  async function handleCreateWorkspace() {
     if (isSubmitting) return;
 
     const trimmedName = name.trim();
@@ -100,25 +54,34 @@ export default function NewWorkspaceScreen() {
       return;
     }
 
+    if (trimmedName.length > 40) {
+      setError("Workspace name cannot exceed 40 characters.");
+      return;
+    }
+
     setIsSubmitting(true);
     setError(null);
 
     try {
-      createWorkspace({
+      await addWorkspace({
         name: trimmedName,
-        countryCode: selectedCountry.code,
-        currency: selectedCountry.currency,
+        country_code: selectedCountry.code,
+        currency_code: selectedCountry.currencyCode,
       });
 
-      // The store has already activated the new workspace.
-      // Return to Home to see its empty dashboard.
       router.back();
     } catch (err) {
-      setError(
+      const message =
         err instanceof Error
           ? err.message
-          : "Unable to create workspace. Please try again.",
-      );
+          : "Unable to create workspace. Please try again.";
+
+      if (message.includes("workspaces_user_name_unique")) {
+        setError("You already have a workspace with this name.");
+      } else {
+        setError(message);
+      }
+    } finally {
       setIsSubmitting(false);
     }
   }
@@ -191,42 +154,34 @@ export default function NewWorkspaceScreen() {
             </Text>
           </View>
 
-          {/* Country */}
+          {/* Country selection */}
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>Country or region</Text>
 
-            <Pressable
-              style={styles.countryInput}
-              onPress={() => setCountryPickerVisible((visible) => !visible)}
-              accessibilityRole="button"
-              accessibilityLabel={
-                selectedCountry
-                  ? `Selected country: ${selectedCountry.name}. Change country.`
-                  : "Select country"
-              }
-              accessibilityState={{
-                expanded: countryPickerVisible,
-              }}
+            {/* Search */}
+            <View style={styles.searchContainer}>
+              <Search size={20} color={colors.textSecondary} />
+
+              <TextInput
+                value={countrySearch}
+                onChangeText={setCountrySearch}
+                placeholder="Search country or currency..."
+                placeholderTextColor={colors.textSecondary}
+                style={styles.searchInput}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
+
+            {/* Country list */}
+            <ScrollView
+              style={styles.countryList}
+              nestedScrollEnabled
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator
             >
-              {selectedCountry ? (
-                <Text style={styles.selectedFlag}>{selectedCountry.flag}</Text>
-              ) : null}
-
-              <Text
-                style={[
-                  styles.countryInputText,
-                  !selectedCountry && styles.placeholder,
-                ]}
-              >
-                {selectedCountry ? selectedCountry.name : "Select a country"}
-              </Text>
-
-              <ChevronDown size={20} color={colors.textSecondary} />
-            </Pressable>
-
-            {countryPickerVisible && (
-              <View style={styles.countryList}>
-                {countryOptions.map((country) => {
+              {filteredCountries.length > 0 ? (
+                filteredCountries.map((country) => {
                   const isSelected = selectedCountry?.code === country.code;
 
                   return (
@@ -236,7 +191,10 @@ export default function NewWorkspaceScreen() {
                         styles.countryOption,
                         isSelected && styles.countryOptionSelected,
                       ]}
-                      onPress={() => handleSelectCountry(country)}
+                      onPress={() => {
+                        setSelectedCountry(country);
+                        setError(null);
+                      }}
                       accessibilityRole="button"
                       accessibilityState={{ selected: isSelected }}
                     >
@@ -246,19 +204,23 @@ export default function NewWorkspaceScreen() {
                         <Text style={styles.countryName}>{country.name}</Text>
 
                         <Text style={styles.countryCurrency}>
-                          {country.currency}
+                          {country.currencyCode} · {country.currencyName}
                         </Text>
                       </View>
 
                       {isSelected && <Check size={20} color={colors.primary} />}
                     </Pressable>
                   );
-                })}
-              </View>
-            )}
+                })
+              ) : (
+                <View style={styles.noResults}>
+                  <Text style={styles.noResultsText}>No countries found.</Text>
+                </View>
+              )}
+            </ScrollView>
 
             <Text style={styles.helperText}>
-              Your default currency will be selected automatically.
+              Select a country to automatically determine your default currency.
             </Text>
           </View>
 
@@ -267,15 +229,14 @@ export default function NewWorkspaceScreen() {
             <View style={styles.currencyCard}>
               <View style={styles.currencyIcon}>
                 <Text style={styles.currencyIconText}>
-                  {selectedCountry.currency.slice(0, 1)}
+                  {selectedCountry.currencyCode.slice(0, 1)}
                 </Text>
               </View>
 
               <View style={styles.currencyDetails}>
                 <Text style={styles.currencyLabel}>DEFAULT CURRENCY</Text>
-
                 <Text style={styles.currencyValue}>
-                  {selectedCountry.currency}
+                  {selectedCountry.currencyCode}
                 </Text>
               </View>
 
@@ -456,21 +417,50 @@ const styles = StyleSheet.create({
     fontSize: typography.size.md,
   },
 
+  searchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    minHeight: 52,
+    paddingHorizontal: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
+  },
+
+  searchInput: {
+    flex: 1,
+    color: colors.text,
+    fontSize: typography.size.md,
+    paddingVertical: spacing.sm,
+  },
+
+  countryList: {
+    maxHeight: 280,
+    marginTop: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
+  },
+
+  noResults: {
+    padding: spacing.xl,
+    alignItems: "center",
+  },
+
+  noResultsText: {
+    color: colors.textSecondary,
+    fontSize: typography.size.sm,
+  },
+
   placeholder: {
     color: colors.textSecondary,
   },
 
   selectedFlag: {
     fontSize: 24,
-  },
-
-  countryList: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surface,
-    marginTop: spacing.sm,
-    overflow: "hidden",
   },
 
   countryOption: {
