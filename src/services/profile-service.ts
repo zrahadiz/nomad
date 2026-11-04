@@ -101,3 +101,50 @@ export async function uploadAvatar(
 
   return data.publicUrl;
 }
+
+export async function deleteAvatar(avatarUrl: string): Promise<void> {
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError) throw userError;
+  if (!user) throw new Error("You must be logged in to delete an avatar.");
+
+  // Only delete images belonging to our public avatars bucket.
+  // This prevents accidentally deleting external Google profile pictures.
+  const url = new URL(avatarUrl);
+  const bucketPrefix = "/storage/v1/object/public/avatars/";
+
+  if (!url.pathname.includes(bucketPrefix)) {
+    return;
+  }
+
+  const encodedPath = url.pathname.split(bucketPrefix)[1];
+
+  if (!encodedPath) return;
+
+  const filePath = decodeURIComponent(encodedPath);
+
+  console.log("Original avatar URL:", avatarUrl);
+  console.log("Decoded file path:", filePath);
+  console.log("Current user ID:", user.id);
+
+  // Users can only delete files inside their own folder.
+  if (!filePath.startsWith(`${user.id}/`) || filePath.includes("..")) {
+    return;
+  }
+
+  // const { data, error } = await supabase.storage.from("avatars").list(user.id);
+
+  // console.log("Files in user folder:", data);
+  // console.log("List error:", error);
+
+  const { data, error } = await supabase.storage
+    .from("avatars")
+    .remove([filePath]);
+
+  console.log("Deleted avatar:", data);
+  console.log("Delete avatar error:", error);
+  if (error) throw error;
+}

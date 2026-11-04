@@ -3,9 +3,7 @@ import { useState } from "react";
 import {
   Alert,
   Image,
-  KeyboardAvoidingView,
   Modal,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -15,9 +13,14 @@ import {
 
 import { colors, radius, spacing } from "@/constants/theme";
 import { signOut } from "@/services/auth-service";
-import { updateMyProfile, uploadAvatar } from "@/services/profile-service";
+import {
+  deleteAvatar,
+  updateMyProfile,
+  uploadAvatar,
+} from "@/services/profile-service";
 import { useAuthStore } from "@/stores/use-auth-store";
 import { useProfileStore } from "@/stores/use-profile-store";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
 export default function Screen() {
   const user = useAuthStore((state) => state.user);
@@ -88,33 +91,62 @@ export default function Screen() {
       return;
     }
 
+    const oldAvatarUrl = profile?.avatar_url ?? null;
+    let uploadedAvatarUrl: string | null = null;
+    let profileUpdated = false;
+
     try {
       setSaving(true);
 
-      let avatarUrl = profile?.avatar_url ?? null;
+      let avatarUrl = oldAvatarUrl;
 
-      // Upload a new photo if the user selected one
+      // 1. Upload the new photo, if selected
       if (selectedImage) {
-        avatarUrl = await uploadAvatar(
+        uploadedAvatarUrl = await uploadAvatar(
           selectedImage.uri,
           selectedImage.mimeType,
         );
+
+        avatarUrl = uploadedAvatarUrl;
       }
 
-      // Update the profile in Supabase
+      // 2. Update the database
       const updatedProfile = await updateMyProfile({
         full_name: trimmedName,
         avatar_url: avatarUrl,
       });
 
-      // Update Zustand
+      profileUpdated = true;
+
+      // 3. Update Zustand
       setProfile(updatedProfile);
 
       setSelectedImage(null);
       setModalVisible(false);
 
+      // 4. Delete the old avatar only after the database update succeeds
+      if (selectedImage && oldAvatarUrl && oldAvatarUrl !== avatarUrl) {
+        try {
+          await deleteAvatar(oldAvatarUrl);
+        } catch (error) {
+          // Profile update succeeded, so don't report the whole operation
+          // as failed just because old-file cleanup failed.
+          console.warn("Failed to delete old avatar:", error);
+        }
+      }
+
       Alert.alert("Success", "Your profile has been updated.");
     } catch (error) {
+      // If uploading succeeded but updating the profile failed,
+      // remove the newly uploaded image to avoid an orphaned file.
+      if (!profileUpdated && uploadedAvatarUrl) {
+        try {
+          await deleteAvatar(uploadedAvatarUrl);
+        } catch (cleanupError) {
+          console.warn("Failed to clean up new avatar:", cleanupError);
+        }
+      }
+
       Alert.alert(
         "Update failed",
         error instanceof Error ? error.message : "Please try again.",
@@ -178,9 +210,12 @@ export default function Screen() {
         animationType="fade"
         onRequestClose={() => setModalVisible(false)}
       >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-          style={styles.modalOverlay}
+        <KeyboardAwareScrollView
+          style={styles.container}
+          contentContainerStyle={{ paddingBottom: 48 }}
+          bottomOffset={24}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Edit Profile</Text>
@@ -243,7 +278,7 @@ export default function Screen() {
               </Pressable>
             </View>
           </View>
-        </KeyboardAvoidingView>
+        </KeyboardAwareScrollView>
       </Modal>
     </View>
   );
