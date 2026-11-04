@@ -4,7 +4,9 @@ import {
   Check,
   ChevronDown,
   ChevronRight,
+  Pencil,
   Plus,
+  Trash2,
   Wallet,
 } from "lucide-react-native";
 
@@ -18,6 +20,7 @@ import { useProfileStore } from "@/stores/use-profile-store";
 import { useWorkspaceStore } from "@/stores/use-workspace-store";
 
 import {
+  Alert,
   Image,
   Modal,
   Pressable,
@@ -94,6 +97,7 @@ export default function HomeScreen() {
   const setActiveWorkspace = useWorkspaceStore(
     (state) => state.setActiveWorkspace,
   );
+  const removeWorkspace = useWorkspaceStore((state) => state.removeWorkspace);
 
   const accounts = useFinanceStore((state) => state.accounts);
   const transactions = useFinanceStore((state) => state.transactions);
@@ -173,6 +177,36 @@ export default function HomeScreen() {
 
   const formatCurrency = (amountMinor: number) =>
     formatMoney(amountMinor, currency);
+
+  function handleDeleteWorkspace(id: string, name: string) {
+    Alert.alert(
+      "Delete workspace?",
+      `Are you sure you want to delete "${name}"? This action cannot be undone.`,
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await removeWorkspace(id);
+            } catch (error) {
+              console.error("Failed to delete workspace:", error);
+
+              Alert.alert(
+                "Unable to delete workspace",
+                "Something went wrong. Please try again.",
+              );
+            }
+          },
+        },
+      ],
+      { cancelable: true },
+    );
+  }
 
   return (
     <SafeScreen backgroundColor={colors.background} edges={["top"]}>
@@ -456,42 +490,74 @@ export default function HomeScreen() {
                   const isActive = item.id === activeWorkspaceId;
 
                   return (
-                    <Pressable
+                    <View
                       key={item.id}
                       style={[
                         styles.workspaceOption,
                         isActive && styles.workspaceOptionActive,
                       ]}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected: isActive }}
-                      accessibilityLabel={`${item.name}, ${item.currency_code}${
-                        isActive ? ", currently selected" : ""
-                      }`}
-                      onPress={() => {
-                        setActiveWorkspace(item.id);
-                        setWorkspaceSheetVisible(false);
-                      }}
                     >
-                      <View style={styles.workspaceOptionFlag}>
-                        <Text style={styles.workspaceOptionCurrency}>
-                          {item.currency_code}
-                        </Text>
-                      </View>
+                      {/* Workspace selection */}
+                      <Pressable
+                        style={styles.workspaceOptionContent}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: isActive }}
+                        accessibilityLabel={`${item.name}, ${item.currency_code}${
+                          isActive ? ", currently selected" : ""
+                        }`}
+                        onPress={() => {
+                          setActiveWorkspace(item.id);
+                          setWorkspaceSheetVisible(false);
+                        }}
+                      >
+                        {isActive && <Check size={20} color={colors.primary} />}
+                        <View style={styles.workspaceOptionFlag}>
+                          <Text style={styles.workspaceOptionCurrency}>
+                            {item.currency_code}
+                          </Text>
+                        </View>
 
-                      <View style={styles.workspaceOptionInfo}>
-                        <Text style={styles.workspaceOptionName}>
-                          {item.name}
-                        </Text>
+                        <View style={styles.workspaceOptionInfo}>
+                          <Text style={styles.workspaceOptionName}>
+                            {item.name}
+                          </Text>
 
-                        <Text style={styles.workspaceOptionCurrency}>
-                          {item.currency_code}
-                        </Text>
-                      </View>
+                          <Text style={styles.workspaceOptionCurrency}>
+                            {item.currency_code}
+                          </Text>
+                        </View>
+                      </Pressable>
 
-                      {isActive ? (
-                        <Check size={20} color={colors.primary} />
-                      ) : null}
-                    </Pressable>
+                      {/* Edit */}
+                      <Pressable
+                        style={styles.workspaceActionButton}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Edit ${item.name}`}
+                        hitSlop={8}
+                        onPress={() => {
+                          setWorkspaceSheetVisible(false);
+                          router.push({
+                            pathname: "/workspaces/edit",
+                            params: { id: item.id },
+                          });
+                        }}
+                      >
+                        <Pencil size={17} color={colors.textSecondary} />
+                      </Pressable>
+
+                      {/* Delete */}
+                      <Pressable
+                        style={styles.workspaceActionButton}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Delete ${item.name}`}
+                        hitSlop={8}
+                        onPress={() =>
+                          handleDeleteWorkspace(item.id, item.name)
+                        }
+                      >
+                        <Trash2 size={17} color={colors.danger} />
+                      </Pressable>
+                    </View>
                   );
                 })}
                 <Pressable
@@ -937,6 +1003,14 @@ const styles = StyleSheet.create({
     padding: spacing.xs,
   },
 
+  editWorkspaceButton: {
+    width: 36,
+    height: 36,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.md,
+  },
+
   addWorkspaceButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -1002,5 +1076,20 @@ const styles = StyleSheet.create({
   workspaceOptionCurrency: {
     color: colors.textSecondary,
     fontSize: typography.size.sm,
+  },
+
+  workspaceOptionContent: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+  },
+
+  workspaceActionButton: {
+    width: 36,
+    height: 36,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.md,
   },
 });

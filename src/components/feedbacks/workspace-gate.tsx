@@ -29,6 +29,9 @@ export function WorkspaceGate({ children }: WorkspaceGateProps) {
   const initialized = useWorkspaceStore((state) => state.initialized);
   const error = useWorkspaceStore((state) => state.error);
   const fetchWorkspaces = useWorkspaceStore((state) => state.fetchWorkspaces);
+  const activeWorkspaceId = useWorkspaceStore(
+    (state) => state.activeWorkspaceId,
+  );
 
   if (loading || !initialized) {
     return (
@@ -89,6 +92,15 @@ export function WorkspaceGate({ children }: WorkspaceGateProps) {
           <Plus size={20} color="#FFFFFF" />
           <Text style={styles.createButtonText}>Create workspace</Text>
         </Pressable>
+      </View>
+    );
+  }
+
+  if (!workspaces.some((item) => item.id === activeWorkspaceId)) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.loadingText}>Preparing your workspace...</Text>
       </View>
     );
   }
