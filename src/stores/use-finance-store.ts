@@ -1,133 +1,125 @@
 import { create } from "zustand";
 
 import {
-  mockAccounts,
-  mockTransactions,
-  mockWorkspaces,
-} from "@/data/mock-finance";
+  createAccount,
+  deleteAccount,
+  getAccounts,
+  updateAccount,
+} from "@/services/account-service";
 
 import type {
+  createAccountInput,
   createTransactionInput,
   financialAccount,
-  financialWorkspace,
   transaction,
+  updateAccountInput,
 } from "@/types/finances";
 
-type financeState = {
-  activeWorkspaceId: string;
+import { mockTransactions } from "@/data/mock-finance";
 
-  workspaces: financialWorkspace[];
+type financeState = {
   accounts: financialAccount[];
   transactions: transaction[];
 
-  setActiveWorkspace: (workspaceId: string) => void;
+  accountsLoading: boolean;
+  accountsError: string | null;
 
-  createWorkspace: (input: {
-    name: string;
-    countryCode: string;
-    currency: string;
-  }) => string;
+  fetchAccounts: (workspaceId: string) => Promise<void>;
+  addAccount: (input: createAccountInput) => Promise<financialAccount>;
+  editAccount: (
+    id: string,
+    input: updateAccountInput,
+  ) => Promise<financialAccount>;
+  removeAccount: (id: string) => Promise<void>;
 
   addTransaction: (input: createTransactionInput) => void;
+
+  resetFinance: () => void;
 };
 
-export const useFinanceStore = create<financeState>((set, get) => ({
-  activeWorkspaceId: "my",
+let accountRequestId = 0;
 
-  workspaces: mockWorkspaces,
-  accounts: mockAccounts,
+export const useFinanceStore = create<financeState>((set, get) => ({
+  accounts: [],
   transactions: mockTransactions,
 
-  setActiveWorkspace: (workspaceId) => {
-    const workspaceExists = get().workspaces.some(
-      (workspace) => workspace.id === workspaceId,
-    );
+  accountsLoading: false,
+  accountsError: null,
 
-    if (!workspaceExists) {
-      throw new Error("Workspace not found.");
+  fetchAccounts: async (workspaceId) => {
+    const requestId = ++accountRequestId;
+
+    set({
+      accounts: [],
+      accountsLoading: true,
+      accountsError: null,
+    });
+
+    try {
+      const accounts = await getAccounts(workspaceId);
+
+      if (requestId !== accountRequestId) return;
+
+      set({ accounts });
+    } catch (error) {
+      if (requestId !== accountRequestId) return;
+
+      console.error("Failed to fetch accounts:", error);
+
+      set({
+        accountsError:
+          error instanceof Error ? error.message : "Failed to load accounts.",
+      });
+    } finally {
+      if (requestId === accountRequestId) {
+        set({ accountsLoading: false });
+      }
     }
+  },
 
-    set({ activeWorkspaceId: workspaceId });
+  addAccount: async (input) => {
+    const account = await createAccount(input);
+
+    set((state) => ({
+      accounts: [...state.accounts, account],
+    }));
+
+    return account;
+  },
+
+  editAccount: async (id, input) => {
+    const account = await updateAccount(id, input);
+
+    set((state) => ({
+      accounts: state.accounts.map((item) => (item.id === id ? account : item)),
+    }));
+
+    return account;
+  },
+
+  removeAccount: async (id) => {
+    await deleteAccount(id);
+
+    set((state) => ({
+      accounts: state.accounts.filter((item) => item.id !== id),
+    }));
   },
 
   addTransaction: (input) => {
-    const account = get().accounts.find((item) => item.id === input.accountId);
-
-    const workspace = get().workspaces.find(
-      (item) => item.id === input.workspaceId,
+    console.warn(
+      "Transactions are still using mock functionality. Supabase integration is coming next.",
+      input,
     );
-
-    if (!workspace) {
-      throw new Error("Workspace not found.");
-    }
-
-    if (!account || account.workspaceId !== workspace.id) {
-      throw new Error("Account does not belong to this workspace.");
-    }
-
-    if (account.currency !== workspace.currency) {
-      throw new Error("Cross-currency transactions are not supported yet.");
-    }
-
-    if (!Number.isSafeInteger(input.amountMinor) || input.amountMinor <= 0) {
-      throw new Error("Amount must be a positive integer.");
-    }
-
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date)) {
-      throw new Error("Date must use YYYY-MM-DD format.");
-    }
-
-    const newTransaction: transaction = {
-      id: `tx-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-      workspaceId: workspace.id,
-      accountId: account.id,
-      type: input.type,
-      categoryId: input.categoryId,
-      amountMinor: input.amountMinor,
-      currency: account.currency,
-      description: input.description.trim(),
-      date: input.date,
-      createdAt: new Date().toISOString(),
-    };
-
-    set((state) => ({
-      transactions: [newTransaction, ...state.transactions],
-    }));
   },
 
-  createWorkspace: (input) => {
-    const name = input.name.trim();
-    const countryCode = input.countryCode.trim().toUpperCase();
-    const currency = input.currency.trim().toUpperCase();
+  resetFinance: () => {
+    accountRequestId++;
 
-    if (!name) {
-      throw new Error("Workspace name is required.");
-    }
-
-    if (!/^[A-Z]{2}$/.test(countryCode)) {
-      throw new Error("A valid country code is required.");
-    }
-
-    if (!/^[A-Z]{3}$/.test(currency)) {
-      throw new Error("A valid currency code is required.");
-    }
-
-    const workspaceId = `workspace-${Date.now()}-${Math.random()
-      .toString(36)
-      .slice(2, 8)}`;
-
-    const newWorkspace: financialWorkspace = {
-      id: workspaceId,
-      name,
-      countryCode,
-      currency,
-    };
-
-    set((state) => ({
-      workspaces: [...state.workspaces, newWorkspace],
-      activeWorkspaceId: workspaceId,
-    }));
-
-    return workspaceId;
+    set({
+      accounts: [],
+      transactions: [],
+      accountsLoading: false,
+      accountsError: null,
+    });
   },
 }));

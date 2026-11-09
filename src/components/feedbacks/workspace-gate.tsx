@@ -5,7 +5,9 @@ import {
   Plus,
   RefreshCw,
 } from "lucide-react-native";
+
 import type { ReactNode } from "react";
+import { useEffect } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -15,6 +17,8 @@ import {
 } from "react-native";
 
 import { colors, radius, spacing, typography } from "@/constants/theme";
+
+import { useFinanceStore } from "@/stores/use-finance-store";
 import { useWorkspaceStore } from "@/stores/use-workspace-store";
 
 type WorkspaceGateProps = {
@@ -32,6 +36,14 @@ export function WorkspaceGate({ children }: WorkspaceGateProps) {
   const activeWorkspaceId = useWorkspaceStore(
     (state) => state.activeWorkspaceId,
   );
+
+  const fetchAccounts = useFinanceStore((state) => state.fetchAccounts);
+
+  useEffect(() => {
+    if (!activeWorkspaceId) return;
+
+    void fetchAccounts(activeWorkspaceId);
+  }, [activeWorkspaceId, fetchAccounts]);
 
   if (loading || !initialized) {
     return (

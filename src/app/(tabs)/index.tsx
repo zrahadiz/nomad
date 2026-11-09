@@ -36,8 +36,13 @@ import {
   getWorkspaceBalance,
 } from "@/lib/finance/calculations";
 
+import type { financialAccount, transaction } from "@/types/finances";
+
 import { getCountryByCode } from "@/constants/countries";
 import { colors, radius, spacing, typography } from "@/constants/theme";
+
+import { AccountIcon } from "@/components/accounts/account-icon";
+import type { accountIconName } from "@/constants/account-options";
 
 import { WorkspaceGate } from "@/components/feedbacks/workspace-gate";
 import { SafeScreen } from "@/components/layout/safe-screen";
@@ -55,6 +60,37 @@ function getInitials(name: string | null | undefined): string {
     .slice(0, 2)
     .map((part) => part[0].toUpperCase())
     .join("");
+}
+
+function getAccountBalance(
+  account: financialAccount,
+  transactions: transaction[],
+): number {
+  return transactions.reduce((balance, item) => {
+    if (item.workspaceId !== account.workspaceId) {
+      return balance;
+    }
+
+    if (item.type === "income" && item.accountId === account.id) {
+      return balance + item.amountMinor;
+    }
+
+    if (item.type === "expense" && item.accountId === account.id) {
+      return balance - item.amountMinor;
+    }
+
+    if (item.type === "transfer") {
+      if (item.accountId === account.id) {
+        return balance - item.amountMinor;
+      }
+
+      if (item.destinationAccountId === account.id) {
+        return balance + item.amountMinor;
+      }
+    }
+
+    return balance;
+  }, account.initialBalanceMinor);
 }
 
 function SectionHeading({
@@ -100,6 +136,14 @@ export default function HomeScreen() {
   const removeWorkspace = useWorkspaceStore((state) => state.removeWorkspace);
 
   const accounts = useFinanceStore((state) => state.accounts);
+  const workspaceAccounts = useMemo(
+    () =>
+      accounts.filter((account) => account.workspaceId === activeWorkspaceId),
+    [accounts, activeWorkspaceId],
+  );
+
+  const displayedAccounts = workspaceAccounts.slice(0, 3);
+
   const transactions = useFinanceStore((state) => state.transactions);
 
   const profile = useProfileStore((state) => state.profile);
@@ -304,25 +348,67 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          {/* Quick actions */}
-          <View style={styles.quickActions}>
-            <Pressable
-              style={styles.primaryAction}
-              accessibilityRole="button"
-              accessibilityLabel="Add transaction"
-              onPress={() => router.push("/transactions/new")}
-            >
-              <Plus size={20} color="#FFFFFF" />
-              <Text style={styles.primaryActionText}>Add transaction</Text>
-            </Pressable>
+          {/* My Accounts */}
+          <SectionHeading
+            title="My Accounts"
+            action={
+              workspaceAccounts.length > 0
+                ? `View all (${workspaceAccounts.length})`
+                : undefined
+            }
+            onPress={() => router.push("/accounts/list")}
+          />
+
+          <View style={styles.accountCard}>
+            {workspaceAccounts.length === 0 ? (
+              <View style={styles.accountEmptyState}>
+                <Text style={styles.accountEmptyTitle}>No accounts yet</Text>
+
+                <Text style={styles.accountEmptySubtitle}>
+                  Add your first account to start tracking your money.
+                </Text>
+              </View>
+            ) : (
+              displayedAccounts.map((account, index) => (
+                <View key={account.id}>
+                  {index > 0 && <View style={styles.accountDivider} />}
+
+                  <View style={styles.accountRow}>
+                    <AccountIcon
+                      name={(account.icon ?? "wallet") as accountIconName}
+                      color={account.color ?? colors.primary}
+                      size={44}
+                      iconSize={21}
+                    />
+
+                    <View style={styles.accountDetails}>
+                      <Text style={styles.accountName} numberOfLines={1}>
+                        {account.name}
+                      </Text>
+
+                      <Text style={styles.accountType}>
+                        {account.type === "e-wallet"
+                          ? "E-wallet"
+                          : account.type.charAt(0).toUpperCase() +
+                            account.type.slice(1)}
+                      </Text>
+                    </View>
+
+                    <Text style={styles.accountBalance}>
+                      {formatCurrency(getAccountBalance(account, transactions))}
+                    </Text>
+                  </View>
+                </View>
+              ))
+            )}
 
             <Pressable
-              style={styles.secondaryAction}
+              style={styles.accountAddButton}
               accessibilityRole="button"
-              accessibilityLabel="View transactions"
-              onPress={() => router.push("/transactions")}
+              onPress={() => router.push("/accounts/new")}
             >
-              <Wallet size={20} color={colors.primary} />
+              <Plus size={18} color={colors.primary} />
+              <Text style={styles.accountAddButtonText}>Add Account</Text>
             </Pressable>
           </View>
 
@@ -385,6 +471,27 @@ export default function HomeScreen() {
             action="See all"
             onPress={() => router.push("/transactions")}
           />
+          {/* Quick actions */}
+          <View style={styles.quickActions}>
+            <Pressable
+              style={styles.primaryAction}
+              accessibilityRole="button"
+              accessibilityLabel="Add transaction"
+              onPress={() => router.push("/transactions/new")}
+            >
+              <Plus size={20} color="#FFFFFF" />
+              <Text style={styles.primaryActionText}>Add transaction</Text>
+            </Pressable>
+
+            <Pressable
+              style={styles.secondaryAction}
+              accessibilityRole="button"
+              accessibilityLabel="View transactions"
+              onPress={() => router.push("/transactions")}
+            >
+              <Wallet size={20} color={colors.primary} />
+            </Pressable>
+          </View>
 
           <View style={styles.transactionCard}>
             {recentTransactions.length === 0 ? (
@@ -1001,6 +1108,82 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontSize: typography.size.lg,
     padding: spacing.xs,
+  },
+
+  accountCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.md,
+  },
+
+  accountRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    paddingVertical: spacing.md,
+  },
+
+  accountDetails: {
+    flex: 1,
+    gap: spacing.xs,
+  },
+
+  accountName: {
+    color: colors.text,
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.semibold,
+  },
+
+  accountType: {
+    color: colors.textSecondary,
+    fontSize: typography.size.xs,
+  },
+
+  accountBalance: {
+    color: colors.text,
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.semibold,
+  },
+
+  accountDivider: {
+    height: 1,
+    backgroundColor: colors.border,
+  },
+
+  accountAddButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm,
+    paddingVertical: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+
+  accountAddButtonText: {
+    color: colors.primary,
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.semibold,
+  },
+
+  accountEmptyState: {
+    alignItems: "center",
+    paddingVertical: spacing.xl,
+    gap: spacing.xs,
+  },
+
+  accountEmptyTitle: {
+    color: colors.text,
+    fontSize: typography.size.md,
+    fontWeight: typography.weight.semibold,
+  },
+
+  accountEmptySubtitle: {
+    color: colors.textSecondary,
+    fontSize: typography.size.sm,
+    textAlign: "center",
   },
 
   editWorkspaceButton: {
