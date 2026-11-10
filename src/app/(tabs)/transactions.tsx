@@ -359,7 +359,15 @@ export default function TransactionsScreen() {
                 <View key={item.id}>
                   {index > 0 && <View style={styles.divider} />}
 
-                  <View style={styles.transactionRow}>
+                  <Pressable
+                    onPress={() =>
+                      router.push({
+                        pathname: "/transactions/[id]",
+                        params: { id: item.id },
+                      })
+                    }
+                    style={styles.transactionRow}
+                  >
                     <View style={styles.transactionIcon}>
                       <Icon size={20} color={colors.primary} />
                     </View>
@@ -383,7 +391,7 @@ export default function TransactionsScreen() {
                       {isPositive ? "+" : "−"}
                       {formatMoney(item.amountMinor, item.currency)}
                     </Text>
-                  </View>
+                  </Pressable>
                 </View>
               );
             })}

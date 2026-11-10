@@ -26,6 +26,19 @@ type accountCurrencyRow = {
   currency_code: string;
 };
 
+type editableTransactionRow = {
+  id: string;
+  workspace_id: string;
+  type: transactionType;
+  category_id: string | null;
+};
+
+type categoryValidationRow = {
+  id: string;
+  type: "income" | "expense";
+  is_archived: boolean;
+};
+
 function mapTransaction(row: transactionRow, currency: string): transaction {
   return {
     id: row.id,
@@ -130,14 +143,83 @@ export async function updateTransaction(
   id: string,
   input: updateTransactionInput,
 ): Promise<transaction> {
-  const updates: Record<string, unknown> = {};
+  const { data: existing, error: existingError } = await supabase
+    .from("transactions")
+    .select("id, workspace_id, type, category_id")
+    .eq("id", id)
+    .maybeSingle();
 
-  if (input.accountId !== undefined) {
-    updates.account_id = input.accountId;
+  if (existingError) throw existingError;
+
+  if (!existing) {
+    throw new Error("Transaction not found.");
   }
 
-  if (input.categoryId !== undefined) {
-    updates.category_id = input.categoryId;
+  const existingTransaction = existing as editableTransactionRow;
+
+  if (
+    existingTransaction.type !== "income" &&
+    existingTransaction.type !== "expense"
+  ) {
+    throw new Error("Transfer transactions cannot be edited individually.");
+  }
+
+  const updates: Record<string, unknown> = {};
+
+  const accountId = input.accountId ?? undefined;
+  const categoryId = input.categoryId ?? undefined;
+
+  // Validate the account belongs to the original workspace.
+  if (accountId !== undefined) {
+    const { data: account, error: accountError } = await supabase
+      .from("accounts")
+      .select("id")
+      .eq("id", accountId)
+      .eq("workspace_id", existingTransaction.workspace_id)
+      .maybeSingle();
+
+    if (accountError) throw accountError;
+
+    if (!account) {
+      throw new Error(
+        "The selected account does not belong to this workspace.",
+      );
+    }
+
+    updates.account_id = accountId;
+  }
+
+  // Validate category type and archive status.
+  if (categoryId !== undefined) {
+    const { data: category, error: categoryError } = await supabase
+      .from("categories")
+      .select("id, type, is_archived")
+      .eq("id", categoryId)
+      .maybeSingle();
+
+    if (categoryError) throw categoryError;
+
+    if (!category) {
+      throw new Error("The selected category could not be found.");
+    }
+
+    const categoryData = category as categoryValidationRow;
+
+    if (categoryData.type !== existingTransaction.type) {
+      throw new Error(
+        "The selected category does not match the transaction type.",
+      );
+    }
+
+    const isExistingCategory = categoryId === existingTransaction.category_id;
+
+    if (categoryData.is_archived && !isExistingCategory) {
+      throw new Error(
+        "Archived categories cannot be selected for a transaction.",
+      );
+    }
+
+    updates.category_id = categoryId;
   }
 
   if (input.amountMinor !== undefined) {
@@ -161,6 +243,7 @@ export async function updateTransaction(
     .from("transactions")
     .update(updates)
     .eq("id", id)
+    .eq("workspace_id", existingTransaction.workspace_id)
     .in("type", ["income", "expense"])
     .select()
     .single();

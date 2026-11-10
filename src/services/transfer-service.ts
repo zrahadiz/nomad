@@ -1,9 +1,9 @@
 import { supabase } from "@/lib/supabase/client";
 
 import type {
-    createTransferInput,
-    createdTransferResult,
-    financialTransfer,
+  createTransferInput,
+  createdTransferResult,
+  financialTransfer,
 } from "@/types/finances";
 
 type transferRpcRow = {
@@ -122,4 +122,12 @@ export async function createTransfer(
     sourceTransactionId: result.source_transaction_id,
     destinationTransactionId: result.destination_transaction_id,
   };
+}
+
+export async function deleteTransfer(id: string): Promise<void> {
+  const { error } = await supabase.rpc("delete_transfer", {
+    p_transfer_id: id,
+  });
+
+  if (error) throw error;
 }

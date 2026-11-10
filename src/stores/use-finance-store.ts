@@ -14,7 +14,11 @@ import {
   updateTransaction,
 } from "@/services/transaction-service";
 
-import { createTransfer, getTransfers } from "@/services/transfer-service";
+import {
+  createTransfer,
+  deleteTransfer,
+  getTransfers,
+} from "@/services/transfer-service";
 
 import type {
   createAccountInput,
@@ -235,6 +239,41 @@ export const useFinanceStore = create<financeState>((set, get) => ({
   },
 
   removeTransaction: async (id) => {
+    const transaction = get().transactions.find((item) => item.id === id);
+
+    if (!transaction) {
+      throw new Error("Transaction not found.");
+    }
+
+    const isTransfer =
+      transaction.type === "transfer_out" || transaction.type === "transfer_in";
+
+    if (isTransfer) {
+      if (!transaction.transferId) {
+        throw new Error("Transfer information could not be found.");
+      }
+
+      // Delete the transfer and both linked transaction records.
+      await deleteTransfer(transaction.transferId);
+
+      set((state) => ({
+        transactions: state.transactions.filter(
+          (item) => item.transferId !== transaction.transferId,
+        ),
+
+        transfers: state.transfers.filter(
+          (item) => item.id !== transaction.transferId,
+        ),
+      }));
+
+      return;
+    }
+
+    if (transaction.type !== "income" && transaction.type !== "expense") {
+      throw new Error("This transaction cannot be deleted.");
+    }
+
+    // Delete a normal income or expense transaction.
     await deleteTransaction(id);
 
     set((state) => ({
