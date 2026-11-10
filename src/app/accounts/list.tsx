@@ -2,7 +2,7 @@ import { useRouter } from "expo-router";
 import { useMemo } from "react";
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 
-import { ArrowLeft, EllipsisVertical, Plus, Wallet } from "lucide-react-native";
+import { EllipsisVertical, Plus, Wallet } from "lucide-react-native";
 
 import { AccountIcon } from "@/components/accounts/account-icon";
 import { WorkspaceGate } from "@/components/feedbacks/workspace-gate";
@@ -145,39 +145,13 @@ export default function AccountsScreen() {
     formatMoney(amountMinor, currency);
 
   return (
-    <SafeScreen backgroundColor={colors.background} edges={["top"]}>
+    <SafeScreen backgroundColor={colors.background} edges={["bottom"]}>
       <WorkspaceGate>
         <KeyboardAwareScrollView
           contentContainerStyle={[styles.content]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Header */}
-          <View style={styles.header}>
-            <Pressable
-              onPress={() => router.back()}
-              style={styles.backButton}
-              accessibilityLabel="Go back"
-            >
-              <ArrowLeft size={22} color={colors.text} />
-            </Pressable>
-            <View style={styles.headerText}>
-              <Text style={styles.title}>Accounts</Text>
-              <Text style={styles.subtitle}>
-                Manage your money in one place.
-              </Text>
-            </View>
-
-            <Pressable
-              style={styles.addButton}
-              accessibilityRole="button"
-              accessibilityLabel="Add account"
-              onPress={() => router.push("/accounts/new")}
-            >
-              <Plus size={20} color="#FFFFFF" />
-            </Pressable>
-          </View>
-
           {/* Total balance */}
           <View style={styles.balanceCard}>
             <Text style={styles.balanceLabel}>TOTAL ACCOUNT BALANCE</Text>
@@ -196,6 +170,15 @@ export default function AccountsScreen() {
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>All Accounts</Text>
             <Text style={styles.accountCount}>{workspaceAccounts.length}</Text>
+
+            <Pressable
+              style={styles.addButton}
+              accessibilityRole="button"
+              accessibilityLabel="Add account"
+              onPress={() => router.push("/accounts/new")}
+            >
+              <Plus size={20} color="#FFFFFF" />
+            </Pressable>
           </View>
 
           {workspaceAccounts.length === 0 ? (

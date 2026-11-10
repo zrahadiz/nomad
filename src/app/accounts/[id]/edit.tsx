@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { ArrowLeft, Check } from "lucide-react-native";
+import { Check } from "lucide-react-native";
 import { useEffect, useMemo, useState } from "react";
 
 import {
@@ -208,20 +208,6 @@ export default function EditAccountScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.header}>
-            <Pressable
-              onPress={() => router.back()}
-              style={styles.backButton}
-              accessibilityLabel="Go back"
-            >
-              <ArrowLeft size={22} color={colors.text} />
-            </Pressable>
-
-            <Text style={styles.headerTitle}>Edit Account</Text>
-
-            <View style={styles.headerSpacer} />
-          </View>
-
           {/* Account Name */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Account name</Text>

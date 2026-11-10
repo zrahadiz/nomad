@@ -53,6 +53,48 @@ function RootNavigator() {
             headerShadowVisible: false,
           }}
         />
+
+        <Stack.Screen
+          name="accounts/new"
+          options={{
+            headerShown: true,
+            title: "Add account",
+            presentation: "modal",
+            headerStyle: {
+              backgroundColor: colors.background,
+            },
+            headerTintColor: colors.text,
+            headerShadowVisible: false,
+          }}
+        />
+
+        <Stack.Screen
+          name="accounts/list"
+          options={{
+            headerShown: true,
+            title: "Accounts",
+            presentation: "modal",
+            headerStyle: {
+              backgroundColor: colors.background,
+            },
+            headerTintColor: colors.text,
+            headerShadowVisible: false,
+          }}
+        />
+
+        <Stack.Screen
+          name="accounts/[id]/edit"
+          options={{
+            headerShown: true,
+            title: "Edit account",
+            presentation: "modal",
+            headerStyle: {
+              backgroundColor: colors.background,
+            },
+            headerTintColor: colors.text,
+            headerShadowVisible: false,
+          }}
+        />
       </Stack.Protected>
     </Stack>
   );

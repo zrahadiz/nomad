@@ -3,43 +3,35 @@ import {
   getCurrencyDecimalDigits,
   getCurrencyLocale,
 } from "@/lib/finance/currency";
+
 import type { financialAccount, transaction } from "@/types/finances";
 
 export function getAccountBalance(
   account: financialAccount,
   transactions: transaction[],
 ): number {
-  let balance = account.initialBalanceMinor;
-
-  for (const item of transactions) {
-    if (item.workspaceId !== account.workspaceId) {
-      continue;
+  return transactions.reduce((balance, item) => {
+    if (
+      item.workspaceId !== account.workspaceId ||
+      item.accountId !== account.id ||
+      item.currency !== account.currency
+    ) {
+      return balance;
     }
 
-    if (item.currency !== account.currency) {
-      continue;
+    switch (item.type) {
+      case "income":
+      case "transfer_in":
+        return balance + item.amountMinor;
+
+      case "expense":
+      case "transfer_out":
+        return balance - item.amountMinor;
+
+      default:
+        return balance;
     }
-
-    if (item.type === "income" && item.accountId === account.id) {
-      balance += item.amountMinor;
-    }
-
-    if (item.type === "expense" && item.accountId === account.id) {
-      balance -= item.amountMinor;
-    }
-
-    if (item.type === "transfer") {
-      if (item.accountId === account.id) {
-        balance -= item.amountMinor;
-      }
-
-      if (item.destinationAccountId === account.id) {
-        balance += item.amountMinor;
-      }
-    }
-  }
-
-  return balance;
+  }, account.initialBalanceMinor);
 }
 
 export function getWorkspaceBalance(

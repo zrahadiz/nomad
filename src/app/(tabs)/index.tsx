@@ -22,7 +22,6 @@ import { useWorkspaceStore } from "@/stores/use-workspace-store";
 import {
   Alert,
   Image,
-  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -32,11 +31,10 @@ import {
 
 import {
   formatMoney,
+  getAccountBalance,
   getMonthlySpending,
   getWorkspaceBalance,
 } from "@/lib/finance/calculations";
-
-import type { financialAccount, transaction } from "@/types/finances";
 
 import { getCountryByCode } from "@/constants/countries";
 import { colors, radius, spacing, typography } from "@/constants/theme";
@@ -46,6 +44,7 @@ import type { accountIconName } from "@/constants/account-options";
 
 import { WorkspaceGate } from "@/components/feedbacks/workspace-gate";
 import { SafeScreen } from "@/components/layout/safe-screen";
+import { BottomSheetModal } from "@/components/ui/bottom-modal";
 
 function getCountryFlag(countryCode: string): string {
   return getCountryByCode(countryCode)?.flag ?? "🌍";
@@ -60,37 +59,6 @@ function getInitials(name: string | null | undefined): string {
     .slice(0, 2)
     .map((part) => part[0].toUpperCase())
     .join("");
-}
-
-function getAccountBalance(
-  account: financialAccount,
-  transactions: transaction[],
-): number {
-  return transactions.reduce((balance, item) => {
-    if (item.workspaceId !== account.workspaceId) {
-      return balance;
-    }
-
-    if (item.type === "income" && item.accountId === account.id) {
-      return balance + item.amountMinor;
-    }
-
-    if (item.type === "expense" && item.accountId === account.id) {
-      return balance - item.amountMinor;
-    }
-
-    if (item.type === "transfer") {
-      if (item.accountId === account.id) {
-        return balance - item.amountMinor;
-      }
-
-      if (item.destinationAccountId === account.id) {
-        return balance + item.amountMinor;
-      }
-    }
-
-    return balance;
-  }, account.initialBalanceMinor);
 }
 
 function SectionHeading({
@@ -174,6 +142,36 @@ export default function HomeScreen() {
           (item) =>
             item.workspaceId === activeWorkspaceId &&
             item.type === "income" &&
+            item.date.startsWith(
+              `${currentYear}-${String(currentMonth).padStart(2, "0")}`,
+            ),
+        )
+        .reduce((total, item) => total + item.amountMinor, 0),
+    [activeWorkspaceId, transactions, currentYear, currentMonth],
+  );
+
+  const monthlyTransferInMinor = useMemo(
+    () =>
+      transactions
+        .filter(
+          (item) =>
+            item.workspaceId === activeWorkspaceId &&
+            item.type === "transfer_in" &&
+            item.date.startsWith(
+              `${currentYear}-${String(currentMonth).padStart(2, "0")}`,
+            ),
+        )
+        .reduce((total, item) => total + item.amountMinor, 0),
+    [activeWorkspaceId, transactions, currentYear, currentMonth],
+  );
+
+  const monthlyTransferOutMinor = useMemo(
+    () =>
+      transactions
+        .filter(
+          (item) =>
+            item.workspaceId === activeWorkspaceId &&
+            item.type === "transfer_out" &&
             item.date.startsWith(
               `${currentYear}-${String(currentMonth).padStart(2, "0")}`,
             ),
@@ -330,20 +328,54 @@ export default function HomeScreen() {
             <Text style={styles.balanceCaption}>Across your accounts</Text>
 
             <View style={styles.balanceFooter}>
-              <View>
-                <Text style={styles.balanceFooterLabel}>INCOME</Text>
-                <Text style={styles.balanceFooterValue}>
-                  + {formatCurrency(monthlyIncomeMinor)}
-                </Text>
+              <View style={styles.balanceFooterRow}>
+                <View style={styles.balanceFooterItem}>
+                  <View style={styles.balanceFooterLabelRow}>
+                    <ArrowDownLeft size={14} color="#DCE8DD" />
+                    <Text style={styles.balanceFooterLabel}>INCOME</Text>
+                  </View>
+
+                  <Text style={styles.balanceFooterValue}>
+                    + {formatCurrency(monthlyIncomeMinor)}
+                  </Text>
+                </View>
+
+                <View style={styles.balanceFooterItem}>
+                  <View style={styles.balanceFooterLabelRow}>
+                    <ArrowUpRight size={14} color="#DCE8DD" />
+                    <Text style={styles.balanceFooterLabel}>SPENDING</Text>
+                  </View>
+
+                  <Text style={styles.balanceFooterValue}>
+                    − {formatCurrency(monthlySpentMinor)}
+                  </Text>
+                </View>
               </View>
 
-              <View style={styles.balanceDivider} />
+              <View style={styles.balanceFooterDivider} />
 
-              <View>
-                <Text style={styles.balanceFooterLabel}>SPENDING</Text>
-                <Text style={styles.balanceFooterValue}>
-                  − {formatCurrency(monthlySpentMinor)}
-                </Text>
+              <View style={styles.balanceFooterRow}>
+                <View style={styles.balanceFooterItem}>
+                  <View style={styles.balanceFooterLabelRow}>
+                    <ArrowDownLeft size={14} color="#DCE8DD" />
+                    <Text style={styles.balanceFooterLabel}>TRANSFER IN</Text>
+                  </View>
+
+                  <Text style={styles.balanceFooterValue}>
+                    + {formatCurrency(monthlyTransferInMinor)}
+                  </Text>
+                </View>
+
+                <View style={styles.balanceFooterItem}>
+                  <View style={styles.balanceFooterLabelRow}>
+                    <ArrowUpRight size={14} color="#DCE8DD" />
+                    <Text style={styles.balanceFooterLabel}>TRANSFER OUT</Text>
+                  </View>
+
+                  <Text style={styles.balanceFooterValue}>
+                    − {formatCurrency(monthlyTransferOutMinor)}
+                  </Text>
+                </View>
               </View>
             </View>
           </View>
@@ -500,9 +532,17 @@ export default function HomeScreen() {
               </Text>
             ) : (
               recentTransactions.map((transaction, index) => {
-                const isIncome = transaction.type === "income";
+                const isIncoming =
+                  transaction.type === "income" ||
+                  transaction.type === "transfer_in";
 
-                const Icon = isIncome ? ArrowDownLeft : ArrowUpRight;
+                const isTransfer =
+                  transaction.type === "transfer_in" ||
+                  transaction.type === "transfer_out";
+
+                const Icon = isIncoming ? ArrowDownLeft : ArrowUpRight;
+
+                const amountPrefix = isIncoming ? "+" : "−";
 
                 return (
                   <View key={transaction.id}>
@@ -530,10 +570,10 @@ export default function HomeScreen() {
                       <Text
                         style={[
                           styles.transactionAmount,
-                          isIncome && styles.incomeAmount,
+                          isIncoming && styles.incomeAmount,
                         ]}
                       >
-                        {isIncome ? "+" : "−"}
+                        {amountPrefix}
                         {formatMoney(
                           transaction.amountMinor,
                           transaction.currency,
@@ -551,139 +591,99 @@ export default function HomeScreen() {
           </Text>
 
           {/* Workspace selection modal */}
-          <Modal
+          <BottomSheetModal
             visible={workspaceSheetVisible}
-            transparent
-            animationType="slide"
-            statusBarTranslucent
-            onRequestClose={() => setWorkspaceSheetVisible(false)}
+            onClose={() => setWorkspaceSheetVisible(false)}
+            title="Your workspaces"
+            subtitle="Choose where you want to manage your money."
           >
-            <View style={styles.modalOverlay}>
-              {/* Tap outside to close */}
-              <Pressable
-                style={styles.modalBackdrop}
-                onPress={() => setWorkspaceSheetVisible(false)}
-                accessibilityRole="button"
-                accessibilityLabel="Close workspace selector"
-              />
+            {workspaces.map((item) => {
+              const isActive = item.id === activeWorkspaceId;
 
-              <View
-                style={[
-                  styles.workspaceSheet,
-                  { paddingBottom: insets.bottom + 24 },
-                ]}
-              >
-                <View style={styles.sheetHandle} />
-
-                <View style={styles.sheetHeader}>
-                  <View>
-                    <Text style={styles.sheetTitle}>Your workspaces</Text>
-                    <Text style={styles.sheetSubtitle}>
-                      Choose where you want to manage your money.
-                    </Text>
-                  </View>
-
+              return (
+                <View
+                  key={item.id}
+                  style={[
+                    styles.workspaceOption,
+                    isActive && styles.workspaceOptionActive,
+                  ]}
+                >
+                  {/* Workspace selection */}
                   <Pressable
-                    onPress={() => setWorkspaceSheetVisible(false)}
+                    style={styles.workspaceOptionContent}
                     accessibilityRole="button"
-                    accessibilityLabel="Close"
-                    hitSlop={8}
+                    accessibilityState={{ selected: isActive }}
+                    accessibilityLabel={`${item.name}, ${item.currency_code}${
+                      isActive ? ", currently selected" : ""
+                    }`}
+                    onPress={() => {
+                      setActiveWorkspace(item.id);
+                      setWorkspaceSheetVisible(false);
+                    }}
                   >
-                    <Text style={styles.closeButton}>✕</Text>
+                    {isActive && <Check size={20} color={colors.primary} />}
+
+                    <View style={styles.workspaceOptionFlag}>
+                      <Text style={styles.workspaceOptionCurrency}>
+                        {item.currency_code}
+                      </Text>
+                    </View>
+
+                    <View style={styles.workspaceOptionInfo}>
+                      <Text style={styles.workspaceOptionName}>
+                        {item.name}
+                      </Text>
+
+                      <Text style={styles.workspaceOptionCurrency}>
+                        {item.currency_code}
+                      </Text>
+                    </View>
+                  </Pressable>
+
+                  {/* Edit */}
+                  <Pressable
+                    style={styles.workspaceActionButton}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Edit ${item.name}`}
+                    hitSlop={8}
+                    onPress={() => {
+                      setWorkspaceSheetVisible(false);
+                      router.push({
+                        pathname: "/workspaces/edit",
+                        params: { id: item.id },
+                      });
+                    }}
+                  >
+                    <Pencil size={17} color={colors.textSecondary} />
+                  </Pressable>
+
+                  {/* Delete */}
+                  <Pressable
+                    style={styles.workspaceActionButton}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Delete ${item.name}`}
+                    hitSlop={8}
+                    onPress={() => handleDeleteWorkspace(item.id, item.name)}
+                  >
+                    <Trash2 size={17} color={colors.danger} />
                   </Pressable>
                 </View>
+              );
+            })}
 
-                {workspaces.map((item) => {
-                  const isActive = item.id === activeWorkspaceId;
+            <Pressable
+              style={styles.addWorkspaceButton}
+              accessibilityRole="button"
+              onPress={() => {
+                setWorkspaceSheetVisible(false);
+                router.push("/workspaces/new");
+              }}
+            >
+              <Plus size={20} color={colors.primary} />
 
-                  return (
-                    <View
-                      key={item.id}
-                      style={[
-                        styles.workspaceOption,
-                        isActive && styles.workspaceOptionActive,
-                      ]}
-                    >
-                      {/* Workspace selection */}
-                      <Pressable
-                        style={styles.workspaceOptionContent}
-                        accessibilityRole="button"
-                        accessibilityState={{ selected: isActive }}
-                        accessibilityLabel={`${item.name}, ${item.currency_code}${
-                          isActive ? ", currently selected" : ""
-                        }`}
-                        onPress={() => {
-                          setActiveWorkspace(item.id);
-                          setWorkspaceSheetVisible(false);
-                        }}
-                      >
-                        {isActive && <Check size={20} color={colors.primary} />}
-                        <View style={styles.workspaceOptionFlag}>
-                          <Text style={styles.workspaceOptionCurrency}>
-                            {item.currency_code}
-                          </Text>
-                        </View>
-
-                        <View style={styles.workspaceOptionInfo}>
-                          <Text style={styles.workspaceOptionName}>
-                            {item.name}
-                          </Text>
-
-                          <Text style={styles.workspaceOptionCurrency}>
-                            {item.currency_code}
-                          </Text>
-                        </View>
-                      </Pressable>
-
-                      {/* Edit */}
-                      <Pressable
-                        style={styles.workspaceActionButton}
-                        accessibilityRole="button"
-                        accessibilityLabel={`Edit ${item.name}`}
-                        hitSlop={8}
-                        onPress={() => {
-                          setWorkspaceSheetVisible(false);
-                          router.push({
-                            pathname: "/workspaces/edit",
-                            params: { id: item.id },
-                          });
-                        }}
-                      >
-                        <Pencil size={17} color={colors.textSecondary} />
-                      </Pressable>
-
-                      {/* Delete */}
-                      <Pressable
-                        style={styles.workspaceActionButton}
-                        accessibilityRole="button"
-                        accessibilityLabel={`Delete ${item.name}`}
-                        hitSlop={8}
-                        onPress={() =>
-                          handleDeleteWorkspace(item.id, item.name)
-                        }
-                      >
-                        <Trash2 size={17} color={colors.danger} />
-                      </Pressable>
-                    </View>
-                  );
-                })}
-                <Pressable
-                  style={styles.addWorkspaceButton}
-                  accessibilityRole="button"
-                  onPress={() => {
-                    setWorkspaceSheetVisible(false);
-                    router.push("/workspaces/new");
-                  }}
-                >
-                  <Plus size={20} color={colors.primary} />
-
-                  <Text style={styles.addWorkspaceButtonText}>
-                    Add workspace
-                  </Text>
-                </Pressable>
-              </View>
-            </View>
-          </Modal>
+              <Text style={styles.addWorkspaceButtonText}>Add workspace</Text>
+            </Pressable>
+          </BottomSheetModal>
         </ScrollView>
       </WorkspaceGate>
     </SafeScreen>
@@ -822,25 +822,44 @@ const styles = StyleSheet.create({
   },
 
   balanceFooter: {
-    flexDirection: "row",
-    alignItems: "center",
     marginTop: spacing.xl,
     paddingTop: spacing.lg,
     borderTopWidth: 1,
     borderTopColor: "rgba(255,255,255,0.2)",
-    gap: spacing.lg,
+    gap: spacing.md,
+  },
+
+  balanceFooterRow: {
+    flexDirection: "row",
+    gap: spacing.md,
+  },
+
+  balanceFooterItem: {
+    flex: 1,
+    gap: spacing.xs,
+  },
+
+  balanceFooterLabelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
   },
 
   balanceFooterLabel: {
     color: "#DCE8DD",
     fontSize: typography.size.xs,
-    marginBottom: spacing.xs,
+    fontWeight: typography.weight.medium,
   },
 
   balanceFooterValue: {
     color: "#FFFFFF",
     fontSize: typography.size.sm,
     fontWeight: typography.weight.semibold,
+  },
+
+  balanceFooterDivider: {
+    height: 1,
+    backgroundColor: "rgba(255,255,255,0.2)",
   },
 
   balanceDivider: {

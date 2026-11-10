@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { ArrowLeft, Plus } from "lucide-react-native";
+import { Plus } from "lucide-react-native";
 import { useMemo, useState } from "react";
 import {
   Alert,
@@ -166,20 +166,6 @@ export default function NewAccountScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.header}>
-            <Pressable
-              onPress={() => router.back()}
-              style={styles.backButton}
-              accessibilityLabel="Go back"
-            >
-              <ArrowLeft size={22} color={colors.text} />
-            </Pressable>
-
-            <Text style={styles.headerTitle}>New Account</Text>
-
-            <View style={styles.headerSpacer} />
-          </View>
-
           {/* Account Name */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Account name</Text>
