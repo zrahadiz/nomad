@@ -20,6 +20,8 @@ import {
   getTransfers,
 } from "@/services/transfer-service";
 
+import { useBudgetStore } from "@/stores/use-budget-store";
+
 import type {
   createAccountInput,
   createTransactionInput,
@@ -76,6 +78,40 @@ const accountWorkspaceRequests = new Map<string, number>();
 
 let transactionRequestId = 0;
 let transferRequestId = 0;
+
+// =====================================================
+// BUDGET REFRESH
+// =====================================================
+
+async function refreshBudgetIfNeeded(
+  workspaceId: string,
+  affectedTransactions: (transaction | undefined)[],
+) {
+  const budgetStore = useBudgetStore.getState();
+
+  const { loadedWorkspaceId, loadedBudgetMonth, fetchBudgetOverview } =
+    budgetStore;
+
+  // Only refresh the budget currently loaded for this workspace.
+  if (
+    !loadedWorkspaceId ||
+    !loadedBudgetMonth ||
+    loadedWorkspaceId !== workspaceId
+  ) {
+    return;
+  }
+
+  // Only expenses in the currently loaded budget month matter.
+  const shouldRefresh = affectedTransactions.some(
+    (item) =>
+      item?.type === "expense" &&
+      item.date.slice(0, 7) === loadedBudgetMonth.slice(0, 7),
+  );
+
+  if (shouldRefresh) {
+    await fetchBudgetOverview(workspaceId, loadedBudgetMonth);
+  }
+}
 
 export const useFinanceStore = create<financeState>((set, get) => ({
   accounts: [],
@@ -161,6 +197,14 @@ export const useFinanceStore = create<financeState>((set, get) => ({
   },
 
   removeAccount: async (id) => {
+    const account = get().accounts.find((item) => item.id === id);
+
+    const affectedTransactions = get().transactions.filter(
+      (item) =>
+        (item.accountId === id || item.destinationAccountId === id) &&
+        item.type === "expense",
+    );
+
     await deleteAccount(id);
 
     set((state) => ({
@@ -174,6 +218,10 @@ export const useFinanceStore = create<financeState>((set, get) => ({
         (item) => item.fromAccountId !== id && item.toAccountId !== id,
       ),
     }));
+
+    if (account) {
+      await refreshBudgetIfNeeded(account.workspaceId, affectedTransactions);
+    }
   },
 
   fetchTransactions: async (workspaceId) => {
@@ -220,10 +268,16 @@ export const useFinanceStore = create<financeState>((set, get) => ({
           : state.transactions,
     }));
 
+    await refreshBudgetIfNeeded(transaction.workspaceId, [transaction]);
+
     return transaction;
   },
 
   editTransaction: async (id, input) => {
+    const previousTransaction = get().transactions.find(
+      (item) => item.id === id,
+    );
+
     const transaction = await updateTransaction(id, input);
 
     set((state) => ({
@@ -234,6 +288,11 @@ export const useFinanceStore = create<financeState>((set, get) => ({
             )
           : state.transactions,
     }));
+
+    await refreshBudgetIfNeeded(transaction.workspaceId, [
+      previousTransaction,
+      transaction,
+    ]);
 
     return transaction;
   },
@@ -279,6 +338,8 @@ export const useFinanceStore = create<financeState>((set, get) => ({
     set((state) => ({
       transactions: state.transactions.filter((item) => item.id !== id),
     }));
+
+    await refreshBudgetIfNeeded(transaction.workspaceId, [transaction]);
   },
 
   fetchTransfers: async (workspaceId) => {
