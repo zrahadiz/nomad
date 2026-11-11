@@ -7,8 +7,9 @@ import type {
     createBudgetInput,
     monthlyBudget,
     monthlySpending,
+    spendingBreakdownItem,
     updateBudgetCategoryInput,
-    updateBudgetInput
+    updateBudgetInput,
 } from "@/types/budget";
 
 // =====================================================
@@ -42,6 +43,13 @@ type budgetCategoryRow = {
 type transactionSpendingRow = {
   amount: number | string;
   category_id: string | null;
+};
+
+type spendingCategoryRow = {
+  id: string;
+  name: string;
+  icon: string | null;
+  color: string | null;
 };
 
 // =====================================================
@@ -195,27 +203,96 @@ export async function getMonthlySpending(
 
   if (error) throw error;
 
+  const transactions = (data ?? []) as transactionSpendingRow[];
+
+  const categoryIds = [
+    ...new Set(
+      transactions
+        .map((transaction) => transaction.category_id)
+        .filter((id): id is string => id !== null),
+    ),
+  ];
+
+  let categoryRows: spendingCategoryRow[] = [];
+
+  if (categoryIds.length > 0) {
+    const { data: categories, error: categoryError } = await supabase
+      .from("categories")
+      .select("id, name, icon, color")
+      .in("id", categoryIds);
+
+    if (categoryError) throw categoryError;
+
+    categoryRows = (categories ?? []) as spendingCategoryRow[];
+  }
+
+  const categoryById = new Map(
+    categoryRows.map((category) => [category.id, category]),
+  );
+
   const categorySpending: Record<string, number> = {};
   let totalSpent = 0;
+  let uncategorizedSpending = 0;
 
-  for (const transaction of (data ?? []) as transactionSpendingRow[]) {
+  for (const transaction of transactions) {
     const amount = toSafeAmount(transaction.amount);
 
     totalSpent += amount;
 
+    if (!Number.isSafeInteger(totalSpent)) {
+      throw new Error("Total spending exceeds the safe integer range.");
+    }
+
     if (transaction.category_id) {
-      categorySpending[transaction.category_id] =
-        (categorySpending[transaction.category_id] ?? 0) + amount;
+      const categoryId = transaction.category_id;
+
+      categorySpending[categoryId] =
+        (categorySpending[categoryId] ?? 0) + amount;
+
+      if (!Number.isSafeInteger(categorySpending[categoryId])) {
+        throw new Error("Category spending exceeds the safe integer range.");
+      }
+    } else {
+      uncategorizedSpending += amount;
+
+      if (!Number.isSafeInteger(uncategorizedSpending)) {
+        throw new Error(
+          "Uncategorized spending exceeds the safe integer range.",
+        );
+      }
     }
   }
 
-  if (!Number.isSafeInteger(totalSpent)) {
-    throw new Error("Total spending exceeds the safe integer range.");
+  const spendingBreakdown: spendingBreakdownItem[] = Object.entries(
+    categorySpending,
+  ).map(([categoryId, amountSpent]) => {
+    const category = categoryById.get(categoryId);
+
+    return {
+      categoryId,
+      categoryName: category?.name ?? "Unknown category",
+      categoryIcon: category?.icon ?? null,
+      categoryColor: category?.color ?? null,
+      amountSpent,
+    };
+  });
+
+  if (uncategorizedSpending > 0) {
+    spendingBreakdown.push({
+      categoryId: null,
+      categoryName: "Uncategorized",
+      categoryIcon: null,
+      categoryColor: null,
+      amountSpent: uncategorizedSpending,
+    });
   }
+
+  spendingBreakdown.sort((a, b) => b.amountSpent - a.amountSpent);
 
   return {
     totalSpent,
     categorySpending,
+    spendingBreakdown,
   };
 }
 
@@ -240,6 +317,7 @@ export async function getBudgetOverview(
     budget,
     amountSpent: spending.totalSpent,
     remainingAmount: budget.amountLimit - spending.totalSpent,
+
     categories: categories.map((category) => {
       const amountSpent = spending.categorySpending[category.categoryId] ?? 0;
 
@@ -249,6 +327,8 @@ export async function getBudgetOverview(
         remainingAmount: category.amountLimit - amountSpent,
       };
     }),
+
+    spendingBreakdown: spending.spendingBreakdown,
   };
 }
 

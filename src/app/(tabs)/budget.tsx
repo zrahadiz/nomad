@@ -9,10 +9,13 @@ import {
 } from "react-native";
 
 import {
+  AlertTriangle,
   ChartPie,
   ChevronLeft,
   ChevronRight,
+  Lightbulb,
   Plus,
+  TrendingUp,
   Wallet,
 } from "lucide-react-native";
 
@@ -53,8 +56,39 @@ function getBudgetMonth(date: Date) {
   )}-01`;
 }
 
+type spendingStatus = "normal" | "warning" | "over";
+
+function getSpendingStatus(percentage: number): spendingStatus {
+  if (percentage >= 100) return "over";
+  if (percentage >= 80) return "warning";
+  return "normal";
+}
+
+function getStatusColor(status: spendingStatus) {
+  switch (status) {
+    case "over":
+      return colors.danger;
+    case "warning":
+      return colors.warning;
+    default:
+      return colors.success;
+  }
+}
+
+function getStatusLabel(status: spendingStatus) {
+  switch (status) {
+    case "over":
+      return "Over budget";
+    case "warning":
+      return "Approaching limit";
+    default:
+      return "On track";
+  }
+}
+
 export default function BudgetScreen() {
   const router = useRouter();
+
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const date = new Date();
     return new Date(date.getFullYear(), date.getMonth(), 1);
@@ -80,6 +114,7 @@ export default function BudgetScreen() {
   const overview = useBudgetStore((state) => state.overview);
   const loading = useBudgetStore((state) => state.loading);
   const error = useBudgetStore((state) => state.error);
+
   const fetchBudgetOverview = useBudgetStore(
     (state) => state.fetchBudgetOverview,
   );
@@ -106,15 +141,36 @@ export default function BudgetScreen() {
   const limit = overview?.budget.amountLimit ?? 0;
   const remaining = overview?.remainingAmount ?? 0;
 
-  const progress = limit > 0 ? Math.min(spent / limit, 1) : 0;
   const percentage = limit > 0 ? (spent / limit) * 100 : 0;
+  const progress = limit > 0 ? Math.min(spent / limit, 1) : 0;
 
-  const progressColor =
-    percentage >= 100
-      ? colors.danger
-      : percentage >= 80
-        ? colors.warning
-        : colors.success;
+  const overallStatus = getSpendingStatus(percentage);
+  const progressColor = getStatusColor(overallStatus);
+
+  const spendingBreakdown = overview?.spendingBreakdown ?? [];
+
+  const highestSpendingCategory = spendingBreakdown[0] ?? null;
+
+  const categoryBudgetWarnings = (overview?.categories ?? [])
+    .map((category) => {
+      const categoryPercentage =
+        category.amountLimit > 0
+          ? (category.amountSpent / category.amountLimit) * 100
+          : 0;
+
+      return {
+        ...category,
+        percentage: categoryPercentage,
+        status: getSpendingStatus(categoryPercentage),
+      };
+    })
+    .filter((category) => category.status !== "normal")
+    .sort((a, b) => b.percentage - a.percentage);
+
+  const spendingInsights = spendingBreakdown.map((category) => ({
+    ...category,
+    percentage: spent > 0 ? (category.amountSpent / spent) * 100 : 0,
+  }));
 
   return (
     <SafeScreen backgroundColor={colors.background} edges={["top"]}>
@@ -209,6 +265,21 @@ export default function BudgetScreen() {
                   </View>
                 </View>
 
+                <View style={styles.statusRow}>
+                  <View
+                    style={[
+                      styles.statusDot,
+                      { backgroundColor: progressColor },
+                    ]}
+                  />
+                  <Text style={[styles.statusText, { color: progressColor }]}>
+                    {getStatusLabel(overallStatus)}
+                  </Text>
+                  <Text style={styles.statusPercentage}>
+                    {percentage.toFixed(1)}% used
+                  </Text>
+                </View>
+
                 <View style={styles.progressTrack}>
                   <View
                     style={[
@@ -223,7 +294,7 @@ export default function BudgetScreen() {
 
                 <View style={styles.progressLabels}>
                   <Text style={styles.progressPercentage}>
-                    {percentage.toFixed(1)}% used
+                    {formatCurrency(spent, currencyCode)} spent
                   </Text>
                   <Text style={styles.progressLimit}>
                     {formatCurrency(limit, currencyCode)} limit
@@ -252,6 +323,30 @@ export default function BudgetScreen() {
                     </Text>
                   </View>
                 </View>
+
+                {overallStatus !== "normal" && (
+                  <View
+                    style={[
+                      styles.alertCard,
+                      {
+                        backgroundColor:
+                          overallStatus === "over" ? "#FCEDEA" : "#FFF5E5",
+                      },
+                    ]}
+                  >
+                    <AlertTriangle size={18} color={progressColor} />
+                    <Text style={[styles.alertText, { color: progressColor }]}>
+                      {overallStatus === "over"
+                        ? `You've exceeded your monthly budget by ${formatCurrency(
+                            Math.abs(remaining),
+                            currencyCode,
+                          )}.`
+                        : `You've used ${percentage.toFixed(
+                            0,
+                          )}% of your monthly budget. Keep an eye on your spending.`}
+                    </Text>
+                  </View>
+                )}
               </View>
 
               <Pressable
@@ -266,12 +361,12 @@ export default function BudgetScreen() {
                 <Text style={styles.manageBudgetButtonText}>Manage budget</Text>
               </Pressable>
 
-              {/* Category budgets */}
+              {/* Category budget alerts */}
               <View style={styles.section}>
                 <View style={styles.sectionHeader}>
                   <Text style={styles.sectionTitle}>Category breakdown</Text>
                   <Text style={styles.categoryCount}>
-                    {overview.categories.length} categories
+                    {overview.categories.length} budgets
                   </Text>
                 </View>
 
@@ -283,25 +378,20 @@ export default function BudgetScreen() {
                   </View>
                 ) : (
                   overview.categories.map((category) => {
-                    const categoryProgress =
-                      category.amountLimit > 0
-                        ? Math.min(
-                            category.amountSpent / category.amountLimit,
-                            1,
-                          )
-                        : 0;
-
                     const categoryPercentage =
                       category.amountLimit > 0
                         ? (category.amountSpent / category.amountLimit) * 100
                         : 0;
 
-                    const categoryColor =
-                      categoryPercentage >= 100
-                        ? colors.danger
-                        : categoryPercentage >= 80
-                          ? colors.warning
-                          : colors.success;
+                    const categoryStatus =
+                      getSpendingStatus(categoryPercentage);
+
+                    const categoryColor = getStatusColor(categoryStatus);
+
+                    const categoryProgress = Math.min(
+                      category.amountSpent / category.amountLimit,
+                      1,
+                    );
 
                     return (
                       <View key={category.id} style={styles.categoryCard}>
@@ -331,20 +421,26 @@ export default function BudgetScreen() {
                                   category.amountSpent,
                                   currencyCode,
                                 )}{" "}
-                                spent
+                                of{" "}
+                                {formatCurrency(
+                                  category.amountLimit,
+                                  currencyCode,
+                                )}
                               </Text>
                             </View>
                           </View>
 
                           <View style={styles.categoryLimitContainer}>
-                            <Text style={styles.categoryLimit}>
-                              {formatCurrency(
-                                category.amountLimit,
-                                currencyCode,
-                              )}
-                            </Text>
                             <Text style={styles.categoryPercentage}>
                               {categoryPercentage.toFixed(0)}%
+                            </Text>
+                            <Text
+                              style={[
+                                styles.categoryStatus,
+                                { color: categoryColor },
+                              ]}
+                            >
+                              {getStatusLabel(categoryStatus)}
                             </Text>
                           </View>
                         </View>
@@ -360,9 +456,138 @@ export default function BudgetScreen() {
                             ]}
                           />
                         </View>
+
+                        {categoryStatus !== "normal" && (
+                          <View style={styles.categoryAlert}>
+                            <AlertTriangle size={14} color={categoryColor} />
+                            <Text
+                              style={[
+                                styles.categoryAlertText,
+                                { color: categoryColor },
+                              ]}
+                            >
+                              {categoryStatus === "over"
+                                ? `Exceeded by ${formatCurrency(
+                                    Math.abs(category.remainingAmount),
+                                    currencyCode,
+                                  )}`
+                                : `${formatCurrency(
+                                    category.remainingAmount,
+                                    currencyCode,
+                                  )} remaining`}
+                            </Text>
+                          </View>
+                        )}
                       </View>
                     );
                   })
+                )}
+              </View>
+
+              {/* Spending insights */}
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>Spending insights</Text>
+                  <Lightbulb size={19} color={colors.primary} />
+                </View>
+
+                {spent === 0 ? (
+                  <View style={styles.emptyCategoryCard}>
+                    <Text style={styles.emptyCategoryText}>
+                      No expenses recorded for this month yet. Your spending
+                      insights will appear here.
+                    </Text>
+                  </View>
+                ) : (
+                  <>
+                    {highestSpendingCategory && (
+                      <View style={styles.insightCard}>
+                        <View style={styles.insightIcon}>
+                          <TrendingUp size={20} color={colors.primary} />
+                        </View>
+
+                        <View style={styles.insightContent}>
+                          <Text style={styles.insightLabel}>
+                            Highest spending category
+                          </Text>
+                          <Text style={styles.insightTitle}>
+                            {highestSpendingCategory.categoryName}
+                          </Text>
+                          <Text style={styles.insightDescription}>
+                            {formatCurrency(
+                              highestSpendingCategory.amountSpent,
+                              currencyCode,
+                            )}{" "}
+                            (
+                            {(
+                              (highestSpendingCategory.amountSpent / spent) *
+                              100
+                            ).toFixed(1)}
+                            % of total spending)
+                          </Text>
+                        </View>
+                      </View>
+                    )}
+
+                    <View style={styles.insightCard}>
+                      <Text style={styles.insightSectionTitle}>
+                        Where your money goes
+                      </Text>
+
+                      {spendingInsights.map((category) => (
+                        <View
+                          key={category.categoryId ?? "uncategorized"}
+                          style={styles.insightCategory}
+                        >
+                          <View style={styles.insightCategoryHeader}>
+                            <View style={styles.insightCategoryNameRow}>
+                              <View
+                                style={[
+                                  styles.insightCategoryDot,
+                                  {
+                                    backgroundColor:
+                                      category.categoryColor ??
+                                      colors.textSecondary,
+                                  },
+                                ]}
+                              />
+                              <Text style={styles.insightCategoryName}>
+                                {category.categoryIcon
+                                  ? `${category.categoryIcon} `
+                                  : ""}
+                                {category.categoryName}
+                              </Text>
+                            </View>
+
+                            <View style={styles.insightCategoryAmount}>
+                              <Text style={styles.insightAmount}>
+                                {formatCurrency(
+                                  category.amountSpent,
+                                  currencyCode,
+                                )}
+                              </Text>
+                              <Text style={styles.insightPercentage}>
+                                {category.percentage.toFixed(1)}%
+                              </Text>
+                            </View>
+                          </View>
+
+                          <View style={styles.insightProgressTrack}>
+                            <View
+                              style={[
+                                styles.insightProgressFill,
+                                {
+                                  width: `${category.percentage}%`,
+                                  backgroundColor:
+                                    category.categoryColor ?? colors.primary,
+                                },
+                              ]}
+                            />
+                          </View>
+                        </View>
+                      ))}
+                    </View>
+                  </>
                 )}
               </View>
             </>
@@ -458,7 +683,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     marginTop: spacing.lg,
   },
-
   createBudgetButtonText: {
     color: colors.surface,
     fontSize: 14,
@@ -505,6 +729,25 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primaryLight,
     alignItems: "center",
     justifyContent: "center",
+  },
+  statusRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: radius.full,
+  },
+  statusText: {
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  statusPercentage: {
+    marginLeft: "auto",
+    fontSize: 12,
+    color: colors.textSecondary,
   },
   progressTrack: {
     height: 10,
@@ -553,6 +796,19 @@ const styles = StyleSheet.create({
   negativeAmount: {
     color: colors.danger,
   },
+  alertCard: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: spacing.sm,
+    padding: spacing.md,
+    borderRadius: radius.md,
+  },
+  alertText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: "500",
+  },
   section: {
     gap: spacing.md,
   },
@@ -575,7 +831,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     marginTop: spacing.lg,
   },
-
   manageBudgetButtonText: {
     fontSize: 14,
     fontWeight: "600",
@@ -594,6 +849,7 @@ const styles = StyleSheet.create({
   },
   emptyCategoryText: {
     fontSize: 14,
+    lineHeight: 20,
     color: colors.textSecondary,
   },
   categoryCard: {
@@ -643,14 +899,14 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
     gap: 3,
   },
-  categoryLimit: {
-    fontSize: 13,
-    fontWeight: "600",
+  categoryPercentage: {
+    fontSize: 14,
+    fontWeight: "700",
     color: colors.text,
   },
-  categoryPercentage: {
+  categoryStatus: {
     fontSize: 11,
-    color: colors.textSecondary,
+    fontWeight: "600",
   },
   categoryProgressTrack: {
     height: 6,
@@ -659,6 +915,101 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   categoryProgressFill: {
+    height: "100%",
+    borderRadius: radius.full,
+  },
+  categoryAlert: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+  },
+  categoryAlertText: {
+    fontSize: 12,
+    fontWeight: "500",
+  },
+  insightCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: spacing.lg,
+  },
+  insightIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.md,
+    backgroundColor: colors.primaryLight,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  insightContent: {
+    flex: 1,
+    gap: spacing.xs,
+  },
+  insightLabel: {
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  insightTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: colors.text,
+  },
+  insightDescription: {
+    fontSize: 13,
+    color: colors.textSecondary,
+  },
+  insightSectionTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: colors.text,
+  },
+  insightCategory: {
+    gap: spacing.sm,
+  },
+  insightCategoryHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.md,
+  },
+  insightCategoryNameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    flex: 1,
+  },
+  insightCategoryDot: {
+    width: 8,
+    height: 8,
+    borderRadius: radius.full,
+  },
+  insightCategoryName: {
+    fontSize: 13,
+    color: colors.text,
+    flexShrink: 1,
+  },
+  insightCategoryAmount: {
+    alignItems: "flex-end",
+    gap: 2,
+  },
+  insightAmount: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: colors.text,
+  },
+  insightPercentage: {
+    fontSize: 11,
+    color: colors.textSecondary,
+  },
+  insightProgressTrack: {
+    height: 6,
+    backgroundColor: colors.border,
+    borderRadius: radius.full,
+    overflow: "hidden",
+  },
+  insightProgressFill: {
     height: "100%",
     borderRadius: radius.full,
   },

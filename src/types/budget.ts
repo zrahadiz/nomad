@@ -44,14 +44,24 @@ export type categoryBudgetOverview = budgetCategory & {
   remainingAmount: number;
 };
 
+export type spendingBreakdownItem = {
+  categoryId: string | null;
+  categoryName: string;
+  categoryIcon: string | null;
+  categoryColor: string | null;
+  amountSpent: number;
+};
+
 export type budgetOverview = {
   budget: monthlyBudget;
   amountSpent: number;
   remainingAmount: number;
   categories: categoryBudgetOverview[];
+  spendingBreakdown: spendingBreakdownItem[];
 };
 
 export type monthlySpending = {
   totalSpent: number;
   categorySpending: Record<string, number>;
+  spendingBreakdown: spendingBreakdownItem[];
 };
