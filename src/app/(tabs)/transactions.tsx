@@ -12,7 +12,6 @@ import {
 
 import {
   ArrowDownLeft,
-  ArrowLeftRight,
   ArrowUpRight,
   Plus,
   RefreshCw,
@@ -20,8 +19,12 @@ import {
 } from "lucide-react-native";
 
 import { SafeScreen } from "@/components/layout/safe-screen";
+import { TransactionList } from "@/components/transactions/transaction-list";
+
 import { colors, radius, spacing, typography } from "@/constants/theme";
 import { formatMoney } from "@/lib/finance/calculations";
+import { formatConvertedMoney } from "@/lib/finance/currency-converter";
+import { useCurrencyConverterStore } from "@/stores/use-currency-converter-store";
 import { useFinanceStore } from "@/stores/use-finance-store";
 import { useWorkspaceStore } from "@/stores/use-workspace-store";
 
@@ -55,12 +58,40 @@ export default function TransactionsScreen() {
   const transactionsError = useFinanceStore((state) => state.transactionsError);
 
   const fetchTransactions = useFinanceStore((state) => state.fetchTransactions);
-
   const fetchTransfers = useFinanceStore((state) => state.fetchTransfers);
+
+  // Currency converter
+  const converter = useCurrencyConverterStore((state) => state.converter);
+  const loadedWorkspaceId = useCurrencyConverterStore(
+    (state) => state.loadedWorkspaceId,
+  );
+  const fetchConverter = useCurrencyConverterStore(
+    (state) => state.fetchConverter,
+  );
 
   const workspace = workspaces.find((item) => item.id === activeWorkspaceId);
 
   const currency = workspace?.currency_code ?? "MYR";
+
+  // Prevent displaying another workspace's converter while loading.
+  const activeConverter =
+    loadedWorkspaceId === activeWorkspaceId ? converter : null;
+
+  // Format a secondary currency amount.
+  const getSecondaryAmount = (
+    amountMinor: number,
+    transactionCurrency = currency,
+  ) => {
+    if (!activeConverter || transactionCurrency !== currency) {
+      return null;
+    }
+
+    return formatConvertedMoney(
+      amountMinor,
+      transactionCurrency,
+      activeConverter,
+    );
+  };
 
   // Only show transactions belonging to the active workspace.
   const workspaceTransactions = useMemo(
@@ -132,7 +163,8 @@ export default function TransactionsScreen() {
 
     void fetchTransactions(activeWorkspaceId);
     void fetchTransfers(activeWorkspaceId);
-  }, [activeWorkspaceId, fetchTransactions, fetchTransfers]);
+    void fetchConverter(activeWorkspaceId);
+  }, [activeWorkspaceId, fetchTransactions, fetchTransfers, fetchConverter]);
 
   const getEmptyStateMessage = () => {
     switch (activeFilter) {
@@ -191,6 +223,12 @@ export default function TransactionsScreen() {
               <Text style={[styles.summaryAmount, styles.incomeText]}>
                 {formatMoney(totalIncome, currency)}
               </Text>
+
+              {getSecondaryAmount(totalIncome) && (
+                <Text style={styles.secondaryAmount}>
+                  {getSecondaryAmount(totalIncome)}
+                </Text>
+              )}
             </View>
 
             <View style={styles.summaryCard}>
@@ -203,6 +241,12 @@ export default function TransactionsScreen() {
               <Text style={styles.summaryAmount}>
                 {formatMoney(totalExpenses, currency)}
               </Text>
+
+              {getSecondaryAmount(totalExpenses) && (
+                <Text style={styles.secondaryAmount}>
+                  {getSecondaryAmount(totalExpenses)}
+                </Text>
+              )}
             </View>
           </View>
 
@@ -218,6 +262,12 @@ export default function TransactionsScreen() {
               <Text style={[styles.summaryAmount, styles.incomeText]}>
                 {formatMoney(totalTransferIn, currency)}
               </Text>
+
+              {getSecondaryAmount(totalTransferIn) && (
+                <Text style={styles.secondaryAmount}>
+                  {getSecondaryAmount(totalTransferIn)}
+                </Text>
+              )}
             </View>
 
             <View style={styles.summaryCard}>
@@ -230,6 +280,12 @@ export default function TransactionsScreen() {
               <Text style={[styles.summaryAmount, styles.expenseText]}>
                 {formatMoney(totalTransferOut, currency)}
               </Text>
+
+              {getSecondaryAmount(totalTransferOut) && (
+                <Text style={styles.secondaryAmount}>
+                  {getSecondaryAmount(totalTransferOut)}
+                </Text>
+              )}
             </View>
           </View>
         </View>
@@ -329,72 +385,18 @@ export default function TransactionsScreen() {
         ) : (
           /* Transactions */
           <View style={styles.transactionCard}>
-            {filteredTransactions.map((item, index) => {
-              const account = accounts.find(
-                (account) =>
-                  account.id === item.accountId &&
-                  account.workspaceId === item.workspaceId,
-              );
-
-              const isIncome = item.type === "income";
-              const isTransferOut = item.type === "transfer_out";
-              const isTransferIn = item.type === "transfer_in";
-
-              const isTransfer = isTransferOut || isTransferIn;
-              const isPositive = isIncome || isTransferIn;
-
-              const Icon = isTransfer
-                ? ArrowLeftRight
-                : isIncome
-                  ? ArrowDownLeft
-                  : ArrowUpRight;
-
-              const defaultTitle = isTransferOut
-                ? "Transfer sent"
-                : isTransferIn
-                  ? "Transfer received"
-                  : "Untitled transaction";
-
-              return (
-                <View key={item.id}>
-                  {index > 0 && <View style={styles.divider} />}
-
-                  <Pressable
-                    onPress={() =>
-                      router.push({
-                        pathname: "/transactions/[id]",
-                        params: { id: item.id },
-                      })
-                    }
-                    style={styles.transactionRow}
-                  >
-                    <View style={styles.transactionIcon}>
-                      <Icon size={20} color={colors.primary} />
-                    </View>
-
-                    <View style={styles.transactionDetails}>
-                      <Text style={styles.transactionTitle} numberOfLines={1}>
-                        {item.description || defaultTitle}
-                      </Text>
-
-                      <Text style={styles.transactionSubtitle}>
-                        {account?.name ?? "Unknown account"} · {item.date}
-                      </Text>
-                    </View>
-
-                    <Text
-                      style={[
-                        styles.transactionAmount,
-                        isPositive && styles.incomeText,
-                      ]}
-                    >
-                      {isPositive ? "+" : "−"}
-                      {formatMoney(item.amountMinor, item.currency)}
-                    </Text>
-                  </Pressable>
-                </View>
-              );
-            })}
+            <TransactionList
+              transactions={filteredTransactions}
+              accounts={accounts}
+              primaryCurrency={currency}
+              converter={activeConverter}
+              onTransactionPress={(item) =>
+                router.push({
+                  pathname: "/transactions/[id]",
+                  params: { id: item.id },
+                })
+              }
+            />
           </View>
         )}
       </ScrollView>
@@ -464,6 +466,11 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: typography.size.md,
     fontWeight: typography.weight.bold,
+  },
+
+  secondaryAmount: {
+    color: colors.textSecondary,
+    fontSize: typography.size.xs,
   },
 
   incomeText: {
@@ -570,6 +577,11 @@ const styles = StyleSheet.create({
   transactionSubtitle: {
     color: colors.textSecondary,
     fontSize: typography.size.xs,
+  },
+
+  transactionAmounts: {
+    alignItems: "flex-end",
+    gap: spacing.xs,
   },
 
   transactionAmount: {

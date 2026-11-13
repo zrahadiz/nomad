@@ -40,6 +40,8 @@ function RootNavigator() {
       <Stack.Protected guard={isAuthenticated} redirectTo="/sign-in">
         <Stack.Screen name="(tabs)" />
 
+        <Stack.Screen name="currency-converter/index" />
+
         <Stack.Screen
           name="transactions/new"
           options={{

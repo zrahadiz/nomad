@@ -1,12 +1,6 @@
 import { Tabs } from "expo-router";
 
-import {
-  ArrowLeftRight,
-  ChartPie,
-  House,
-  RefreshCw,
-  Settings,
-} from "lucide-react-native";
+import { ArrowLeftRight, ChartPie, House, Settings } from "lucide-react-native";
 
 import { colors } from "../../constants/theme";
 
@@ -17,7 +11,6 @@ export default function AppTabs() {
         headerShown: false,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textSecondary,
-
         tabBarStyle: {
           backgroundColor: colors.surface,
           borderTopColor: colors.border,
@@ -49,16 +42,6 @@ export default function AppTabs() {
           title: "Budget",
           tabBarIcon: ({ color, size }) => (
             <ChartPie color={color} size={size} />
-          ),
-        }}
-      />
-
-      <Tabs.Screen
-        name="currency"
-        options={{
-          title: "Currency",
-          tabBarIcon: ({ color, size }) => (
-            <RefreshCw color={color} size={size} />
           ),
         }}
       />

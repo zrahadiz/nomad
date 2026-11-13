@@ -24,7 +24,9 @@ import { useRouter } from "expo-router";
 import { WorkspaceGate } from "@/components/feedbacks/workspace-gate";
 import { SafeScreen } from "@/components/layout/safe-screen";
 import { colors, radius, spacing } from "@/constants/theme";
+import { formatConvertedMoney } from "@/lib/finance/currency-converter";
 import { useBudgetStore } from "@/stores/use-budget-store";
+import { useCurrencyConverterStore } from "@/stores/use-currency-converter-store";
 import { useWorkspaceStore } from "@/stores/use-workspace-store";
 
 function formatCurrency(amountMinor: number, currencyCode: string) {
@@ -106,10 +108,25 @@ export default function BudgetScreen() {
 
   const currencyCode = activeWorkspace?.currency_code ?? "MYR";
 
-  const budgetMonth = useMemo(
-    () => getBudgetMonth(selectedMonth),
-    [selectedMonth],
+  // Currency converter
+  const converter = useCurrencyConverterStore((state) => state.converter);
+
+  const loadedConverterWorkspaceId = useCurrencyConverterStore(
+    (state) => state.loadedWorkspaceId,
   );
+
+  const fetchConverter = useCurrencyConverterStore(
+    (state) => state.fetchConverter,
+  );
+
+  const activeConverter =
+    loadedConverterWorkspaceId === activeWorkspaceId ? converter : null;
+
+  const formatSecondaryCurrency = (amountMinor: number) => {
+    if (!activeConverter) return null;
+
+    return formatConvertedMoney(amountMinor, currencyCode, activeConverter);
+  };
 
   const overview = useBudgetStore((state) => state.overview);
   const loading = useBudgetStore((state) => state.loading);
@@ -119,11 +136,17 @@ export default function BudgetScreen() {
     (state) => state.fetchBudgetOverview,
   );
 
+  const budgetMonth = useMemo(
+    () => getBudgetMonth(selectedMonth),
+    [selectedMonth],
+  );
+
   useEffect(() => {
     if (!activeWorkspaceId) return;
 
     void fetchBudgetOverview(activeWorkspaceId, budgetMonth);
-  }, [activeWorkspaceId, budgetMonth, fetchBudgetOverview]);
+    void fetchConverter(activeWorkspaceId);
+  }, [activeWorkspaceId, budgetMonth, fetchBudgetOverview, fetchConverter]);
 
   const goToPreviousMonth = () => {
     setSelectedMonth(
@@ -150,22 +173,6 @@ export default function BudgetScreen() {
   const spendingBreakdown = overview?.spendingBreakdown ?? [];
 
   const highestSpendingCategory = spendingBreakdown[0] ?? null;
-
-  const categoryBudgetWarnings = (overview?.categories ?? [])
-    .map((category) => {
-      const categoryPercentage =
-        category.amountLimit > 0
-          ? (category.amountSpent / category.amountLimit) * 100
-          : 0;
-
-      return {
-        ...category,
-        percentage: categoryPercentage,
-        status: getSpendingStatus(categoryPercentage),
-      };
-    })
-    .filter((category) => category.status !== "normal")
-    .sort((a, b) => b.percentage - a.percentage);
 
   const spendingInsights = spendingBreakdown.map((category) => ({
     ...category,
@@ -258,6 +265,12 @@ export default function BudgetScreen() {
                     <Text style={styles.spentAmount}>
                       {formatCurrency(spent, currencyCode)}
                     </Text>
+
+                    {formatSecondaryCurrency(spent) && (
+                      <Text style={styles.secondaryAmount}>
+                        {formatSecondaryCurrency(spent)}
+                      </Text>
+                    )}
                   </View>
 
                   <View style={styles.overviewIcon}>
@@ -293,12 +306,27 @@ export default function BudgetScreen() {
                 </View>
 
                 <View style={styles.progressLabels}>
-                  <Text style={styles.progressPercentage}>
-                    {formatCurrency(spent, currencyCode)} spent
-                  </Text>
-                  <Text style={styles.progressLimit}>
-                    {formatCurrency(limit, currencyCode)} limit
-                  </Text>
+                  <View>
+                    <Text style={styles.progressPercentage}>
+                      {formatCurrency(spent, currencyCode)} spent
+                    </Text>
+                    {formatSecondaryCurrency(spent) && (
+                      <Text style={styles.secondaryAmount}>
+                        {formatSecondaryCurrency(spent)}
+                      </Text>
+                    )}
+                  </View>
+
+                  <View style={styles.progressRightLabel}>
+                    <Text style={styles.progressLimit}>
+                      {formatCurrency(limit, currencyCode)} limit
+                    </Text>
+                    {formatSecondaryCurrency(limit) && (
+                      <Text style={styles.secondaryAmount}>
+                        {formatSecondaryCurrency(limit)}
+                      </Text>
+                    )}
+                  </View>
                 </View>
 
                 <View style={styles.summaryDivider} />
@@ -314,6 +342,12 @@ export default function BudgetScreen() {
                     >
                       {formatCurrency(remaining, currencyCode)}
                     </Text>
+
+                    {formatSecondaryCurrency(remaining) && (
+                      <Text style={styles.secondaryAmount}>
+                        {formatSecondaryCurrency(remaining)}
+                      </Text>
+                    )}
                   </View>
 
                   <View style={styles.summaryRight}>
@@ -321,6 +355,12 @@ export default function BudgetScreen() {
                     <Text style={styles.summaryAmount}>
                       {formatCurrency(limit, currencyCode)}
                     </Text>
+
+                    {formatSecondaryCurrency(limit) && (
+                      <Text style={styles.secondaryAmount}>
+                        {formatSecondaryCurrency(limit)}
+                      </Text>
+                    )}
                   </View>
                 </View>
 
@@ -340,7 +380,13 @@ export default function BudgetScreen() {
                         ? `You've exceeded your monthly budget by ${formatCurrency(
                             Math.abs(remaining),
                             currencyCode,
-                          )}.`
+                          )}${
+                            formatSecondaryCurrency(Math.abs(remaining))
+                              ? ` (${formatSecondaryCurrency(
+                                  Math.abs(remaining),
+                                )})`
+                              : ""
+                          }.`
                         : `You've used ${percentage.toFixed(
                             0,
                           )}% of your monthly budget. Keep an eye on your spending.`}
@@ -416,6 +462,7 @@ export default function BudgetScreen() {
                               <Text style={styles.categoryName}>
                                 {category.categoryName}
                               </Text>
+
                               <Text style={styles.categorySpent}>
                                 {formatCurrency(
                                   category.amountSpent,
@@ -427,6 +474,21 @@ export default function BudgetScreen() {
                                   currencyCode,
                                 )}
                               </Text>
+
+                              {formatSecondaryCurrency(category.amountSpent) &&
+                                formatSecondaryCurrency(
+                                  category.amountLimit,
+                                ) && (
+                                  <Text style={styles.secondaryAmount}>
+                                    {formatSecondaryCurrency(
+                                      category.amountSpent,
+                                    )}{" "}
+                                    of{" "}
+                                    {formatSecondaryCurrency(
+                                      category.amountLimit,
+                                    )}
+                                  </Text>
+                                )}
                             </View>
                           </View>
 
@@ -470,11 +532,27 @@ export default function BudgetScreen() {
                                 ? `Exceeded by ${formatCurrency(
                                     Math.abs(category.remainingAmount),
                                     currencyCode,
-                                  )}`
+                                  )}${
+                                    formatSecondaryCurrency(
+                                      Math.abs(category.remainingAmount),
+                                    )
+                                      ? ` (${formatSecondaryCurrency(
+                                          Math.abs(category.remainingAmount),
+                                        )})`
+                                      : ""
+                                  }`
                                 : `${formatCurrency(
                                     category.remainingAmount,
                                     currencyCode,
-                                  )} remaining`}
+                                  )} remaining${
+                                    formatSecondaryCurrency(
+                                      category.remainingAmount,
+                                    )
+                                      ? ` (${formatSecondaryCurrency(
+                                          category.remainingAmount,
+                                        )})`
+                                      : ""
+                                  }`}
                             </Text>
                           </View>
                         )}
@@ -525,6 +603,16 @@ export default function BudgetScreen() {
                             ).toFixed(1)}
                             % of total spending)
                           </Text>
+
+                          {formatSecondaryCurrency(
+                            highestSpendingCategory.amountSpent,
+                          ) && (
+                            <Text style={styles.secondaryAmount}>
+                              {formatSecondaryCurrency(
+                                highestSpendingCategory.amountSpent,
+                              )}
+                            </Text>
+                          )}
                         </View>
                       </View>
                     )}
@@ -566,6 +654,17 @@ export default function BudgetScreen() {
                                   currencyCode,
                                 )}
                               </Text>
+
+                              {formatSecondaryCurrency(
+                                category.amountSpent,
+                              ) && (
+                                <Text style={styles.secondaryAmount}>
+                                  {formatSecondaryCurrency(
+                                    category.amountSpent,
+                                  )}
+                                </Text>
+                              )}
+
                               <Text style={styles.insightPercentage}>
                                 {category.percentage.toFixed(1)}%
                               </Text>
@@ -722,6 +821,11 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginTop: spacing.xs,
   },
+  secondaryAmount: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    marginTop: 3,
+  },
   overviewIcon: {
     width: 44,
     height: 44,
@@ -762,6 +866,9 @@ const styles = StyleSheet.create({
   progressLabels: {
     flexDirection: "row",
     justifyContent: "space-between",
+  },
+  progressRightLabel: {
+    alignItems: "flex-end",
   },
   progressPercentage: {
     fontSize: 12,
@@ -926,6 +1033,7 @@ const styles = StyleSheet.create({
   categoryAlertText: {
     fontSize: 12,
     fontWeight: "500",
+    flex: 1,
   },
   insightCard: {
     backgroundColor: colors.surface,
