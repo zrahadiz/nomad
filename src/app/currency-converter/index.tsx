@@ -219,7 +219,7 @@ export default function CurrencyConverterScreen() {
               </Text>
             </View>
 
-            {loading && loadedWorkspaceId !== activeWorkspace.id ? (
+            {loading && loadedWorkspaceId === activeWorkspace.id ? (
               <View style={styles.loadingCard}>
                 <ActivityIndicator color={colors.primary} />
                 <Text style={styles.description}>

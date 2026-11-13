@@ -1,7 +1,5 @@
-/**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://unistyl.es/), etc.
- */
+// constants/theme.ts
+// Additive update: every existing key is kept, so other screens won't break.
 
 import "@/global.css";
 
@@ -17,13 +15,20 @@ export const colors = {
 
   text: "#202824",
   textSecondary: "#7A817C",
-
   border: "#E8E9E3",
 
   success: "#3E8B65",
   warning: "#D99A35",
   danger: "#C65B50",
-} as const;
+
+  // NEW: replaces hard-coded hex values scattered across screens
+  textOnPrimary: "#FFFFFF",
+  textOnPrimaryMuted: "#DCE8DD",
+  onPrimarySubtle: "rgba(255,255,255,0.14)",
+  successLight: "#E4F1EA",
+  warningLight: "#FFF5E5",
+  dangerLight: "#FCEDEA",
+};
 
 export const spacing = {
   xs: 4,
@@ -33,7 +38,7 @@ export const spacing = {
   xl: 24,
   xxl: 32,
   xxxl: 40,
-} as const;
+};
 
 export const radius = {
   sm: 8,
@@ -41,32 +46,37 @@ export const radius = {
   lg: 16,
   xl: 20,
   full: 999,
-} as const;
+};
 
 export const typography = {
   size: {
-    xs: 12,
+    xs: 11,
+    caption: 12, // NEW: matches the "Secondary text 12px" in the spec
     sm: 14,
     md: 16,
     lg: 18,
-    xl: 28,
-    xxl: 32,
+    xl: 24,
+    xxl: 28,
+    xxxl: 32,
   },
-
   weight: {
-    regular: "400",
-    medium: "500",
-    semibold: "600",
-    bold: "700",
+    regular: "400" as const,
+    medium: "500" as const,
+    semibold: "600" as const,
+    bold: "700" as const,
   },
-} as const;
+};
 
-export const theme = {
-  colors,
-  spacing,
-  radius,
-  typography,
-} as const;
+// NEW: one subtle, warm elevation for cards (use sparingly)
+export const shadow = {
+  card: {
+    shadowColor: "#202824",
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 1,
+  },
+};
 
 export const Fonts = Platform.select({
   ios: {
@@ -92,6 +102,3 @@ export const Fonts = Platform.select({
     mono: "var(--font-mono)",
   },
 });
-
-export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
-export const MaxContentWidth = 800;

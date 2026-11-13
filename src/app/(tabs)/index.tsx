@@ -4,6 +4,7 @@ import {
   Check,
   ChevronDown,
   ChevronRight,
+  CircleDollarSign,
   Pencil,
   Plus,
   Trash2,
@@ -11,7 +12,7 @@ import {
 } from "lucide-react-native";
 
 import { useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { useAuthStore } from "@/stores/use-auth-store";
 import { useBudgetStore } from "@/stores/use-budget-store";
@@ -35,7 +36,6 @@ import {
 import {
   formatMoney,
   getAccountBalance,
-  getMonthlySpending,
   getWorkspaceBalance,
 } from "@/lib/finance/calculations";
 
@@ -52,6 +52,10 @@ import { WorkspaceGate } from "@/components/feedbacks/workspace-gate";
 import { SafeScreen } from "@/components/layout/safe-screen";
 import { BottomSheetModal } from "@/components/ui/bottom-modal";
 
+/* -------------------------------------------------------------------------- */
+/* Helpers                                                                     */
+/* -------------------------------------------------------------------------- */
+
 function getCountryFlag(countryCode: string): string {
   return getCountryByCode(countryCode)?.flag ?? "🌍";
 }
@@ -67,13 +71,31 @@ function getInitials(name: string | null | undefined): string {
     .join("");
 }
 
+function getGreeting(hour: number): string {
+  if (hour < 12) return "Good morning";
+  if (hour < 18) return "Good afternoon";
+  return "Good evening";
+}
+
+function formatAccountType(type: string): string {
+  if (type === "e-wallet") return "E-wallet";
+  return type.charAt(0).toUpperCase() + type.slice(1);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Small presentational pieces                                                 */
+/* (move into /components/home/* when you're happy with the layout)            */
+/* -------------------------------------------------------------------------- */
+
 function SectionHeading({
   title,
   action,
+  caption,
   onPress,
 }: {
   title: string;
   action?: string;
+  caption?: string;
   onPress?: () => void;
 }) {
   return (
@@ -85,20 +107,85 @@ function SectionHeading({
           onPress={onPress}
           accessibilityRole="button"
           accessibilityLabel={action}
+          hitSlop={8}
           style={styles.sectionAction}
         >
           <Text style={styles.sectionActionText}>{action}</Text>
           <ChevronRight size={16} color={colors.primary} />
         </Pressable>
+      ) : caption ? (
+        <Text style={styles.sectionCaption}>{caption}</Text>
       ) : null}
     </View>
   );
 }
 
+function FlowStat({
+  label,
+  amount,
+  amountColor,
+  direction,
+  tone,
+  secondary,
+}: {
+  label: string;
+  amount: string;
+  amountColor: string;
+  direction: "in" | "out";
+  tone: "success" | "danger" | "neutral";
+  secondary?: ReactNode;
+}) {
+  const iconColor =
+    tone === "success"
+      ? colors.success
+      : tone === "danger"
+        ? colors.danger
+        : colors.textSecondary;
+
+  const bubbleColor =
+    tone === "success"
+      ? colors.successLight
+      : tone === "danger"
+        ? colors.dangerLight
+        : colors.background;
+
+  return (
+    <View style={styles.flowStat}>
+      <View style={[styles.flowIcon, { backgroundColor: bubbleColor }]}>
+        {direction === "in" ? (
+          <ArrowDownLeft size={16} color={iconColor} />
+        ) : (
+          <ArrowUpRight size={16} color={iconColor} />
+        )}
+      </View>
+
+      <View style={styles.flowStatText}>
+        <Text style={styles.flowLabel}>{label}</Text>
+
+        <Text
+          style={[styles.flowAmount, { color: amountColor }]}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+        >
+          {amount}
+        </Text>
+
+        {secondary}
+      </View>
+    </View>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Screen                                                                      */
+/* -------------------------------------------------------------------------- */
+
 export default function HomeScreen() {
   const router = useRouter();
 
   const [workspaceSheetVisible, setWorkspaceSheetVisible] = useState(false);
+
+  /* ---------------------------------- Stores --------------------------------- */
 
   const workspaces = useWorkspaceStore((state) => state.workspaces);
   const activeWorkspaceId = useWorkspaceStore(
@@ -112,18 +199,9 @@ export default function HomeScreen() {
   const accounts = useFinanceStore((state) => state.accounts);
   const transactions = useFinanceStore((state) => state.transactions);
 
-  const workspaceAccounts = useMemo(
-    () =>
-      accounts.filter((account) => account.workspaceId === activeWorkspaceId),
-    [accounts, activeWorkspaceId],
-  );
-
-  const displayedAccounts = workspaceAccounts.slice(0, 3);
-
   const profile = useProfileStore((state) => state.profile);
   const user = useAuthStore((state) => state.user);
 
-  // Currency converter
   const converter = useCurrencyConverterStore((state) => state.converter);
   const loadedConverterWorkspaceId = useCurrencyConverterStore(
     (state) => state.loadedWorkspaceId,
@@ -132,18 +210,13 @@ export default function HomeScreen() {
     (state) => state.fetchConverter,
   );
 
-  useEffect(() => {
-    if (!activeWorkspaceId) return;
-
-    void fetchConverter(activeWorkspaceId);
-  }, [activeWorkspaceId, fetchConverter]);
-
-  const activeConverter =
-    loadedConverterWorkspaceId === activeWorkspaceId ? converter : null;
-
   const budgetOverview = useBudgetStore((state) => state.overview);
   const budgetLoading = useBudgetStore((state) => state.loading);
   const budgetError = useBudgetStore((state) => state.error);
+  const loadedBudgetWorkspaceId = useBudgetStore(
+    (state) => state.loadedWorkspaceId,
+  );
+  const loadedBudgetMonth = useBudgetStore((state) => state.loadedBudgetMonth);
   const fetchBudgetOverview = useBudgetStore(
     (state) => state.fetchBudgetOverview,
   );
@@ -154,34 +227,48 @@ export default function HomeScreen() {
   );
   const fetchCategories = useCategoryStore((state) => state.fetchCategories);
 
+  /* ------------------------------- Derived state ------------------------------ */
+
   const workspace = workspaces.find((item) => item.id === activeWorkspaceId);
-
   const currency = workspace?.currency_code ?? "MYR";
-
   const initials = getInitials(profile?.full_name || user?.email);
+
+  const activeConverter =
+    loadedConverterWorkspaceId === activeWorkspaceId ? converter : null;
 
   const formatCurrency = (amountMinor: number) =>
     formatMoney(amountMinor, currency);
 
-  const formatSecondaryCurrency = (amountMinor: number) =>
-    formatConvertedMoney(amountMinor, currency, activeConverter);
-
+  // Converted amount, always prefixed with "≈" so it's clearly not the real figure.
   const renderSecondaryAmount = (
     amountMinor: number,
     textStyle: TextStyle = styles.secondaryAmount,
-    prefix = "",
   ) => {
-    const formattedAmount = formatSecondaryCurrency(amountMinor);
-
-    if (!formattedAmount) return null;
-
-    return (
-      <Text style={textStyle}>
-        {prefix}
-        {formattedAmount}
-      </Text>
+    const formatted = formatConvertedMoney(
+      amountMinor,
+      currency,
+      activeConverter,
     );
+
+    if (!formatted) return null;
+
+    return <Text style={textStyle}>≈ {formatted}</Text>;
   };
+
+  const now = new Date();
+  const greeting = getGreeting(now.getHours());
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
+  const monthPrefix = `${currentYear}-${String(currentMonth).padStart(2, "0")}`;
+  const budgetMonth = `${monthPrefix}-01`;
+
+  const workspaceAccounts = useMemo(
+    () =>
+      accounts.filter((account) => account.workspaceId === activeWorkspaceId),
+    [accounts, activeWorkspaceId],
+  );
+
+  const displayedAccounts = workspaceAccounts.slice(0, 3);
 
   const totalBalanceMinor = useMemo(
     () =>
@@ -191,86 +278,33 @@ export default function HomeScreen() {
     [activeWorkspaceId, accounts, transactions],
   );
 
-  const now = new Date();
-  const currentYear = now.getFullYear();
-  const currentMonth = now.getMonth() + 1;
+  // One pass instead of four separate filter/reduce passes.
+  const monthStats = useMemo(() => {
+    const stats = { income: 0, expenses: 0, transferIn: 0, transferOut: 0 };
 
-  const currentMonthPrefix = `${currentYear}-${String(currentMonth).padStart(2, "0")}`;
+    for (const item of transactions) {
+      if (item.workspaceId !== activeWorkspaceId) continue;
+      if (!item.date.startsWith(monthPrefix)) continue;
 
-  const currentBudgetMonth = `${currentMonthPrefix}-01`;
+      if (item.type === "income") stats.income += item.amountMinor;
+      else if (item.type === "expense") stats.expenses += item.amountMinor;
+      else if (item.type === "transfer_in")
+        stats.transferIn += item.amountMinor;
+      else if (item.type === "transfer_out")
+        stats.transferOut += item.amountMinor;
+    }
 
-  useEffect(() => {
-    if (!activeWorkspaceId) return;
+    return stats;
+  }, [activeWorkspaceId, transactions, monthPrefix]);
 
-    void fetchBudgetOverview(activeWorkspaceId, currentBudgetMonth);
-  }, [activeWorkspaceId, currentBudgetMonth, fetchBudgetOverview]);
-
-  const monthlyIncomeMinor = useMemo(
-    () =>
-      transactions
-        .filter(
-          (item) =>
-            item.workspaceId === activeWorkspaceId &&
-            item.type === "income" &&
-            item.date.startsWith(currentMonthPrefix),
-        )
-        .reduce((total, item) => total + item.amountMinor, 0),
-    [activeWorkspaceId, transactions, currentMonthPrefix],
-  );
-
-  const monthlyExpensesMinor = useMemo(
-    () =>
-      transactions
-        .filter(
-          (item) =>
-            item.workspaceId === activeWorkspaceId &&
-            item.type === "expense" &&
-            item.date.startsWith(currentMonthPrefix),
-        )
-        .reduce((total, item) => total + item.amountMinor, 0),
-    [activeWorkspaceId, transactions, currentMonthPrefix],
-  );
-
-  const netCashFlowMinor = monthlyIncomeMinor - monthlyExpensesMinor;
-
-  const monthlyTransferInMinor = useMemo(
-    () =>
-      transactions
-        .filter(
-          (item) =>
-            item.workspaceId === activeWorkspaceId &&
-            item.type === "transfer_in" &&
-            item.date.startsWith(currentMonthPrefix),
-        )
-        .reduce((total, item) => total + item.amountMinor, 0),
-    [activeWorkspaceId, transactions, currentMonthPrefix],
-  );
-
-  const monthlyTransferOutMinor = useMemo(
-    () =>
-      transactions
-        .filter(
-          (item) =>
-            item.workspaceId === activeWorkspaceId &&
-            item.type === "transfer_out" &&
-            item.date.startsWith(currentMonthPrefix),
-        )
-        .reduce((total, item) => total + item.amountMinor, 0),
-    [activeWorkspaceId, transactions, currentMonthPrefix],
-  );
-
-  const monthlySpentMinor = useMemo(
-    () =>
-      activeWorkspaceId
-        ? getMonthlySpending(
-            activeWorkspaceId,
-            transactions,
-            currentYear,
-            currentMonth,
-          )
-        : 0,
-    [activeWorkspaceId, transactions, currentYear, currentMonth],
-  );
+  const netCashFlowMinor = monthStats.income - monthStats.expenses;
+  const netSign = netCashFlowMinor > 0 ? "+" : netCashFlowMinor < 0 ? "−" : "";
+  const netColor =
+    netCashFlowMinor > 0
+      ? colors.success
+      : netCashFlowMinor < 0
+        ? colors.danger
+        : colors.text;
 
   const recentTransactions = useMemo(
     () =>
@@ -285,23 +319,22 @@ export default function HomeScreen() {
     [activeWorkspaceId, transactions],
   );
 
+  // Reactive version (the old one read useBudgetStore.getState() in render).
   const hasCurrentBudget =
     budgetOverview !== null &&
-    useBudgetStore.getState().loadedWorkspaceId === activeWorkspaceId &&
-    useBudgetStore.getState().loadedBudgetMonth === currentBudgetMonth;
+    loadedBudgetWorkspaceId === activeWorkspaceId &&
+    loadedBudgetMonth === budgetMonth;
 
   const budgetAmountLimit = hasCurrentBudget
     ? budgetOverview.budget.amountLimit
     : 0;
-
   const budgetAmountSpent = hasCurrentBudget ? budgetOverview.amountSpent : 0;
-
   const budgetRemaining = hasCurrentBudget ? budgetOverview.remainingAmount : 0;
 
-  const budgetProgress =
-    budgetAmountLimit > 0 ? budgetAmountSpent / budgetAmountLimit : 0;
-
-  const progressPercentage = Math.round(budgetProgress * 100);
+  const progressPercentage =
+    budgetAmountLimit > 0
+      ? Math.round((budgetAmountSpent / budgetAmountLimit) * 100)
+      : 0;
 
   const budgetStatus =
     progressPercentage >= 100
@@ -319,10 +352,22 @@ export default function HomeScreen() {
 
   const budgetStatusBackground =
     budgetStatus === "over"
-      ? "#FCEDEA"
+      ? colors.dangerLight
       : budgetStatus === "warning"
-        ? "#FFF5E5"
+        ? colors.warningLight
         : colors.primaryLight;
+
+  /* --------------------------------- Effects --------------------------------- */
+
+  useEffect(() => {
+    if (!activeWorkspaceId) return;
+    void fetchConverter(activeWorkspaceId);
+  }, [activeWorkspaceId, fetchConverter]);
+
+  useEffect(() => {
+    if (!activeWorkspaceId) return;
+    void fetchBudgetOverview(activeWorkspaceId, budgetMonth);
+  }, [activeWorkspaceId, budgetMonth, fetchBudgetOverview]);
 
   useEffect(() => {
     if (categories.length === 0 && !categoriesLoading) {
@@ -330,15 +375,14 @@ export default function HomeScreen() {
     }
   }, [categories.length, categoriesLoading, fetchCategories]);
 
+  /* -------------------------------- Handlers --------------------------------- */
+
   function handleDeleteWorkspace(id: string, name: string) {
     Alert.alert(
       "Delete workspace?",
       `Are you sure you want to delete "${name}"? This action cannot be undone.`,
       [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
+        { text: "Cancel", style: "cancel" },
         {
           text: "Delete",
           style: "destructive",
@@ -360,6 +404,8 @@ export default function HomeScreen() {
     );
   }
 
+  /* ---------------------------------- Render --------------------------------- */
+
   return (
     <SafeScreen backgroundColor={colors.background} edges={["top"]}>
       <WorkspaceGate>
@@ -367,10 +413,10 @@ export default function HomeScreen() {
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
         >
-          {/* Header */}
+          {/* 1. Header ----------------------------------------------------------- */}
           <View style={styles.header}>
-            <View>
-              <Text style={styles.greeting}>Good morning 👋</Text>
+            <View style={styles.headerText}>
+              <Text style={styles.greeting}>{greeting} 👋</Text>
               <Text style={styles.subtitle}>
                 Your money, wherever life takes you.
               </Text>
@@ -393,212 +439,144 @@ export default function HomeScreen() {
             </Pressable>
           </View>
 
-          {/* Currency converter shortcut */}
-          <Pressable
-            style={styles.converterShortcut}
-            accessibilityRole="button"
-            onPress={() => router.push("/currency-converter")}
-          >
-            <Text style={styles.converterShortcutText}>Currency Converter</Text>
-            <ChevronRight size={18} color={colors.primary} />
-          </Pressable>
-
-          {/* Workspace selector */}
-          <Pressable
-            style={styles.countrySelector}
-            accessibilityRole="button"
-            accessibilityLabel={`Select workspace. Current workspace: ${
-              workspace?.name ?? "Workspace"
-            }`}
-            accessibilityHint="Opens a list of your financial workspaces"
-            onPress={() => setWorkspaceSheetVisible(true)}
-          >
-            <Text style={styles.countryFlag}>
-              {getCountryFlag(workspace?.country_code ?? "")}
-            </Text>
-
-            <View style={styles.countryInfo}>
-              <Text style={styles.countryLabel}>YOUR WORKSPACE</Text>
-
-              <Text style={styles.countryName}>
-                {workspace?.name ?? "Workspace"}
+          {/* 2. Workspace selector ---------------------------------------------- */}
+          <View style={styles.workspaceContainer}>
+            <Pressable
+              style={styles.workspaceSelector}
+              accessibilityRole="button"
+              accessibilityLabel={`Select workspace. Current workspace: ${
+                workspace?.name ?? "Workspace"
+              }`}
+              accessibilityHint="Opens a list of your financial workspaces"
+              onPress={() => setWorkspaceSheetVisible(true)}
+            >
+              <Text style={styles.workspaceFlag}>
+                {getCountryFlag(workspace?.country_code ?? "")}
               </Text>
+
+              <View style={styles.workspaceInfo}>
+                <Text style={styles.workspaceLabel}>YOUR WORKSPACE</Text>
+                <Text style={styles.workspaceName} numberOfLines={1}>
+                  {workspace?.name ?? "Workspace"}
+                </Text>
+              </View>
+
+              <View style={styles.currencyChip}>
+                <Text style={styles.currencyChipText}>{currency}</Text>
+              </View>
+
+              <ChevronDown size={20} color={colors.textSecondary} />
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [
+                styles.currencyButton,
+                pressed && styles.currencyButtonPressed,
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel="Convert currency"
+              accessibilityHint="Opens the currency converter"
+              onPress={() => router.push("/currency-converter")}
+            >
+              <CircleDollarSign size={22} color={colors.primary} />
+            </Pressable>
+          </View>
+
+          {/* 3. Overview: balance + monthly cash flow ---------------------------------------------- */}
+          <View style={styles.overviewCard}>
+            <View style={styles.balanceCard}>
+              <View style={styles.balanceHeader}>
+                <View style={styles.balanceLabelRow}>
+                  <Wallet size={18} color={colors.textOnPrimaryMuted} />
+                  <Text style={styles.balanceLabel}>TOTAL BALANCE</Text>
+                </View>
+
+                <View style={styles.balanceBadge}>
+                  <Text style={styles.balanceBadgeText}>{currency}</Text>
+                </View>
+              </View>
+
+              <Text
+                style={styles.balanceAmount}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+              >
+                {formatCurrency(totalBalanceMinor)}
+              </Text>
+
+              {renderSecondaryAmount(
+                totalBalanceMinor,
+                styles.secondaryBalanceAmount,
+              )}
+
+              <Text style={styles.balanceCaption}>Across your accounts</Text>
             </View>
 
-            <ChevronDown size={20} color={colors.textSecondary} />
-          </Pressable>
-
-          {/* Total balance */}
-          <View style={styles.balanceCard}>
-            <View style={styles.balanceHeader}>
-              <View style={styles.balanceLabelRow}>
-                <Wallet size={18} color="#DCE8DD" />
-                <Text style={styles.balanceLabel}>TOTAL BALANCE</Text>
+            <View style={styles.cashFlowSection}>
+              <View style={styles.cashFlowHeader}>
+                <Text style={styles.cashFlowTitle}>Monthly Cash Flow</Text>
+                <Text style={styles.cardCaption}>This month</Text>
               </View>
 
-              <View style={styles.currencyBadge}>
-                <Text style={styles.currencyBadgeText}>{currency}</Text>
-              </View>
-            </View>
+              <View style={styles.flowRow}>
+                <FlowStat
+                  label="Income"
+                  direction="in"
+                  tone="success"
+                  amountColor={colors.success}
+                  amount={formatCurrency(monthStats.income)}
+                  secondary={renderSecondaryAmount(monthStats.income)}
+                />
 
-            <Text style={styles.balanceAmount}>
-              {formatCurrency(totalBalanceMinor)}
-            </Text>
-
-            {renderSecondaryAmount(
-              totalBalanceMinor,
-              styles.secondaryBalanceAmount,
-            )}
-
-            <Text style={styles.balanceCaption}>Across your accounts</Text>
-
-            <View style={styles.balanceFooter}>
-              <View style={styles.balanceFooterRow}>
-                <View style={styles.balanceFooterItem}>
-                  <View style={styles.balanceFooterLabelRow}>
-                    <ArrowDownLeft size={14} color="#DCE8DD" />
-                    <Text style={styles.balanceFooterLabel}>INCOME</Text>
-                  </View>
-
-                  <Text style={styles.balanceFooterValue}>
-                    + {formatCurrency(monthlyIncomeMinor)}
-                  </Text>
-
-                  {renderSecondaryAmount(
-                    monthlyIncomeMinor,
-                    styles.secondaryFooterValue,
-                    "+ ",
-                  )}
-                </View>
-
-                <View style={styles.balanceFooterItem}>
-                  <View style={styles.balanceFooterLabelRow}>
-                    <ArrowUpRight size={14} color="#DCE8DD" />
-                    <Text style={styles.balanceFooterLabel}>SPENDING</Text>
-                  </View>
-
-                  <Text style={styles.balanceFooterValue}>
-                    − {formatCurrency(monthlySpentMinor)}
-                  </Text>
-
-                  {renderSecondaryAmount(
-                    monthlySpentMinor,
-                    styles.secondaryFooterValue,
-                    "− ",
-                  )}
-                </View>
+                <FlowStat
+                  label="Expenses"
+                  direction="out"
+                  tone="danger"
+                  amountColor={colors.danger}
+                  amount={formatCurrency(monthStats.expenses)}
+                  secondary={renderSecondaryAmount(monthStats.expenses)}
+                />
               </View>
 
-              <View style={styles.balanceFooterDivider} />
+              <View style={styles.divider} />
 
-              <View style={styles.balanceFooterRow}>
-                <View style={styles.balanceFooterItem}>
-                  <View style={styles.balanceFooterLabelRow}>
-                    <ArrowDownLeft size={14} color="#DCE8DD" />
-                    <Text style={styles.balanceFooterLabel}>TRANSFER IN</Text>
-                  </View>
+              <View style={styles.flowRow}>
+                <FlowStat
+                  label="Transfer in"
+                  direction="in"
+                  tone="neutral"
+                  amountColor={colors.text}
+                  amount={`+ ${formatCurrency(monthStats.transferIn)}`}
+                  secondary={renderSecondaryAmount(monthStats.transferIn)}
+                />
 
-                  <Text style={styles.balanceFooterValue}>
-                    + {formatCurrency(monthlyTransferInMinor)}
+                <FlowStat
+                  label="Transfer out"
+                  direction="out"
+                  tone="neutral"
+                  amountColor={colors.text}
+                  amount={`− ${formatCurrency(monthStats.transferOut)}`}
+                  secondary={renderSecondaryAmount(monthStats.transferOut)}
+                />
+              </View>
+
+              <View style={styles.divider} />
+
+              <View style={styles.netRow}>
+                <Text style={styles.netLabel}>Net Cash Flow</Text>
+
+                <View style={styles.netValueContainer}>
+                  <Text style={[styles.netAmount, { color: netColor }]}>
+                    {netSign}
+                    {formatCurrency(Math.abs(netCashFlowMinor))}
                   </Text>
 
-                  {renderSecondaryAmount(
-                    monthlyTransferInMinor,
-                    styles.secondaryFooterValue,
-                    "+ ",
-                  )}
-                </View>
-
-                <View style={styles.balanceFooterItem}>
-                  <View style={styles.balanceFooterLabelRow}>
-                    <ArrowUpRight size={14} color="#DCE8DD" />
-                    <Text style={styles.balanceFooterLabel}>TRANSFER OUT</Text>
-                  </View>
-
-                  <Text style={styles.balanceFooterValue}>
-                    − {formatCurrency(monthlyTransferOutMinor)}
-                  </Text>
-
-                  {renderSecondaryAmount(
-                    monthlyTransferOutMinor,
-                    styles.secondaryFooterValue,
-                    "− ",
-                  )}
+                  {renderSecondaryAmount(Math.abs(netCashFlowMinor))}
                 </View>
               </View>
             </View>
           </View>
 
-          {/* Monthly cash flow */}
-          <View style={styles.cashFlowCard}>
-            <View style={styles.sectionHeading}>
-              <Text style={styles.sectionTitle}>Monthly Cash Flow</Text>
-              <Text style={styles.sectionTitle}>This month</Text>
-            </View>
-
-            <View style={styles.cashFlowRow}>
-              <View style={styles.cashFlowItem}>
-                <View style={styles.cashFlowLabel}>
-                  <ArrowDownLeft size={16} color={colors.success} />
-                  <Text style={styles.cashFlowLabelText}>Income</Text>
-                </View>
-
-                <Text
-                  style={[styles.cashFlowAmount, { color: colors.success }]}
-                >
-                  {formatCurrency(monthlyIncomeMinor)}
-                </Text>
-
-                {renderSecondaryAmount(monthlyIncomeMinor)}
-              </View>
-
-              <View style={styles.cashFlowItem}>
-                <View style={styles.cashFlowLabel}>
-                  <ArrowUpRight size={16} color={colors.danger} />
-                  <Text style={styles.cashFlowLabelText}>Expenses</Text>
-                </View>
-
-                <Text style={[styles.cashFlowAmount, { color: colors.danger }]}>
-                  {formatCurrency(monthlyExpensesMinor)}
-                </Text>
-
-                {renderSecondaryAmount(monthlyExpensesMinor)}
-              </View>
-            </View>
-
-            <View style={styles.cashFlowDivider} />
-
-            <View style={styles.netCashFlowRow}>
-              <Text style={styles.netCashFlowLabel}>Net Cash Flow</Text>
-
-              <View style={styles.netCashFlowValueContainer}>
-                <Text
-                  style={[
-                    styles.netCashFlowAmount,
-                    {
-                      color:
-                        netCashFlowMinor > 0
-                          ? colors.success
-                          : netCashFlowMinor < 0
-                            ? colors.danger
-                            : colors.text,
-                    },
-                  ]}
-                >
-                  {netCashFlowMinor > 0 ? "+" : netCashFlowMinor < 0 ? "−" : ""}
-                  {formatCurrency(Math.abs(netCashFlowMinor))}
-                </Text>
-
-                {renderSecondaryAmount(
-                  Math.abs(netCashFlowMinor),
-                  styles.secondaryAmount,
-                  netCashFlowMinor > 0 ? "+" : netCashFlowMinor < 0 ? "−" : "",
-                )}
-              </View>
-            </View>
-          </View>
-
-          {/* My Accounts */}
+          {/* 4. Accounts --------------------------------------------------------- */}
           <SectionHeading
             title="My Accounts"
             action={
@@ -609,12 +587,11 @@ export default function HomeScreen() {
             onPress={() => router.push("/accounts/list")}
           />
 
-          <View style={styles.accountCard}>
+          <View style={styles.listCard}>
             {workspaceAccounts.length === 0 ? (
-              <View style={styles.accountEmptyState}>
-                <Text style={styles.accountEmptyTitle}>No accounts yet</Text>
-
-                <Text style={styles.accountEmptySubtitle}>
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyTitle}>No accounts yet</Text>
+                <Text style={styles.emptySubtitle}>
                   Add your first account to start tracking your money.
                 </Text>
               </View>
@@ -624,7 +601,7 @@ export default function HomeScreen() {
 
                 return (
                   <View key={account.id}>
-                    {index > 0 && <View style={styles.accountDivider} />}
+                    {index > 0 && <View style={styles.divider} />}
 
                     <View style={styles.accountRow}>
                       <AccountIcon
@@ -634,27 +611,22 @@ export default function HomeScreen() {
                         iconSize={21}
                       />
 
-                      <View style={styles.accountDetails}>
-                        <Text style={styles.accountName} numberOfLines={1}>
+                      <View style={styles.rowDetails}>
+                        <Text style={styles.rowTitle} numberOfLines={1}>
                           {account.name}
                         </Text>
-
-                        <Text style={styles.accountType}>
-                          {account.type === "e-wallet"
-                            ? "E-wallet"
-                            : account.type.charAt(0).toUpperCase() +
-                              account.type.slice(1)}
+                        <Text style={styles.rowCaption}>
+                          {formatAccountType(account.type)}
                         </Text>
                       </View>
 
-                      <View style={styles.accountBalanceContainer}>
-                        <Text style={styles.accountBalance}>
+                      <View style={styles.rowAmountContainer}>
+                        <Text style={styles.rowAmount}>
                           {formatCurrency(accountBalance)}
                         </Text>
-
                         {renderSecondaryAmount(
                           accountBalance,
-                          styles.secondaryAccountBalance,
+                          styles.secondaryAmount,
                         )}
                       </View>
                     </View>
@@ -673,7 +645,7 @@ export default function HomeScreen() {
             </Pressable>
           </View>
 
-          {/* Monthly budget */}
+          {/* 7. Monthly budget --------------------------------------------------- */}
           <SectionHeading
             title="Monthly budget"
             action={hasCurrentBudget ? "View budget" : undefined}
@@ -682,67 +654,54 @@ export default function HomeScreen() {
 
           <View style={styles.card}>
             {budgetLoading && !hasCurrentBudget ? (
-              <View style={styles.budgetEmptyState}>
-                <Text style={styles.transactionSubtitle}>
-                  Loading your monthly budget...
-                </Text>
-              </View>
+              <Text style={styles.cardCaption}>
+                Loading your monthly budget...
+              </Text>
             ) : budgetError && !hasCurrentBudget ? (
-              <View style={styles.budgetEmptyState}>
-                <Text style={styles.accountEmptyTitle}>
-                  Unable to load budget
-                </Text>
-
-                <Text style={styles.accountEmptySubtitle}>
-                  Please try again.
-                </Text>
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyTitle}>Unable to load budget</Text>
+                <Text style={styles.emptySubtitle}>Please try again.</Text>
 
                 <Pressable
+                  style={styles.smallButton}
+                  accessibilityRole="button"
                   onPress={() => {
                     if (activeWorkspaceId) {
-                      void fetchBudgetOverview(
-                        activeWorkspaceId,
-                        currentBudgetMonth,
-                      );
+                      void fetchBudgetOverview(activeWorkspaceId, budgetMonth);
                     }
                   }}
-                  style={styles.budgetCreateButton}
                 >
-                  <Text style={styles.budgetCreateButtonText}>Retry</Text>
+                  <Text style={styles.smallButtonText}>Retry</Text>
                 </Pressable>
               </View>
             ) : !hasCurrentBudget ? (
-              <View style={styles.budgetEmptyState}>
+              <View style={styles.emptyState}>
                 <Wallet size={28} color={colors.primary} />
-
-                <Text style={styles.accountEmptyTitle}>
+                <Text style={styles.emptyTitle}>
                   No budget set for this month
                 </Text>
-
-                <Text style={styles.accountEmptySubtitle}>
+                <Text style={styles.emptySubtitle}>
                   Create a monthly budget to keep track of your spending.
                 </Text>
 
                 <Pressable
-                  style={styles.budgetCreateButton}
+                  style={styles.smallButton}
                   accessibilityRole="button"
                   onPress={() =>
                     router.push({
                       pathname: "/budget/new",
-                      params: { month: currentBudgetMonth },
+                      params: { month: budgetMonth },
                     })
                   }
                 >
-                  <Plus size={17} color="#FFFFFF" />
-                  <Text style={styles.budgetCreateButtonText}>
-                    Create budget
-                  </Text>
+                  <Plus size={17} color={colors.textOnPrimary} />
+                  <Text style={styles.smallButtonText}>Create budget</Text>
                 </Pressable>
               </View>
             ) : (
               <>
                 <View style={styles.budgetTopRow}>
-                  <View>
+                  <View style={styles.budgetTopText}>
                     <Text style={styles.cardEyebrow}>TOTAL SPENT</Text>
 
                     <Text style={styles.spentAmount}>
@@ -791,90 +750,69 @@ export default function HomeScreen() {
 
                 <View style={styles.budgetBottomRow}>
                   <View>
-                    <Text style={styles.budgetCaption}>Monthly limit</Text>
-
+                    <Text style={styles.cardCaption}>Monthly limit</Text>
                     <Text style={styles.budgetValue}>
                       {formatCurrency(budgetAmountLimit)}
                     </Text>
-
                     {renderSecondaryAmount(budgetAmountLimit)}
                   </View>
 
-                  <View style={styles.remainingContainer}>
-                    <Text style={styles.budgetCaption}>
+                  <View style={styles.alignEnd}>
+                    <Text style={styles.cardCaption}>
                       {budgetRemaining < 0 ? "Over budget" : "Remaining"}
                     </Text>
-
                     <Text
                       style={[
-                        styles.remainingValue,
-                        budgetRemaining < 0 && { color: colors.danger },
+                        styles.budgetValue,
+                        {
+                          color:
+                            budgetRemaining < 0
+                              ? colors.danger
+                              : colors.primary,
+                        },
                       ]}
                     >
                       {formatCurrency(Math.abs(budgetRemaining))}
                     </Text>
-
                     {renderSecondaryAmount(Math.abs(budgetRemaining))}
                   </View>
                 </View>
 
-                {budgetStatus === "warning" && (
-                  <Text style={styles.budgetStatusMessage}>
-                    You've used at least 80% of your monthly budget.
-                  </Text>
-                )}
-
-                {budgetStatus === "over" && (
-                  <Text
+                {budgetStatus !== "normal" && (
+                  <View
                     style={[
-                      styles.budgetStatusMessage,
-                      { color: colors.danger },
+                      styles.statusBanner,
+                      { backgroundColor: budgetStatusBackground },
                     ]}
                   >
-                    You've exceeded your monthly spending limit.
-                  </Text>
+                    <Text
+                      style={[
+                        styles.statusBannerText,
+                        { color: budgetStatusColor },
+                      ]}
+                    >
+                      {budgetStatus === "warning"
+                        ? "You've used at least 80% of your monthly budget."
+                        : "You've exceeded your monthly spending limit."}
+                    </Text>
+                  </View>
                 )}
               </>
             )}
           </View>
 
-          {/* Recent transactions */}
-
-          {/* Recent transactions */}
+          {/* 8. Recent transactions --------------------------------------------- */}
           <SectionHeading
             title="Recent transactions"
             action="See all"
             onPress={() => router.push("/transactions")}
           />
 
-          {/* Quick actions */}
-          <View style={styles.quickActions}>
-            <Pressable
-              style={styles.primaryAction}
-              accessibilityRole="button"
-              accessibilityLabel="Add transaction"
-              onPress={() => router.push("/transactions/new")}
-            >
-              <Plus size={20} color="#FFFFFF" />
-              <Text style={styles.primaryActionText}>Add transaction</Text>
-            </Pressable>
-
-            <Pressable
-              style={styles.secondaryAction}
-              accessibilityRole="button"
-              accessibilityLabel="View transactions"
-              onPress={() => router.push("/transactions")}
-            >
-              <Wallet size={20} color={colors.primary} />
-            </Pressable>
-          </View>
-
-          {/* Transaction list */}
-          <View style={styles.transactionCard}>
+          <View style={styles.listCard}>
             {recentTransactions.length === 0 ? (
-              <Text style={styles.transactionSubtitle}>
-                No transactions yet.
-              </Text>
+              <View style={styles.emptyState}>
+                <Text style={styles.emptySubtitle}>No transactions yet.</Text>
+              </View>
             ) : (
               <TransactionList
                 transactions={recentTransactions}
@@ -896,7 +834,7 @@ export default function HomeScreen() {
             Small steps today, more freedom tomorrow.
           </Text>
 
-          {/* Workspace selection modal */}
+          {/* Workspace sheet ------------------------------------------------------ */}
           <BottomSheetModal
             visible={workspaceSheetVisible}
             onClose={() => setWorkspaceSheetVisible(false)}
@@ -926,50 +864,51 @@ export default function HomeScreen() {
                       setWorkspaceSheetVisible(false);
                     }}
                   >
-                    {isActive && <Check size={20} color={colors.primary} />}
-
                     <View style={styles.workspaceOptionFlag}>
-                      <Text style={styles.workspaceOptionCurrency}>
-                        {item.currency_code}
+                      <Text style={styles.workspaceOptionFlagText}>
+                        {getCountryFlag(item.country_code ?? "")}
                       </Text>
                     </View>
 
-                    <View style={styles.workspaceOptionInfo}>
+                    <View style={styles.rowDetails}>
                       <Text style={styles.workspaceOptionName}>
                         {item.name}
                       </Text>
-
-                      <Text style={styles.workspaceOptionCurrency}>
+                      <Text style={styles.rowCaption}>
                         {item.currency_code}
                       </Text>
                     </View>
+
+                    {isActive && <Check size={20} color={colors.primary} />}
                   </Pressable>
 
-                  <Pressable
-                    style={styles.workspaceActionButton}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Edit ${item.name}`}
-                    hitSlop={8}
-                    onPress={() => {
-                      setWorkspaceSheetVisible(false);
-                      router.push({
-                        pathname: "/workspaces/edit",
-                        params: { id: item.id },
-                      });
-                    }}
-                  >
-                    <Pencil size={17} color={colors.textSecondary} />
-                  </Pressable>
+                  <View style={styles.workspaceActions}>
+                    <Pressable
+                      style={styles.workspaceActionButton}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Edit ${item.name}`}
+                      hitSlop={6}
+                      onPress={() => {
+                        setWorkspaceSheetVisible(false);
+                        router.push({
+                          pathname: "/workspaces/edit",
+                          params: { id: item.id },
+                        });
+                      }}
+                    >
+                      <Pencil size={17} color={colors.textSecondary} />
+                    </Pressable>
 
-                  <Pressable
-                    style={styles.workspaceActionButton}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Delete ${item.name}`}
-                    hitSlop={8}
-                    onPress={() => handleDeleteWorkspace(item.id, item.name)}
-                  >
-                    <Trash2 size={17} color={colors.danger} />
-                  </Pressable>
+                    <Pressable
+                      style={styles.workspaceActionButton}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Delete ${item.name}`}
+                      hitSlop={6}
+                      onPress={() => handleDeleteWorkspace(item.id, item.name)}
+                    >
+                      <Trash2 size={17} color={colors.danger} />
+                    </Pressable>
+                  </View>
                 </View>
               );
             })}
@@ -992,19 +931,28 @@ export default function HomeScreen() {
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/* Styles                                                                      */
+/* -------------------------------------------------------------------------- */
+
 const styles = StyleSheet.create({
   content: {
     padding: spacing.lg,
-    paddingTop: spacing.xl,
+    paddingTop: spacing.lg,
     paddingBottom: spacing.xxxl,
     gap: spacing.lg,
   },
 
+  /* Header */
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     gap: spacing.md,
+  },
+
+  headerText: {
+    flex: 1,
   },
 
   greeting: {
@@ -1015,7 +963,7 @@ const styles = StyleSheet.create({
 
   subtitle: {
     color: colors.textSecondary,
-    fontSize: typography.size.sm,
+    fontSize: typography.size.caption,
     marginTop: spacing.xs,
   },
 
@@ -1040,60 +988,103 @@ const styles = StyleSheet.create({
     fontWeight: typography.weight.bold,
   },
 
-  converterShortcut: {
+  workspaceContainer: {
     flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    padding: spacing.md,
+    gap: spacing.md,
   },
 
-  converterShortcutText: {
-    color: colors.primary,
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.semibold,
-  },
-
-  countrySelector: {
+  /* Workspace selector */
+  workspaceSelector: {
+    flex: 1, // fine here: the parent is a row with a defined width
     flexDirection: "row",
     alignItems: "center",
+    gap: spacing.md,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radius.lg,
-    padding: spacing.md,
-    gap: spacing.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
   },
 
-  countryFlag: {
+  currencyButton: {
+    width: 56,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+  },
+
+  currencyButtonPressed: {
+    backgroundColor: colors.primaryLight,
+  },
+
+  workspaceFlag: {
     fontSize: 28,
   },
 
-  countryInfo: {
+  workspaceInfo: {
     flex: 1,
-    gap: spacing.xs,
+    gap: 2,
   },
 
-  countryLabel: {
+  workspaceLabel: {
     color: colors.textSecondary,
     fontSize: typography.size.xs,
     fontWeight: typography.weight.medium,
     letterSpacing: 0.8,
   },
 
-  countryName: {
+  workspaceName: {
     color: colors.text,
     fontSize: typography.size.md,
     fontWeight: typography.weight.semibold,
   },
 
+  currencyChip: {
+    backgroundColor: colors.primaryLight,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+  },
+
+  currencyChipText: {
+    color: colors.primary,
+    fontSize: typography.size.xs,
+    fontWeight: typography.weight.semibold,
+  },
+
+  /* Hero */
+  overviewCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: "hidden",
+  },
+
   balanceCard: {
     backgroundColor: colors.primary,
-    borderRadius: radius.xl,
     padding: spacing.xl,
+  },
+
+  cashFlowSection: {
+    padding: spacing.lg,
+    gap: spacing.lg,
+  },
+
+  cashFlowHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+
+  cashFlowTitle: {
+    color: colors.text,
+    fontSize: typography.size.md,
+    fontWeight: typography.weight.semibold,
   },
 
   balanceHeader: {
@@ -1109,108 +1100,76 @@ const styles = StyleSheet.create({
   },
 
   balanceLabel: {
-    color: "#DCE8DD",
+    color: colors.textOnPrimaryMuted,
     fontSize: typography.size.xs,
     fontWeight: typography.weight.semibold,
     letterSpacing: 1,
   },
 
-  currencyBadge: {
-    backgroundColor: "rgba(255,255,255,0.14)",
+  balanceBadge: {
+    backgroundColor: colors.onPrimarySubtle,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
     borderRadius: radius.full,
   },
 
-  currencyBadgeText: {
-    color: "#FFFFFF",
+  balanceBadgeText: {
+    color: colors.textOnPrimary,
     fontSize: typography.size.xs,
     fontWeight: typography.weight.semibold,
   },
 
   balanceAmount: {
-    color: "#FFFFFF",
-    fontSize: 32,
+    color: colors.textOnPrimary,
+    fontSize: typography.size.xxxl,
     fontWeight: typography.weight.bold,
     marginTop: spacing.lg,
   },
 
-  balanceCaption: {
-    color: "#DCE8DD",
-    fontSize: typography.size.sm,
-    marginTop: spacing.xs,
-  },
-
-  secondaryAmount: {
-    color: colors.textSecondary,
-    fontSize: typography.size.xs,
-    marginTop: 3,
-  },
-
   secondaryBalanceAmount: {
-    color: "#DCE8DD",
+    color: colors.textOnPrimaryMuted,
     fontSize: typography.size.sm,
     marginTop: spacing.xs,
   },
 
-  balanceFooter: {
-    marginTop: spacing.xl,
-    paddingTop: spacing.lg,
-    borderTopWidth: 1,
-    borderTopColor: "rgba(255,255,255,0.2)",
-    gap: spacing.md,
+  balanceCaption: {
+    color: colors.textOnPrimaryMuted,
+    fontSize: typography.size.caption,
+    marginTop: spacing.xs,
+    opacity: 0.8,
   },
 
-  balanceFooterRow: {
-    flexDirection: "row",
-    gap: spacing.md,
-  },
-
-  balanceFooterItem: {
-    flex: 1,
-    gap: spacing.xs,
-  },
-
-  balanceFooterLabelRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-  },
-
-  balanceFooterLabel: {
-    color: "#DCE8DD",
-    fontSize: typography.size.xs,
-    fontWeight: typography.weight.medium,
-  },
-
-  balanceFooterValue: {
-    color: "#FFFFFF",
-    fontSize: typography.size.sm,
+  actionLabel: {
+    color: colors.text,
+    fontSize: typography.size.caption,
     fontWeight: typography.weight.semibold,
+    textAlign: "center",
   },
 
-  secondaryFooterValue: {
-    color: "#DCE8DD",
-    fontSize: typography.size.xs,
-    fontWeight: typography.weight.medium,
+  actionLabelPrimary: {
+    color: colors.textOnPrimary,
   },
 
-  balanceFooterDivider: {
-    height: 1,
-    backgroundColor: "rgba(255,255,255,0.2)",
-  },
-
+  /* Section heading */
   sectionHeading: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     gap: spacing.sm,
+    marginTop: spacing.sm,
+    marginBottom: -spacing.xs,
   },
 
   sectionTitle: {
     color: colors.text,
     fontSize: typography.size.lg,
-    fontWeight: typography.weight.semibold,
+    fontWeight: typography.weight.bold,
+  },
+
+  sectionCaption: {
+    color: colors.textSecondary,
+    fontSize: typography.size.caption,
+    fontWeight: typography.weight.medium,
   },
 
   sectionAction: {
@@ -1225,113 +1184,27 @@ const styles = StyleSheet.create({
     fontWeight: typography.weight.medium,
   },
 
+  /* Cards */
   card: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
     padding: spacing.lg,
-  },
-
-  cashFlowCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
     gap: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
   },
 
-  cashFlowRow: {
-    flexDirection: "row",
-    gap: spacing.md,
-  },
-
-  cashFlowItem: {
-    flex: 1,
-    gap: spacing.sm,
-  },
-
-  cashFlowLabel: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-  },
-
-  cashFlowLabelText: {
-    fontSize: typography.size.sm,
-    color: colors.textSecondary,
-  },
-
-  cashFlowAmount: {
-    fontSize: typography.size.md,
-    fontWeight: typography.weight.semibold,
-  },
-
-  cashFlowDivider: {
-    height: 1,
-    backgroundColor: colors.border,
-  },
-
-  netCashFlowRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-
-  netCashFlowLabel: {
-    fontSize: typography.size.sm,
-    color: colors.textSecondary,
-  },
-
-  netCashFlowValueContainer: {
-    alignItems: "flex-end",
-  },
-
-  netCashFlowAmount: {
-    fontSize: typography.size.lg,
-    fontWeight: typography.weight.bold,
-  },
-
-  quickActions: {
-    flexDirection: "row",
-    gap: spacing.md,
-  },
-
-  primaryAction: {
-    flex: 1,
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: spacing.sm,
-    backgroundColor: colors.primary,
-    padding: spacing.md,
-    borderRadius: radius.lg,
-    minHeight: 52,
-  },
-
-  primaryActionText: {
-    color: "#FFFFFF",
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.semibold,
-  },
-
-  secondaryAction: {
-    width: 52,
-    minHeight: 52,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
+  listCard: {
     backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.md,
   },
 
-  budgetTopRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: spacing.sm,
+  cardCaption: {
+    color: colors.textSecondary,
+    fontSize: typography.size.caption,
   },
 
   cardEyebrow: {
@@ -1339,6 +1212,140 @@ const styles = StyleSheet.create({
     fontSize: typography.size.xs,
     fontWeight: typography.weight.medium,
     letterSpacing: 0.6,
+  },
+
+  divider: {
+    height: 1,
+    backgroundColor: colors.border,
+  },
+
+  secondaryAmount: {
+    color: colors.textSecondary,
+    fontSize: typography.size.xs,
+    marginTop: 2,
+  },
+
+  alignEnd: {
+    alignItems: "flex-end",
+  },
+
+  /* Accounts / generic rows */
+  accountRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    paddingVertical: spacing.md,
+  },
+
+  rowDetails: {
+    flex: 1,
+    gap: 2,
+  },
+
+  rowTitle: {
+    color: colors.text,
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.semibold,
+  },
+
+  rowCaption: {
+    color: colors.textSecondary,
+    fontSize: typography.size.caption,
+  },
+
+  rowAmountContainer: {
+    alignItems: "flex-end",
+  },
+
+  rowAmount: {
+    color: colors.text,
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.semibold,
+  },
+
+  accountAddButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm,
+    paddingVertical: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+
+  accountAddButtonText: {
+    color: colors.primary,
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.semibold,
+  },
+
+  /* Cash flow */
+  flowRow: {
+    flexDirection: "row",
+    gap: spacing.lg,
+  },
+
+  flowStat: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: spacing.sm,
+  },
+
+  flowIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.full,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  flowStatText: {
+    flex: 1,
+  },
+
+  flowLabel: {
+    color: colors.textSecondary,
+    fontSize: typography.size.caption,
+  },
+
+  flowAmount: {
+    fontSize: typography.size.md,
+    fontWeight: typography.weight.semibold,
+    marginTop: 2,
+  },
+
+  netRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+
+  netLabel: {
+    color: colors.textSecondary,
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.medium,
+  },
+
+  netValueContainer: {
+    alignItems: "flex-end",
+  },
+
+  netAmount: {
+    fontSize: typography.size.lg,
+    fontWeight: typography.weight.bold,
+  },
+
+  /* Budget */
+  budgetTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.sm,
+  },
+
+  budgetTopText: {
+    flex: 1,
   },
 
   spentAmount: {
@@ -1364,7 +1371,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.border,
     borderRadius: radius.full,
     overflow: "hidden",
-    marginTop: spacing.lg,
   },
 
   progressFill: {
@@ -1376,12 +1382,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     gap: spacing.md,
-    marginTop: spacing.lg,
-  },
-
-  budgetCaption: {
-    color: colors.textSecondary,
-    fontSize: typography.size.xs,
   },
 
   budgetValue: {
@@ -1391,31 +1391,38 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
 
-  remainingContainer: {
-    alignItems: "flex-end",
+  statusBanner: {
+    borderRadius: radius.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
   },
 
-  remainingValue: {
-    color: colors.primary,
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.semibold,
-    marginTop: spacing.xs,
-  },
-
-  budgetStatusMessage: {
-    color: colors.warning,
-    fontSize: typography.size.xs,
+  statusBannerText: {
+    fontSize: typography.size.caption,
     fontWeight: typography.weight.medium,
-    marginTop: spacing.md,
   },
 
-  budgetEmptyState: {
+  /* Empty states + small button */
+  emptyState: {
     alignItems: "center",
     paddingVertical: spacing.lg,
-    gap: spacing.sm,
+    gap: spacing.xs,
   },
 
-  budgetCreateButton: {
+  emptyTitle: {
+    color: colors.text,
+    fontSize: typography.size.md,
+    fontWeight: typography.weight.semibold,
+    textAlign: "center",
+  },
+
+  emptySubtitle: {
+    color: colors.textSecondary,
+    fontSize: typography.size.sm,
+    textAlign: "center",
+  },
+
+  smallButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -1427,161 +1434,10 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
 
-  budgetCreateButtonText: {
-    color: "#FFFFFF",
+  smallButtonText: {
+    color: colors.textOnPrimary,
     fontSize: typography.size.sm,
     fontWeight: typography.weight.semibold,
-  },
-
-  accountCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: spacing.md,
-  },
-
-  accountRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-    paddingVertical: spacing.md,
-  },
-
-  accountDetails: {
-    flex: 1,
-    gap: spacing.xs,
-  },
-
-  accountName: {
-    color: colors.text,
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.semibold,
-  },
-
-  accountType: {
-    color: colors.textSecondary,
-    fontSize: typography.size.xs,
-  },
-
-  accountBalanceContainer: {
-    alignItems: "flex-end",
-    gap: 2,
-  },
-
-  accountBalance: {
-    color: colors.text,
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.semibold,
-  },
-
-  secondaryAccountBalance: {
-    color: colors.textSecondary,
-    fontSize: typography.size.xs,
-  },
-
-  accountDivider: {
-    height: 1,
-    backgroundColor: colors.border,
-  },
-
-  accountAddButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: spacing.sm,
-    paddingVertical: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-
-  accountAddButtonText: {
-    color: colors.primary,
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.semibold,
-  },
-
-  accountEmptyState: {
-    alignItems: "center",
-    paddingVertical: spacing.xl,
-    gap: spacing.xs,
-  },
-
-  accountEmptyTitle: {
-    color: colors.text,
-    fontSize: typography.size.md,
-    fontWeight: typography.weight.semibold,
-  },
-
-  accountEmptySubtitle: {
-    color: colors.textSecondary,
-    fontSize: typography.size.sm,
-    textAlign: "center",
-  },
-
-  transactionCard: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    paddingHorizontal: spacing.md,
-  },
-
-  transactionRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: spacing.md,
-    gap: spacing.md,
-  },
-
-  transactionIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.md,
-    backgroundColor: colors.primaryLight,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  transactionDetails: {
-    flex: 1,
-    gap: spacing.xs,
-  },
-
-  transactionTitle: {
-    color: colors.text,
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.semibold,
-  },
-
-  transactionSubtitle: {
-    color: colors.textSecondary,
-    fontSize: typography.size.xs,
-  },
-
-  transactionAmountContainer: {
-    alignItems: "flex-end",
-    gap: 2,
-  },
-
-  transactionAmount: {
-    color: colors.text,
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.semibold,
-  },
-
-  secondaryTransactionAmount: {
-    color: colors.textSecondary,
-    fontSize: typography.size.xs,
-  },
-
-  incomeAmount: {
-    color: colors.success,
-  },
-
-  transactionDivider: {
-    height: 1,
-    backgroundColor: colors.border,
   },
 
   footerNote: {
@@ -1591,10 +1447,11 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
 
+  /* Workspace sheet */
   workspaceOption: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.md,
+    gap: spacing.sm,
     padding: spacing.md,
     borderRadius: radius.lg,
     borderWidth: 1,
@@ -1608,6 +1465,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primaryLight,
   },
 
+  workspaceOptionContent: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+  },
+
   workspaceOptionFlag: {
     width: 44,
     height: 44,
@@ -1617,9 +1481,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
 
-  workspaceOptionInfo: {
-    flex: 1,
-    gap: spacing.xs,
+  workspaceOptionFlagText: {
+    fontSize: 24,
   },
 
   workspaceOptionName: {
@@ -1628,16 +1491,13 @@ const styles = StyleSheet.create({
     fontWeight: typography.weight.semibold,
   },
 
-  workspaceOptionCurrency: {
-    color: colors.textSecondary,
-    fontSize: typography.size.sm,
-  },
-
-  workspaceOptionContent: {
-    flex: 1,
+  workspaceActions: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.md,
+    gap: spacing.sm,
+    paddingLeft: spacing.sm,
+    borderLeftWidth: 1,
+    borderLeftColor: colors.border,
   },
 
   workspaceActionButton: {
