@@ -16,9 +16,11 @@ import { getCurrencyDecimalDigits, toMinorUnits } from "@/lib/finance/currency";
 import { formatMoney } from "@/lib/finance/calculations";
 import { isValidCurrencyAmountInput } from "@/lib/finance/currency-input";
 
+import { AmountInput } from "@/components/forms/amount-input";
 import { SafeScreen } from "@/components/layout/safe-screen";
 import { BottomSheetModal } from "@/components/ui/bottom-modal";
 import { DatePickerField } from "@/components/ui/date-picker-field";
+
 import { colors, radius, spacing } from "@/constants/theme";
 import { useCategoryStore } from "@/stores/use-category-store";
 import { useFinanceStore } from "@/stores/use-finance-store";
@@ -61,12 +63,6 @@ function parseAmountToMinor(value: string, currency: string) {
   } catch {
     return null;
   }
-}
-
-function sanitizeAmountInput(value: string, currency: string) {
-  const cleaned = value.replace(/,/g, "");
-
-  return isValidCurrencyAmountInput(cleaned, currency) ? cleaned : null;
 }
 
 function getTodayDate() {
@@ -777,19 +773,13 @@ export default function NewTransactionScreen() {
               <Text style={styles.currencyLabel}>{currency}</Text>
             </View>
 
-            <TextInput
+            <AmountInput
               value={amount}
-              onChangeText={(value) => {
-                const cleaned = sanitizeAmountInput(value, currency);
-
-                if (cleaned !== null) {
-                  setAmount(cleaned);
-                }
-              }}
+              currency={currency}
+              onChangeText={setAmount}
               placeholder="0"
               placeholderTextColor={colors.textSecondary}
               style={styles.amountInput}
-              keyboardType="decimal-pad"
             />
 
             <Text style={styles.helperText}>
@@ -810,19 +800,13 @@ export default function NewTransactionScreen() {
                 <Text style={styles.currencyLabel}>{fromCurrency}</Text>
               </View>
 
-              <TextInput
+              <AmountInput
                 value={amountSent}
-                onChangeText={(value) => {
-                  const cleaned = sanitizeAmountInput(value, fromCurrency);
-
-                  if (cleaned !== null) {
-                    setAmountSent(cleaned);
-                  }
-                }}
+                currency={fromCurrency}
+                onChangeText={setAmountSent}
                 placeholder="0"
                 placeholderTextColor={colors.textSecondary}
                 style={styles.amountInput}
-                keyboardType="decimal-pad"
               />
 
               <Text style={styles.helperText}>
@@ -931,19 +915,13 @@ export default function NewTransactionScreen() {
                 </View>
               ) : (
                 <>
-                  <TextInput
+                  <AmountInput
                     value={amountReceived}
-                    onChangeText={(value) => {
-                      const cleaned = sanitizeAmountInput(value, toCurrency);
-
-                      if (cleaned !== null) {
-                        setAmountReceived(cleaned);
-                      }
-                    }}
+                    currency={toCurrency}
+                    onChangeText={setAmountReceived}
                     placeholder="0"
                     placeholderTextColor={colors.textSecondary}
                     style={styles.amountInput}
-                    keyboardType="decimal-pad"
                   />
 
                   <Text style={styles.helperText}>

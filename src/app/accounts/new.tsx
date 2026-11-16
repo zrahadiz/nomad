@@ -14,6 +14,7 @@ import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { AccountColorPicker } from "@/components/accounts/account-color-picker";
 import { AccountIcon } from "@/components/accounts/account-icon";
 import { AccountIconPicker } from "@/components/accounts/account-icon-picker";
+import { AmountInput } from "@/components/forms/amount-input";
 import { SafeScreen } from "@/components/layout/safe-screen";
 
 import {
@@ -93,6 +94,12 @@ export default function NewAccountScreen() {
     parsedBalance !== null
       ? formatMoney(parsedBalance, currency)
       : formatMoney(0, currency);
+
+  const handleOpeningBalanceChange = (value: string) => {
+    if (isValidCurrencyAmountInput(value, currency)) {
+      setOpeningBalance(value);
+    }
+  };
 
   const handleSave = async () => {
     const trimmedName = name.trim();
@@ -223,19 +230,13 @@ export default function NewAccountScreen() {
             <Text style={styles.currencyLabel}>{currency}</Text>
           </View>
 
-          <TextInput
+          <AmountInput
             value={openingBalance}
-            onChangeText={(value) => {
-              const cleaned = value.replace(/,/g, "");
-
-              if (isValidCurrencyAmountInput(cleaned, currency)) {
-                setOpeningBalance(cleaned);
-              }
-            }}
+            onChangeText={handleOpeningBalanceChange}
+            currency={currency}
             placeholder="0"
             placeholderTextColor={colors.textSecondary}
             style={styles.textInput}
-            keyboardType="decimal-pad"
             returnKeyType="done"
           />
 

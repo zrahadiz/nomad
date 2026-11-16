@@ -12,24 +12,27 @@ import {
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
-import { formatMoney } from "@/lib/finance/calculations";
-import { getCurrencyDecimalDigits, toMinorUnits } from "@/lib/finance/currency";
-import { isValidCurrencyAmountInput } from "@/lib/finance/currency-input";
-
 import { AccountColorPicker } from "@/components/accounts/account-color-picker";
+import { AccountIcon } from "@/components/accounts/account-icon";
 import { AccountIconPicker } from "@/components/accounts/account-icon-picker";
+import { AmountInput } from "@/components/forms/amount-input";
+import { SafeScreen } from "@/components/layout/safe-screen";
+
 import {
   accountColors,
   accountIcons,
   type accountIconName,
 } from "@/constants/account-options";
 import { colors, radius, spacing } from "@/constants/theme";
+
+import { formatMoney } from "@/lib/finance/calculations";
+import { getCurrencyDecimalDigits, toMinorUnits } from "@/lib/finance/currency";
+import { isValidCurrencyAmountInput } from "@/lib/finance/currency-input";
+
 import { useFinanceStore } from "@/stores/use-finance-store";
 import { useWorkspaceStore } from "@/stores/use-workspace-store";
-import type { accountType, updateAccountInput } from "@/types/finances";
 
-import { AccountIcon } from "@/components/accounts/account-icon";
-import { SafeScreen } from "@/components/layout/safe-screen";
+import type { accountType, updateAccountInput } from "@/types/finances";
 
 const accountTypeOptions: {
   label: string;
@@ -74,8 +77,6 @@ export default function EditAccountScreen() {
     (state) => state.activeWorkspaceId,
   );
 
-  const addAccount = useFinanceStore((state) => state.addAccount);
-
   const workspace = workspaces.find((item) => item.id === activeWorkspaceId);
 
   const [name, setName] = useState("");
@@ -96,6 +97,12 @@ export default function EditAccountScreen() {
   const parsedBalance = parseAmountToMinor(openingBalance, currency);
 
   const previewBalance = formatMoney(parsedBalance ?? 0, currency);
+
+  const handleOpeningBalanceChange = (value: string) => {
+    if (isValidCurrencyAmountInput(value, currency)) {
+      setOpeningBalance(value);
+    }
+  };
 
   const handleSave = async () => {
     const trimmedName = name.trim();
@@ -184,156 +191,151 @@ export default function EditAccountScreen() {
       </SafeScreen>
     );
   }
+
   return (
-    <>
-      <SafeScreen backgroundColor={colors.background} edges={["bottom"]}>
-        <KeyboardAwareScrollView
-          contentContainerStyle={[styles.content]}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Account Name */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Account name</Text>
+    <SafeScreen backgroundColor={colors.background} edges={["bottom"]}>
+      <KeyboardAwareScrollView
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Account Name */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Account name</Text>
 
-            <TextInput
-              value={name}
-              onChangeText={setName}
-              placeholder="e.g. Maybank Savings"
-              placeholderTextColor={colors.textSecondary}
-              style={styles.textInput}
-              maxLength={40}
-              autoCapitalize="words"
-              returnKeyType="next"
-            />
-          </View>
+          <TextInput
+            value={name}
+            onChangeText={setName}
+            placeholder="e.g. Maybank Savings"
+            placeholderTextColor={colors.textSecondary}
+            style={styles.textInput}
+            maxLength={40}
+            autoCapitalize="words"
+            returnKeyType="next"
+          />
+        </View>
 
-          {/* Account Type */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Account type</Text>
+        {/* Account Type */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Account type</Text>
 
-            <View style={styles.typeContainer}>
-              {accountTypeOptions.map((option) => {
-                const selected = type === option.value;
+          <View style={styles.typeContainer}>
+            {accountTypeOptions.map((option) => {
+              const selected = type === option.value;
 
-                return (
-                  <Pressable
-                    key={option.value}
-                    onPress={() => setType(option.value)}
+              return (
+                <Pressable
+                  key={option.value}
+                  onPress={() => setType(option.value)}
+                  style={[
+                    styles.typeOption,
+                    selected && styles.selectedTypeOption,
+                  ]}
+                >
+                  <Text
                     style={[
-                      styles.typeOption,
-                      selected && styles.selectedTypeOption,
+                      styles.typeText,
+                      selected && styles.selectedTypeText,
                     ]}
                   >
-                    <Text
-                      style={[
-                        styles.typeText,
-                        selected && styles.selectedTypeText,
-                      ]}
-                    >
-                      {option.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
+                    {option.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* Account Icon */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Choose an icon</Text>
+
+          <AccountIconPicker value={icon} color={color} onChange={setIcon} />
+        </View>
+
+        {/* Account Color */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Choose a color</Text>
+
+          <AccountColorPicker value={color} onChange={setColor} />
+        </View>
+
+        {/* Opening Balance */}
+        <View style={styles.section}>
+          <View style={styles.balanceHeader}>
+            <Text style={styles.sectionTitle}>Opening balance</Text>
+            <Text style={styles.currencyLabel}>{currency}</Text>
           </View>
 
-          {/* Account Icon */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Choose an icon</Text>
+          <AmountInput
+            value={openingBalance}
+            onChangeText={handleOpeningBalanceChange}
+            currency={currency}
+            placeholder={
+              getCurrencyDecimalDigits(currency) === 0 ? "0" : "0.00"
+            }
+            placeholderTextColor={colors.textSecondary}
+            style={styles.textInput}
+            returnKeyType="done"
+          />
 
-            <AccountIconPicker value={icon} color={color} onChange={setIcon} />
-          </View>
+          <Text style={styles.previewBalance}>Preview: {previewBalance}</Text>
+          <Text style={styles.helperText}>
+            Enter the amount currently available in this account.
+          </Text>
+        </View>
 
-          {/* Account Color */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Choose a color</Text>
-
-            <AccountColorPicker value={color} onChange={setColor} />
-          </View>
-
-          {/* Opening Balance */}
-          <View style={styles.section}>
-            <View style={styles.balanceHeader}>
-              <Text style={styles.sectionTitle}>Opening balance</Text>
-              <Text style={styles.currencyLabel}>{currency}</Text>
-            </View>
-
-            <TextInput
-              value={openingBalance}
-              onChangeText={(value) => {
-                const cleaned = value.replace(/,/g, "");
-
-                if (isValidCurrencyAmountInput(cleaned, currency)) {
-                  setOpeningBalance(cleaned);
-                }
-              }}
-              placeholder={
-                getCurrencyDecimalDigits(currency) === 0 ? "0" : "0.00"
-              }
-              placeholderTextColor={colors.textSecondary}
-              style={styles.textInput}
-              keyboardType="decimal-pad"
-              returnKeyType="done"
-            />
-
-            <Text style={styles.previewBalance}>Preview: {previewBalance}</Text>
+        {/* Workspace Currency */}
+        <View style={styles.currencyInfo}>
+          <View style={styles.currencyInfoText}>
+            <Text style={styles.currencyInfoTitle}>Account currency</Text>
             <Text style={styles.helperText}>
-              Enter the amount currently available in this account.
+              This account uses your workspace currency.
             </Text>
           </View>
 
-          {/* Workspace Currency */}
-          <View style={styles.currencyInfo}>
-            <View style={styles.currencyInfoText}>
-              <Text style={styles.currencyInfoTitle}>Account currency</Text>
-              <Text style={styles.helperText}>
-                This account uses your workspace currency.
-              </Text>
-            </View>
+          <Text style={styles.currencyCode}>{currency}</Text>
+        </View>
 
-            <Text style={styles.currencyCode}>{currency}</Text>
-          </View>
+        {/* Account Preview */}
+        <Text style={styles.sectionTitle}>Account Preview</Text>
 
-          <Text style={styles.sectionTitle}>Account Preview</Text>
-          {/* Account Preview */}
-          <View style={styles.previewCard}>
-            <AccountIcon name={icon} color={color} size={56} iconSize={26} />
+        <View style={styles.previewCard}>
+          <AccountIcon name={icon} color={color} size={56} iconSize={26} />
 
-            <View style={styles.previewDetails}>
-              <Text style={styles.previewName}>
-                {name.trim() || "Account name"}
-              </Text>
-              <Text style={styles.previewType}>
-                {selectedIconLabel} ·{" "}
-                {accountTypeOptions.find((item) => item.value === type)?.label}
-              </Text>
-            </View>
-
-            <View style={styles.previewBalanceContainer}>
-              <Text style={styles.previewBalanceLabel}>Opening balance</Text>
-              <Text style={styles.previewBalance}>{previewBalance}</Text>
-            </View>
-          </View>
-
-          {/* Save Button */}
-          <Pressable
-            onPress={handleSave}
-            disabled={saving || !account || !initialized}
-            style={[
-              styles.saveButton,
-              (saving || !account || !initialized) && styles.disabledButton,
-            ]}
-          >
-            <Check size={20} color="#FFFFFF" />
-            <Text style={styles.saveButtonText}>
-              {saving ? "Saving changes..." : "Save Changes"}
+          <View style={styles.previewDetails}>
+            <Text style={styles.previewName}>
+              {name.trim() || "Account name"}
             </Text>
-          </Pressable>
-        </KeyboardAwareScrollView>
-      </SafeScreen>
-    </>
+
+            <Text style={styles.previewType}>
+              {selectedIconLabel} ·{" "}
+              {accountTypeOptions.find((item) => item.value === type)?.label}
+            </Text>
+          </View>
+
+          <View style={styles.previewBalanceContainer}>
+            <Text style={styles.previewBalanceLabel}>Opening balance</Text>
+            <Text style={styles.previewBalance}>{previewBalance}</Text>
+          </View>
+        </View>
+
+        {/* Save Button */}
+        <Pressable
+          onPress={handleSave}
+          disabled={saving || !account || !initialized}
+          style={[
+            styles.saveButton,
+            (saving || !account || !initialized) && styles.disabledButton,
+          ]}
+        >
+          <Check size={20} color="#FFFFFF" />
+          <Text style={styles.saveButtonText}>
+            {saving ? "Saving changes..." : "Save Changes"}
+          </Text>
+        </Pressable>
+      </KeyboardAwareScrollView>
+    </SafeScreen>
   );
 }
 
@@ -342,34 +344,6 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     paddingBottom: spacing.xxxl,
     gap: spacing.md,
-  },
-  header: {
-    height: 56,
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    justifyContent: "center",
-  },
-  headerTitle: {
-    flex: 1,
-    textAlign: "center",
-    fontSize: 17,
-    fontWeight: "600",
-    color: colors.text,
-  },
-  headerSpacer: {
-    width: 40,
-  },
-  scrollContent: {
-    padding: spacing.lg,
-    paddingBottom: spacing.xxxl,
-    gap: spacing.xl,
   },
   previewCard: {
     backgroundColor: colors.surface,

@@ -7,11 +7,11 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
+import { AmountInput } from "@/components/forms/amount-input";
 import { SafeScreen } from "@/components/layout/safe-screen";
 import { BottomSheetModal } from "@/components/ui/bottom-modal";
 import { colors, radius, spacing } from "@/constants/theme";
@@ -46,12 +46,6 @@ function parseAmountToMinor(value: string, currency: string) {
   } catch {
     return null;
   }
-}
-
-function sanitizeAmountInput(value: string, currency: string) {
-  const cleaned = value.replace(/,/g, "");
-
-  return isValidCurrencyAmountInput(cleaned, currency) ? cleaned : null;
 }
 
 function formatAmountInput(amountMinor: number, currency: string) {
@@ -263,14 +257,18 @@ export default function ManageBudgetScreen() {
     setCategoryModalVisible(false);
   };
 
-  const handleCategoryAmountChange = (categoryId: string, value: string) => {
-    const sanitized = sanitizeAmountInput(value, currencyCode);
+  const handleOverallAmountChange = (value: string) => {
+    if (isValidCurrencyAmountInput(value, currencyCode)) {
+      setOverallAmount(value);
+    }
+  };
 
-    if (sanitized === null) return;
+  const handleCategoryAmountChange = (categoryId: string, value: string) => {
+    if (!isValidCurrencyAmountInput(value, currencyCode)) return;
 
     setCategoryDrafts((current) =>
       current.map((item) =>
-        item.categoryId === categoryId ? { ...item, amount: sanitized } : item,
+        item.categoryId === categoryId ? { ...item, amount: value } : item,
       ),
     );
   };
@@ -520,20 +518,14 @@ export default function ManageBudgetScreen() {
           <View style={styles.amountInputContainer}>
             <Text style={styles.currencyPrefix}>{currencyCode}</Text>
 
-            <TextInput
+            <AmountInput
               value={overallAmount}
-              onChangeText={(value) => {
-                const sanitized = sanitizeAmountInput(value, currencyCode);
-
-                if (sanitized !== null) {
-                  setOverallAmount(sanitized);
-                }
-              }}
+              onChangeText={handleOverallAmountChange}
+              currency={currencyCode}
               placeholder={
                 getCurrencyDecimalDigits(currencyCode) === 0 ? "0" : "0.00"
               }
               placeholderTextColor={colors.textSecondary}
-              keyboardType="decimal-pad"
               style={styles.amountInput}
             />
           </View>
@@ -640,18 +632,18 @@ export default function ManageBudgetScreen() {
                         {currencyCode}
                       </Text>
 
-                      <TextInput
+                      <AmountInput
                         value={item.amount}
                         onChangeText={(value) =>
                           handleCategoryAmountChange(item.categoryId, value)
                         }
+                        currency={currencyCode}
                         placeholder={
                           getCurrencyDecimalDigits(currencyCode) === 0
                             ? "0"
                             : "0.00"
                         }
                         placeholderTextColor={colors.textSecondary}
-                        keyboardType="decimal-pad"
                         style={styles.categoryAmountInput}
                       />
                     </View>

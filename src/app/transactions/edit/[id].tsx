@@ -14,10 +14,12 @@ import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
 import { Check, Save, Wallet } from "lucide-react-native";
 
+import { AmountInput } from "@/components/forms/amount-input";
 import { SafeScreen } from "@/components/layout/safe-screen";
 import { BottomSheetModal } from "@/components/ui/bottom-modal";
 import { DatePickerField } from "@/components/ui/date-picker-field";
 import { colors, radius, spacing } from "@/constants/theme";
+import { isValidCurrencyAmountInput } from "@/lib/finance/currency-input";
 import { useCategoryStore } from "@/stores/use-category-store";
 import { useFinanceStore } from "@/stores/use-finance-store";
 import type { financialCategory } from "@/types/finances";
@@ -70,16 +72,6 @@ function parseAmountToMinor(value: string, currency: string) {
   }
 
   return minorAmount;
-}
-
-function sanitizeAmountInput(value: string, currency: string) {
-  const cleaned = value.replace(/,/g, "");
-  const decimals = getCurrencyDecimals(currency);
-
-  const pattern =
-    decimals === 0 ? /^\d*$/ : new RegExp(`^\\d*(\\.\\d{0,${decimals}})?$`);
-
-  return pattern.test(cleaned) ? cleaned : null;
 }
 
 function isValidDate(value: string) {
@@ -229,6 +221,12 @@ export default function EditTransactionScreen() {
     parsedAmount !== null &&
     isValidDate(date) &&
     !saving;
+
+  const handleAmountChange = (value: string) => {
+    if (isValidCurrencyAmountInput(value, currency)) {
+      setAmount(value);
+    }
+  };
 
   const handleSave = async () => {
     if (!transaction || !isEditable) return;
@@ -457,19 +455,13 @@ export default function EditTransactionScreen() {
             <Text style={styles.currencyLabel}>{currency}</Text>
           </View>
 
-          <TextInput
+          <AmountInput
             value={amount}
-            onChangeText={(value) => {
-              const cleaned = sanitizeAmountInput(value, currency);
-
-              if (cleaned !== null) {
-                setAmount(cleaned);
-              }
-            }}
+            onChangeText={handleAmountChange}
+            currency={currency}
             placeholder="0"
             placeholderTextColor={colors.textSecondary}
             style={styles.amountInput}
-            keyboardType="decimal-pad"
           />
 
           <Text style={styles.helperText}>

@@ -7,11 +7,11 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
+import { AmountInput } from "@/components/forms/amount-input";
 import { SafeScreen } from "@/components/layout/safe-screen";
 import { BottomSheetModal } from "@/components/ui/bottom-modal";
 import { DatePickerField } from "@/components/ui/date-picker-field";
@@ -29,6 +29,7 @@ import type { financialCategory } from "@/types/finances";
 // =====================================================
 // HELPERS
 // =====================================================
+
 function parseAmountToMinor(value: string, currency: string) {
   if (!isValidCurrencyAmountInput(value, currency)) {
     return null;
@@ -46,12 +47,6 @@ function parseAmountToMinor(value: string, currency: string) {
   } catch {
     return null;
   }
-}
-
-function sanitizeAmountInput(value: string, currency: string) {
-  const cleaned = value.replace(/,/g, "");
-
-  return isValidCurrencyAmountInput(cleaned, currency) ? cleaned : null;
 }
 
 function formatAmountInput(amountMinor: number, currency: string) {
@@ -190,21 +185,17 @@ export default function CreateBudgetScreen() {
     overallAmountMinor !== null && categoryTotalMinor > overallAmountMinor;
 
   const handleOverallAmountChange = (value: string) => {
-    const sanitized = sanitizeAmountInput(value, currencyCode);
-
-    if (sanitized !== null) {
-      setOverallAmount(sanitized);
+    if (isValidCurrencyAmountInput(value, currencyCode)) {
+      setOverallAmount(value);
     }
   };
 
   const handleCategoryAmountChange = (categoryId: string, value: string) => {
-    const sanitized = sanitizeAmountInput(value, currencyCode);
-
-    if (sanitized === null) return;
+    if (!isValidCurrencyAmountInput(value, currencyCode)) return;
 
     setCategoryDrafts((current) =>
       current.map((item) =>
-        item.categoryId === categoryId ? { ...item, amount: sanitized } : item,
+        item.categoryId === categoryId ? { ...item, amount: value } : item,
       ),
     );
   };
@@ -396,17 +387,18 @@ export default function CreateBudgetScreen() {
           <View style={styles.amountInputContainer}>
             <Text style={styles.currencyPrefix}>{currencyCode}</Text>
 
-            <TextInput
+            <AmountInput
               value={overallAmount}
               onChangeText={handleOverallAmountChange}
+              currency={currencyCode}
               placeholder={
                 getCurrencyDecimalDigits(currencyCode) === 0 ? "0" : "0.00"
               }
               placeholderTextColor={colors.textSecondary}
-              keyboardType="decimal-pad"
               style={styles.amountInput}
             />
           </View>
+
           <Text style={styles.helperText}>
             Your overall limit includes all expenses, including expenses without
             a category budget.
@@ -514,18 +506,18 @@ export default function CreateBudgetScreen() {
                         {currencyCode}
                       </Text>
 
-                      <TextInput
+                      <AmountInput
                         value={item.amount}
                         onChangeText={(value) =>
                           handleCategoryAmountChange(item.categoryId, value)
                         }
+                        currency={currencyCode}
                         placeholder={
                           getCurrencyDecimalDigits(currencyCode) === 0
                             ? "0"
                             : "0.00"
                         }
                         placeholderTextColor={colors.textSecondary}
-                        keyboardType="decimal-pad"
                         style={styles.categoryAmountInput}
                       />
                     </View>
