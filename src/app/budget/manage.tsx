@@ -20,48 +20,42 @@ import { useBudgetStore } from "@/stores/use-budget-store";
 import { useCategoryStore } from "@/stores/use-category-store";
 import { useWorkspaceStore } from "@/stores/use-workspace-store";
 
+import { getCurrencyDecimalDigits, toMinorUnits } from "@/lib/finance/currency";
+
+import { isValidCurrencyAmountInput } from "@/lib/finance/currency-input";
+
 import type { financialCategory } from "@/types/finances";
 
 // =====================================================
 // HELPERS
 // =====================================================
-
-function getCurrencyDecimals(currency: string) {
-  return (
-    new Intl.NumberFormat("en", {
-      style: "currency",
-      currency,
-    }).resolvedOptions().maximumFractionDigits ?? 2
-  );
-}
-
 function parseAmountToMinor(value: string, currency: string) {
-  const decimals = getCurrencyDecimals(currency);
-  const amount = Number(value.replace(/,/g, ""));
-
-  if (!Number.isFinite(amount) || amount <= 0) return null;
-
-  const minorAmount = Math.round(amount * 10 ** decimals);
-
-  if (!Number.isSafeInteger(minorAmount) || minorAmount <= 0) {
+  if (!isValidCurrencyAmountInput(value, currency)) {
     return null;
   }
 
-  return minorAmount;
+  const amount = Number(value || 0);
+
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return null;
+  }
+
+  try {
+    const amountMinor = toMinorUnits(amount, currency);
+    return amountMinor > 0 ? amountMinor : null;
+  } catch {
+    return null;
+  }
 }
 
 function sanitizeAmountInput(value: string, currency: string) {
   const cleaned = value.replace(/,/g, "");
-  const decimals = getCurrencyDecimals(currency);
 
-  const pattern =
-    decimals === 0 ? /^\d*$/ : new RegExp(`^\\d*(\\.\\d{0,${decimals}})?$`);
-
-  return pattern.test(cleaned) ? cleaned : null;
+  return isValidCurrencyAmountInput(cleaned, currency) ? cleaned : null;
 }
 
 function formatAmountInput(amountMinor: number, currency: string) {
-  const decimals = getCurrencyDecimals(currency);
+  const decimals = getCurrencyDecimalDigits(currency);
 
   return (amountMinor / 10 ** decimals).toFixed(decimals);
 }
@@ -535,7 +529,9 @@ export default function ManageBudgetScreen() {
                   setOverallAmount(sanitized);
                 }
               }}
-              placeholder="0.00"
+              placeholder={
+                getCurrencyDecimalDigits(currencyCode) === 0 ? "0" : "0.00"
+              }
               placeholderTextColor={colors.textSecondary}
               keyboardType="decimal-pad"
               style={styles.amountInput}
@@ -649,7 +645,11 @@ export default function ManageBudgetScreen() {
                         onChangeText={(value) =>
                           handleCategoryAmountChange(item.categoryId, value)
                         }
-                        placeholder="0.00"
+                        placeholder={
+                          getCurrencyDecimalDigits(currencyCode) === 0
+                            ? "0"
+                            : "0.00"
+                        }
                         placeholderTextColor={colors.textSecondary}
                         keyboardType="decimal-pad"
                         style={styles.categoryAmountInput}

@@ -11,6 +11,11 @@ import {
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
+import { getCurrencyDecimalDigits, toMinorUnits } from "@/lib/finance/currency";
+
+import { formatMoney } from "@/lib/finance/calculations";
+import { isValidCurrencyAmountInput } from "@/lib/finance/currency-input";
+
 import { SafeScreen } from "@/components/layout/safe-screen";
 import { BottomSheetModal } from "@/components/ui/bottom-modal";
 import { DatePickerField } from "@/components/ui/date-picker-field";
@@ -38,52 +43,30 @@ const transactionTypeOptions: {
   { label: "Income", value: "income" },
   { label: "Transfer", value: "transfer" },
 ];
-
-function getCurrencyDecimals(currency: string) {
-  return (
-    new Intl.NumberFormat("en", {
-      style: "currency",
-      currency,
-    }).resolvedOptions().maximumFractionDigits ?? 2
-  );
-}
-
-function formatCurrency(amountMinor: number, currency: string) {
-  const decimals = getCurrencyDecimals(currency);
-
-  return new Intl.NumberFormat("en", {
-    style: "currency",
-    currency,
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  }).format(amountMinor / 10 ** decimals);
-}
-
 function parseAmountToMinor(value: string, currency: string) {
-  const decimals = getCurrencyDecimals(currency);
+  if (!isValidCurrencyAmountInput(value, currency)) {
+    return null;
+  }
+
   const amount = Number(value || 0);
 
   if (!Number.isFinite(amount) || amount <= 0) {
     return null;
   }
 
-  const minorAmount = Math.round(amount * 10 ** decimals);
+  try {
+    const amountMinor = toMinorUnits(amount, currency);
 
-  if (!Number.isSafeInteger(minorAmount) || minorAmount <= 0) {
+    return amountMinor > 0 ? amountMinor : null;
+  } catch {
     return null;
   }
-
-  return minorAmount;
 }
 
 function sanitizeAmountInput(value: string, currency: string) {
   const cleaned = value.replace(/,/g, "");
-  const decimals = getCurrencyDecimals(currency);
 
-  const pattern =
-    decimals === 0 ? /^\d*$/ : new RegExp(`^\\d*(\\.\\d{0,${decimals}})?$`);
-
-  return pattern.test(cleaned) ? cleaned : null;
+  return isValidCurrencyAmountInput(cleaned, currency) ? cleaned : null;
 }
 
 function getTodayDate() {
@@ -116,8 +99,8 @@ function calculateReceivedMinor(
   toCurrency: string,
   exchangeRate: number,
 ) {
-  const fromDecimals = getCurrencyDecimals(fromCurrency);
-  const toDecimals = getCurrencyDecimals(toCurrency);
+  const fromDecimals = getCurrencyDecimalDigits(fromCurrency);
+  const toDecimals = getCurrencyDecimalDigits(toCurrency);
 
   const amountSentMajor = amountSentMinor / 10 ** fromDecimals;
 
@@ -139,8 +122,8 @@ function calculateEffectiveRate(
   fromCurrency: string,
   toCurrency: string,
 ) {
-  const fromDecimals = getCurrencyDecimals(fromCurrency);
-  const toDecimals = getCurrencyDecimals(toCurrency);
+  const fromDecimals = getCurrencyDecimalDigits(fromCurrency);
+  const toDecimals = getCurrencyDecimalDigits(toCurrency);
 
   const amountSentMajor = amountSentMinor / 10 ** fromDecimals;
   const amountReceivedMajor = amountReceivedMinor / 10 ** toDecimals;
@@ -811,7 +794,7 @@ export default function NewTransactionScreen() {
 
             <Text style={styles.helperText}>
               {parsedAmount !== null
-                ? `Preview: ${formatCurrency(parsedAmount, currency)}`
+                ? `Preview: ${formatMoney(parsedAmount, currency)}`
                 : `Enter the amount in ${currency}.`}
             </Text>
           </View>
@@ -844,7 +827,7 @@ export default function NewTransactionScreen() {
 
               <Text style={styles.helperText}>
                 {parsedAmountSent !== null
-                  ? `Preview: ${formatCurrency(parsedAmountSent, fromCurrency)}`
+                  ? `Preview: ${formatMoney(parsedAmountSent, fromCurrency)}`
                   : `Enter the amount to send in ${fromCurrency}.`}
               </Text>
             </View>
@@ -939,7 +922,7 @@ export default function NewTransactionScreen() {
                 <View style={styles.calculatedAmountContainer}>
                   <Text style={styles.calculatedAmount}>
                     {calculatedReceivedMinor !== null
-                      ? formatCurrency(calculatedReceivedMinor, toCurrency)
+                      ? formatMoney(calculatedReceivedMinor, toCurrency)
                       : "Enter an amount and exchange rate"}
                   </Text>
                   <Text style={styles.helperText}>
@@ -965,7 +948,7 @@ export default function NewTransactionScreen() {
 
                   <Text style={styles.helperText}>
                     {parsedActualReceived !== null
-                      ? `Preview: ${formatCurrency(parsedActualReceived, toCurrency)}`
+                      ? `Preview: ${formatMoney(parsedActualReceived, toCurrency)}`
                       : `Enter the actual received amount in ${toCurrency}.`}
                   </Text>
                 </>

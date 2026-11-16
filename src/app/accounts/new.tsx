@@ -12,19 +12,25 @@ import {
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
 import { AccountColorPicker } from "@/components/accounts/account-color-picker";
+import { AccountIcon } from "@/components/accounts/account-icon";
 import { AccountIconPicker } from "@/components/accounts/account-icon-picker";
+import { SafeScreen } from "@/components/layout/safe-screen";
+
 import {
   accountColors,
   accountIcons,
   type accountIconName,
 } from "@/constants/account-options";
 import { colors, radius, spacing } from "@/constants/theme";
+
+import { formatMoney } from "@/lib/finance/calculations";
+import { getCurrencyDecimalDigits, toMinorUnits } from "@/lib/finance/currency";
+import { isValidCurrencyAmountInput } from "@/lib/finance/currency-input";
+
 import { useFinanceStore } from "@/stores/use-finance-store";
 import { useWorkspaceStore } from "@/stores/use-workspace-store";
-import type { accountType } from "@/types/finances";
 
-import { AccountIcon } from "@/components/accounts/account-icon";
-import { SafeScreen } from "@/components/layout/safe-screen";
+import type { accountType } from "@/types/finances";
 
 const accountTypeOptions: {
   label: string;
@@ -36,39 +42,22 @@ const accountTypeOptions: {
   { label: "Other", value: "other" },
 ];
 
-function getCurrencyDecimals(currency: string) {
-  return new Intl.NumberFormat("en", {
-    style: "currency",
-    currency,
-  }).resolvedOptions().maximumFractionDigits;
-}
-
-function formatCurrency(amountMinor: number, currency: string) {
-  const decimals = getCurrencyDecimals(currency) ?? 2;
-
-  return new Intl.NumberFormat("en", {
-    style: "currency",
-    currency,
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  }).format(amountMinor / 10 ** decimals);
-}
-
 function parseAmountToMinor(value: string, currency: string) {
-  const decimals = getCurrencyDecimals(currency) ?? 2;
+  if (!isValidCurrencyAmountInput(value, currency)) {
+    return null;
+  }
+
   const amount = Number(value || 0);
 
   if (!Number.isFinite(amount) || amount < 0) {
     return null;
   }
 
-  const minorAmount = Math.round(amount * 10 ** decimals);
-
-  if (!Number.isSafeInteger(minorAmount)) {
+  try {
+    return toMinorUnits(amount, currency);
+  } catch {
     return null;
   }
-
-  return minorAmount;
 }
 
 export default function NewAccountScreen() {
@@ -91,6 +80,7 @@ export default function NewAccountScreen() {
   const [saving, setSaving] = useState(false);
 
   const currency = workspace?.currency_code ?? "MYR";
+  const decimalDigits = getCurrencyDecimalDigits(currency);
 
   const selectedIconLabel = useMemo(
     () => accountIcons.find((item) => item.name === icon)?.label ?? "Account",
@@ -101,8 +91,8 @@ export default function NewAccountScreen() {
 
   const previewBalance =
     parsedBalance !== null
-      ? formatCurrency(parsedBalance, currency)
-      : formatCurrency(0, currency);
+      ? formatMoney(parsedBalance, currency)
+      : formatMoney(0, currency);
 
   const handleSave = async () => {
     const trimmedName = name.trim();
@@ -120,7 +110,7 @@ export default function NewAccountScreen() {
     if (parsedBalance === null) {
       Alert.alert(
         "Invalid opening balance",
-        "Please enter a valid non-negative amount.",
+        `Please enter a valid amount with up to ${decimalDigits} decimal places.`,
       );
       return;
     }
@@ -159,158 +149,155 @@ export default function NewAccountScreen() {
   };
 
   return (
-    <>
-      <SafeScreen backgroundColor={colors.background} edges={["bottom"]}>
-        <KeyboardAwareScrollView
-          contentContainerStyle={[styles.content]}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Account Name */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Account name</Text>
+    <SafeScreen backgroundColor={colors.background} edges={["bottom"]}>
+      <KeyboardAwareScrollView
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Account Name */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Account name</Text>
 
-            <TextInput
-              value={name}
-              onChangeText={setName}
-              placeholder="e.g. Maybank Savings"
-              placeholderTextColor={colors.textSecondary}
-              style={styles.textInput}
-              maxLength={40}
-              autoCapitalize="words"
-              returnKeyType="next"
-            />
-          </View>
+          <TextInput
+            value={name}
+            onChangeText={setName}
+            placeholder="e.g. Maybank Savings"
+            placeholderTextColor={colors.textSecondary}
+            style={styles.textInput}
+            maxLength={40}
+            autoCapitalize="words"
+            returnKeyType="next"
+          />
+        </View>
 
-          {/* Account Type */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Account type</Text>
+        {/* Account Type */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Account type</Text>
 
-            <View style={styles.typeContainer}>
-              {accountTypeOptions.map((option) => {
-                const selected = type === option.value;
+          <View style={styles.typeContainer}>
+            {accountTypeOptions.map((option) => {
+              const selected = type === option.value;
 
-                return (
-                  <Pressable
-                    key={option.value}
-                    onPress={() => setType(option.value)}
+              return (
+                <Pressable
+                  key={option.value}
+                  onPress={() => setType(option.value)}
+                  style={[
+                    styles.typeOption,
+                    selected && styles.selectedTypeOption,
+                  ]}
+                >
+                  <Text
                     style={[
-                      styles.typeOption,
-                      selected && styles.selectedTypeOption,
+                      styles.typeText,
+                      selected && styles.selectedTypeText,
                     ]}
                   >
-                    <Text
-                      style={[
-                        styles.typeText,
-                        selected && styles.selectedTypeText,
-                      ]}
-                    >
-                      {option.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
+                    {option.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* Account Icon */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Choose an icon</Text>
+
+          <AccountIconPicker value={icon} color={color} onChange={setIcon} />
+        </View>
+
+        {/* Account Color */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Choose a color</Text>
+
+          <AccountColorPicker value={color} onChange={setColor} />
+        </View>
+
+        {/* Opening Balance */}
+        <View style={styles.section}>
+          <View style={styles.balanceHeader}>
+            <Text style={styles.sectionTitle}>Opening balance</Text>
+            <Text style={styles.currencyLabel}>{currency}</Text>
           </View>
 
-          {/* Account Icon */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Choose an icon</Text>
+          <TextInput
+            value={openingBalance}
+            onChangeText={(value) => {
+              const cleaned = value.replace(/,/g, "");
 
-            <AccountIconPicker value={icon} color={color} onChange={setIcon} />
-          </View>
+              if (isValidCurrencyAmountInput(cleaned, currency)) {
+                setOpeningBalance(cleaned);
+              }
+            }}
+            placeholder="0"
+            placeholderTextColor={colors.textSecondary}
+            style={styles.textInput}
+            keyboardType="decimal-pad"
+            returnKeyType="done"
+          />
 
-          {/* Account Color */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Choose a color</Text>
+          <Text style={styles.previewBalance}>Preview: {previewBalance}</Text>
 
-            <AccountColorPicker value={color} onChange={setColor} />
-          </View>
+          <Text style={styles.helperText}>
+            Enter the amount currently available in this account.
+            {` Maximum ${decimalDigits} decimal places for ${currency}.`}
+          </Text>
+        </View>
 
-          {/* Opening Balance */}
-          <View style={styles.section}>
-            <View style={styles.balanceHeader}>
-              <Text style={styles.sectionTitle}>Opening balance</Text>
-              <Text style={styles.currencyLabel}>{currency}</Text>
-            </View>
-
-            <TextInput
-              value={openingBalance}
-              onChangeText={(value) => {
-                const cleaned = value.replace(/,/g, "");
-                const decimals = getCurrencyDecimals(currency);
-                const pattern =
-                  decimals === 0
-                    ? /^\d*$/
-                    : new RegExp(`^\\d*(\\.\\d{0,${decimals}})?$`);
-
-                if (pattern.test(cleaned)) {
-                  setOpeningBalance(cleaned);
-                }
-              }}
-              placeholder="0"
-              placeholderTextColor={colors.textSecondary}
-              style={styles.textInput}
-              keyboardType="decimal-pad"
-              returnKeyType="done"
-            />
-
-            <Text style={styles.previewBalance}>Preview: {previewBalance}</Text>
+        {/* Workspace Currency */}
+        <View style={styles.currencyInfo}>
+          <View style={styles.currencyInfoText}>
+            <Text style={styles.currencyInfoTitle}>Account currency</Text>
             <Text style={styles.helperText}>
-              Enter the amount currently available in this account.
+              This account uses your workspace currency.
             </Text>
           </View>
 
-          {/* Workspace Currency */}
-          <View style={styles.currencyInfo}>
-            <View style={styles.currencyInfoText}>
-              <Text style={styles.currencyInfoTitle}>Account currency</Text>
-              <Text style={styles.helperText}>
-                This account uses your workspace currency.
-              </Text>
-            </View>
+          <Text style={styles.currencyCode}>{currency}</Text>
+        </View>
 
-            <Text style={styles.currencyCode}>{currency}</Text>
-          </View>
+        {/* Account Preview */}
+        <Text style={styles.sectionTitle}>Account Preview</Text>
 
-          <Text style={styles.sectionTitle}>Account Preview</Text>
-          {/* Account Preview */}
-          <View style={styles.previewCard}>
-            <AccountIcon name={icon} color={color} size={56} iconSize={26} />
+        <View style={styles.previewCard}>
+          <AccountIcon name={icon} color={color} size={56} iconSize={26} />
 
-            <View style={styles.previewDetails}>
-              <Text style={styles.previewName}>
-                {name.trim() || "Account name"}
-              </Text>
-              <Text style={styles.previewType}>
-                {selectedIconLabel} ·{" "}
-                {accountTypeOptions.find((item) => item.value === type)?.label}
-              </Text>
-            </View>
-
-            <View style={styles.previewBalanceContainer}>
-              <Text style={styles.previewBalanceLabel}>Opening balance</Text>
-              <Text style={styles.previewBalance}>{previewBalance}</Text>
-            </View>
-          </View>
-
-          {/* Save Button */}
-          <Pressable
-            onPress={handleSave}
-            disabled={saving || !workspace}
-            style={[
-              styles.saveButton,
-              (saving || !workspace) && styles.disabledButton,
-            ]}
-          >
-            <Plus size={20} color="#FFFFFF" />
-            <Text style={styles.saveButtonText}>
-              {saving ? "Creating account..." : "Create Account"}
+          <View style={styles.previewDetails}>
+            <Text style={styles.previewName}>
+              {name.trim() || "Account name"}
             </Text>
-          </Pressable>
-        </KeyboardAwareScrollView>
-      </SafeScreen>
-    </>
+
+            <Text style={styles.previewType}>
+              {selectedIconLabel} ·{" "}
+              {accountTypeOptions.find((item) => item.value === type)?.label}
+            </Text>
+          </View>
+
+          <View style={styles.previewBalanceContainer}>
+            <Text style={styles.previewBalanceLabel}>Opening balance</Text>
+            <Text style={styles.previewBalance}>{previewBalance}</Text>
+          </View>
+        </View>
+
+        {/* Save Button */}
+        <Pressable
+          onPress={handleSave}
+          disabled={saving || !workspace}
+          style={[
+            styles.saveButton,
+            (saving || !workspace) && styles.disabledButton,
+          ]}
+        >
+          <Plus size={20} color="#FFFFFF" />
+          <Text style={styles.saveButtonText}>
+            {saving ? "Creating account..." : "Create Account"}
+          </Text>
+        </Pressable>
+      </KeyboardAwareScrollView>
+    </SafeScreen>
   );
 }
 
@@ -319,34 +306,6 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     paddingBottom: spacing.xxxl,
     gap: spacing.md,
-  },
-  header: {
-    height: 56,
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    justifyContent: "center",
-  },
-  headerTitle: {
-    flex: 1,
-    textAlign: "center",
-    fontSize: 17,
-    fontWeight: "600",
-    color: colors.text,
-  },
-  headerSpacer: {
-    width: 40,
-  },
-  scrollContent: {
-    padding: spacing.lg,
-    paddingBottom: spacing.xxxl,
-    gap: spacing.xl,
   },
   previewCard: {
     backgroundColor: colors.surface,

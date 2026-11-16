@@ -12,6 +12,10 @@ import {
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
+import { formatMoney } from "@/lib/finance/calculations";
+import { getCurrencyDecimalDigits, toMinorUnits } from "@/lib/finance/currency";
+import { isValidCurrencyAmountInput } from "@/lib/finance/currency-input";
+
 import { AccountColorPicker } from "@/components/accounts/account-color-picker";
 import { AccountIconPicker } from "@/components/accounts/account-icon-picker";
 import {
@@ -37,39 +41,22 @@ const accountTypeOptions: {
   { label: "Other", value: "other" },
 ];
 
-function getCurrencyDecimals(currency: string) {
-  return new Intl.NumberFormat("en", {
-    style: "currency",
-    currency,
-  }).resolvedOptions().maximumFractionDigits;
-}
-
-function formatCurrency(amountMinor: number, currency: string) {
-  const decimals = getCurrencyDecimals(currency) ?? 2;
-
-  return new Intl.NumberFormat("en", {
-    style: "currency",
-    currency,
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  }).format(amountMinor / 10 ** decimals);
-}
-
 function parseAmountToMinor(value: string, currency: string) {
-  const decimals = getCurrencyDecimals(currency) ?? 2;
+  if (!isValidCurrencyAmountInput(value, currency)) {
+    return null;
+  }
+
   const amount = Number(value || 0);
 
   if (!Number.isFinite(amount) || amount < 0) {
     return null;
   }
 
-  const minorAmount = Math.round(amount * 10 ** decimals);
-
-  if (!Number.isSafeInteger(minorAmount)) {
+  try {
+    return toMinorUnits(amount, currency);
+  } catch {
     return null;
   }
-
-  return minorAmount;
 }
 
 export default function EditAccountScreen() {
@@ -108,10 +95,7 @@ export default function EditAccountScreen() {
 
   const parsedBalance = parseAmountToMinor(openingBalance, currency);
 
-  const previewBalance =
-    parsedBalance !== null
-      ? formatCurrency(parsedBalance, currency)
-      : formatCurrency(0, currency);
+  const previewBalance = formatMoney(parsedBalance ?? 0, currency);
 
   const handleSave = async () => {
     const trimmedName = name.trim();
@@ -170,7 +154,7 @@ export default function EditAccountScreen() {
   useEffect(() => {
     if (!account || initialized) return;
 
-    const decimals = getCurrencyDecimals(currency) ?? 2;
+    const decimals = getCurrencyDecimalDigits(currency);
 
     setName(account.name);
     setType(account.type);
@@ -280,17 +264,14 @@ export default function EditAccountScreen() {
               value={openingBalance}
               onChangeText={(value) => {
                 const cleaned = value.replace(/,/g, "");
-                const decimals = getCurrencyDecimals(currency);
-                const pattern =
-                  decimals === 0
-                    ? /^\d*$/
-                    : new RegExp(`^\\d*(\\.\\d{0,${decimals}})?$`);
 
-                if (pattern.test(cleaned)) {
+                if (isValidCurrencyAmountInput(cleaned, currency)) {
                   setOpeningBalance(cleaned);
                 }
               }}
-              placeholder="0"
+              placeholder={
+                getCurrencyDecimalDigits(currency) === 0 ? "0" : "0.00"
+              }
               placeholderTextColor={colors.textSecondary}
               style={styles.textInput}
               keyboardType="decimal-pad"

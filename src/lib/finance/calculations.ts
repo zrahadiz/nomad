@@ -1,10 +1,10 @@
+import type { financialAccount, transaction } from "@/types/finances";
+
 import {
   fromMinorUnits,
   getCurrencyDecimalDigits,
   getCurrencyLocale,
 } from "@/lib/finance/currency";
-
-import type { financialAccount, transaction } from "@/types/finances";
 
 export function getAccountBalance(
   account: financialAccount,
@@ -83,8 +83,8 @@ export function formatMoney(
   currency = "MYR",
   locale?: string,
 ): string {
-  const decimalDigits = getCurrencyDecimalDigits(currency);
   const amount = fromMinorUnits(amountMinor, currency);
+  const decimalDigits = getCurrencyDecimalDigits(currency);
 
   return new Intl.NumberFormat(locale ?? getCurrencyLocale(currency), {
     style: "currency",

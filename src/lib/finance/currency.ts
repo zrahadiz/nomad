@@ -6,16 +6,34 @@ const currencyLocales: Record<string, string> = {
   KWD: "en-KW",
 };
 
+const currencyDecimalDigits: Record<string, number> = {
+  IDR: 0,
+  JPY: 0,
+  KRW: 0,
+  MYR: 2,
+  USD: 2,
+  AUD: 2,
+  SGD: 2,
+  EUR: 2,
+  GBP: 2,
+  CAD: 2,
+  KWD: 3,
+  BHD: 3,
+  OMR: 3,
+};
+
 /**
- * Returns the number of decimal places used by a currency.
- * Examples: MYR = 2, IDR = 0, KWD = 3.
+ * Returns the standard number of decimal places for a currency.
  */
 export function getCurrencyDecimalDigits(currency: string): number {
+  const normalizedCurrency = currency.toUpperCase();
+
   return (
+    currencyDecimalDigits[normalizedCurrency] ??
     new Intl.NumberFormat("en", {
       style: "currency",
-      currency,
-    }).resolvedOptions().maximumFractionDigits ?? 2
+      currency: normalizedCurrency,
+    }).resolvedOptions().maximumFractionDigits
   );
 }
 
@@ -23,7 +41,7 @@ export function getCurrencyDecimalDigits(currency: string): number {
  * Returns the preferred display locale for a currency.
  */
 export function getCurrencyLocale(currency: string): string {
-  return currencyLocales[currency] ?? "en";
+  return currencyLocales[currency.toUpperCase()] ?? "en";
 }
 
 /**
@@ -32,7 +50,6 @@ export function getCurrencyLocale(currency: string): string {
  */
 export function fromMinorUnits(amountMinor: number, currency: string): number {
   const digits = getCurrencyDecimalDigits(currency);
-
   return amountMinor / 10 ** digits;
 }
 
@@ -41,6 +58,10 @@ export function fromMinorUnits(amountMinor: number, currency: string): number {
  * smallest unit.
  */
 export function toMinorUnits(amount: number, currency: string): number {
+  if (!Number.isFinite(amount)) {
+    throw new Error("Amount must be a finite number.");
+  }
+
   const digits = getCurrencyDecimalDigits(currency);
   const amountMinor = Math.round(amount * 10 ** digits);
 

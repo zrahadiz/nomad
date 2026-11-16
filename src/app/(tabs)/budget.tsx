@@ -24,24 +24,14 @@ import { useRouter } from "expo-router";
 import { WorkspaceGate } from "@/components/feedbacks/workspace-gate";
 import { SafeScreen } from "@/components/layout/safe-screen";
 import { colors, radius, spacing } from "@/constants/theme";
+import { formatMoney } from "@/lib/finance/calculations";
 import { formatConvertedMoney } from "@/lib/finance/currency-converter";
 import { useBudgetStore } from "@/stores/use-budget-store";
 import { useCurrencyConverterStore } from "@/stores/use-currency-converter-store";
 import { useWorkspaceStore } from "@/stores/use-workspace-store";
 
 function formatCurrency(amountMinor: number, currencyCode: string) {
-  const fractionDigits =
-    new Intl.NumberFormat("en", {
-      style: "currency",
-      currency: currencyCode,
-    }).resolvedOptions().maximumFractionDigits ?? 2;
-
-  return new Intl.NumberFormat("en", {
-    style: "currency",
-    currency: currencyCode,
-    minimumFractionDigits: fractionDigits,
-    maximumFractionDigits: fractionDigits,
-  }).format(amountMinor / 10 ** fractionDigits);
+  return formatMoney(amountMinor, currencyCode);
 }
 
 function formatMonth(date: Date) {
