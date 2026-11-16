@@ -8,6 +8,7 @@ import {
 } from "@/services/account-service";
 
 import {
+  adjustAccountBalance as adjustAccountBalanceService,
   createTransaction,
   deleteTransaction,
   getTransactions,
@@ -66,8 +67,12 @@ type financeState = {
   ) => Promise<transaction>;
   removeTransaction: (id: string) => Promise<void>;
 
-  fetchTransfers: (workspaceId: string) => Promise<void>;
+  adjustAccountBalance: (
+    accountId: string,
+    targetBalanceMinor: number,
+  ) => Promise<transaction | null>;
 
+  fetchTransfers: (workspaceId: string) => Promise<void>;
   addTransfer: (input: createTransferInput) => Promise<createdTransferResult>;
 
   resetFinance: () => void;
@@ -342,6 +347,35 @@ export const useFinanceStore = create<financeState>((set, get) => ({
     await refreshBudgetIfNeeded(transaction.workspaceId, [transaction]);
   },
 
+  adjustAccountBalance: async (accountId, targetBalanceMinor) => {
+    const transaction = await adjustAccountBalanceService(
+      accountId,
+      targetBalanceMinor,
+    );
+
+    // No transaction is created if the balance is already correct.
+    if (!transaction) {
+      return null;
+    }
+
+    // Add the adjustment to the currently loaded workspace transactions.
+    set((state) => {
+      if (state.transactionsWorkspaceId !== transaction.workspaceId) {
+        return state;
+      }
+
+      return {
+        transactions: [
+          ...state.transactions.filter((item) => item.id !== transaction.id),
+          transaction,
+        ],
+      };
+    });
+
+    // Balance adjustments do not affect income, expenses, or budgets.
+    return transaction;
+  },
+
   fetchTransfers: async (workspaceId) => {
     const requestId = ++transferRequestId;
 
@@ -403,6 +437,7 @@ export const useFinanceStore = create<financeState>((set, get) => ({
 
     transactionRequestId++;
     transferRequestId++;
+
     set({
       accounts: [],
       transactions: [],

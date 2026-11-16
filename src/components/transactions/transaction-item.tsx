@@ -4,6 +4,8 @@ import {
   ArrowDownLeft,
   ArrowLeftRight,
   ArrowUpRight,
+  TrendingDown,
+  TrendingUp,
 } from "lucide-react-native";
 
 import { colors, radius, spacing, typography } from "@/constants/theme";
@@ -36,21 +38,39 @@ export function TransactionItem({
   const isIncome = item.type === "income";
   const isTransferOut = item.type === "transfer_out";
   const isTransferIn = item.type === "transfer_in";
+  const isBalanceAdjustment = item.type === "balance_adjustment";
+
+  const isAdjustmentIncrease =
+    isBalanceAdjustment && item.adjustmentDirection === "increase";
+
+  const isAdjustmentDecrease =
+    isBalanceAdjustment && item.adjustmentDirection === "decrease";
 
   const isTransfer = isTransferOut || isTransferIn;
-  const isPositive = isIncome || isTransferIn;
+
+  const isPositive = isIncome || isTransferIn || isAdjustmentIncrease;
+
+  const isNegative = !isPositive;
 
   const Icon = isTransfer
     ? ArrowLeftRight
-    : isIncome
-      ? ArrowDownLeft
-      : ArrowUpRight;
+    : isAdjustmentIncrease
+      ? TrendingUp
+      : isAdjustmentDecrease
+        ? TrendingDown
+        : isIncome
+          ? ArrowDownLeft
+          : ArrowUpRight;
 
-  const defaultTitle = isTransferOut
-    ? "Transfer sent"
-    : isTransferIn
-      ? "Transfer received"
-      : (categoryName ?? (isIncome ? "Income" : "Expense"));
+  const defaultTitle = isBalanceAdjustment
+    ? "Balance adjustment"
+    : isTransferOut
+      ? "Transfer sent"
+      : isTransferIn
+        ? "Transfer received"
+        : (categoryName ?? (isIncome ? "Income" : "Expense"));
+
+  const amountColor = isPositive ? colors.success : colors.danger;
 
   const secondaryAmount =
     converter && item.currency === primaryCurrency
@@ -71,10 +91,13 @@ export function TransactionItem({
       accessibilityRole={onPress ? "button" : undefined}
     >
       <View style={styles.icon}>
-        {categoryIcon && !isTransfer ? (
+        {categoryIcon && !isTransfer && !isBalanceAdjustment ? (
           <Text style={styles.categoryIcon}>{categoryIcon}</Text>
         ) : (
-          <Icon size={20} color={colors.primary} />
+          <Icon
+            size={20}
+            color={isBalanceAdjustment ? amountColor : colors.primary}
+          />
         )}
       </View>
 
@@ -89,7 +112,13 @@ export function TransactionItem({
       </View>
 
       <View style={styles.amounts}>
-        <Text style={[styles.amount, isPositive && styles.incomeText]}>
+        <Text
+          style={[
+            styles.amount,
+            isPositive && styles.incomeText,
+            isBalanceAdjustment && { color: amountColor },
+          ]}
+        >
           {isPositive ? "+" : "−"}
           {formatMoney(item.amountMinor, item.currency)}
         </Text>

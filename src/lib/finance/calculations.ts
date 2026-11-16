@@ -28,6 +28,17 @@ export function getAccountBalance(
       case "transfer_out":
         return balance - item.amountMinor;
 
+      case "balance_adjustment":
+        if (item.adjustmentDirection === "increase") {
+          return balance + item.amountMinor;
+        }
+
+        if (item.adjustmentDirection === "decrease") {
+          return balance - item.amountMinor;
+        }
+
+        return balance;
+
       default:
         return balance;
     }

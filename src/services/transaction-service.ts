@@ -15,6 +15,7 @@ type transactionRow = {
   transfer_id: string | null;
   type: transactionType;
   category_id: string | null;
+  adjustment_direction: "increase" | "decrease" | null;
   amount: number | string;
   description: string | null;
   transaction_date: string;
@@ -39,6 +40,14 @@ type categoryValidationRow = {
   is_archived: boolean;
 };
 
+type balanceAdjustmentRpcResult = {
+  transaction_id: string | null;
+  previous_balance: number | string;
+  new_balance: number | string;
+  adjustment_amount: number | string;
+  adjustment_direction: "increase" | "decrease" | null;
+};
+
 function mapTransaction(row: transactionRow, currency: string): transaction {
   return {
     id: row.id,
@@ -48,6 +57,7 @@ function mapTransaction(row: transactionRow, currency: string): transaction {
     transferId: row.transfer_id,
     type: row.type,
     categoryId: row.category_id,
+    adjustmentDirection: row.adjustment_direction,
     amountMinor: Number(row.amount),
     currency,
     description: row.description,
@@ -138,6 +148,53 @@ export async function createTransaction(
   return mapTransaction(data as transactionRow, account.currency_code);
 }
 
+// Adjust an account balance to a desired amount.
+export async function adjustAccountBalance(
+  accountId: string,
+  targetBalanceMinor: number,
+): Promise<transaction | null> {
+  if (!Number.isSafeInteger(targetBalanceMinor) || targetBalanceMinor < 0) {
+    throw new Error("Target balance must be a non-negative integer.");
+  }
+
+  const { data, error } = await supabase.rpc("adjust_account_balance", {
+    p_account_id: accountId,
+    p_target_balance: targetBalanceMinor,
+  });
+
+  if (error) throw error;
+
+  const result = data as balanceAdjustmentRpcResult | null;
+
+  // No adjustment transaction is created when the balance is unchanged.
+  if (!result?.transaction_id) {
+    return null;
+  }
+
+  // Fetch the newly created adjustment transaction.
+  const { data: transactionData, error: transactionError } = await supabase
+    .from("transactions")
+    .select("*")
+    .eq("id", result.transaction_id)
+    .single();
+
+  if (transactionError) throw transactionError;
+
+  const row = transactionData as transactionRow;
+
+  // Fetch the account currency for transaction mapping.
+  const { data: account, error: accountError } = await supabase
+    .from("accounts")
+    .select("currency_code")
+    .eq("id", row.account_id)
+    .eq("workspace_id", row.workspace_id)
+    .single();
+
+  if (accountError) throw accountError;
+
+  return mapTransaction(row, account.currency_code);
+}
+
 // Update an existing income or expense transaction.
 export async function updateTransaction(
   id: string,
@@ -161,7 +218,7 @@ export async function updateTransaction(
     existingTransaction.type !== "income" &&
     existingTransaction.type !== "expense"
   ) {
-    throw new Error("Transfer transactions cannot be edited individually.");
+    throw new Error("Only income and expense transactions can be edited.");
   }
 
   const updates: Record<string, unknown> = {};

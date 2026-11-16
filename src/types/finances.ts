@@ -2,11 +2,13 @@ export type transactionType =
   | "income"
   | "expense"
   | "transfer_out"
-  | "transfer_in";
+  | "transfer_in"
+  | "balance_adjustment";
 
 export type accountType = "cash" | "bank" | "e-wallet" | "other";
 export type categoryType = "income" | "expense";
 export type transferExchangeRateSource = "automatic" | "manual" | "actual";
+export type balanceAdjustmentDirection = "increase" | "decrease";
 
 export type financialWorkspace = {
   id: string;
@@ -108,6 +110,7 @@ export type transaction = {
   transferId: string | null;
   type: transactionType;
   categoryId: string | null;
+  adjustmentDirection: balanceAdjustmentDirection | null;
   amountMinor: number;
   currency: string;
   description: string | null;

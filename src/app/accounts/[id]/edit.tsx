@@ -25,12 +25,11 @@ import {
 } from "@/constants/account-options";
 import { colors, radius, spacing } from "@/constants/theme";
 
-import { formatMoney } from "@/lib/finance/calculations";
+import { formatMoney, getAccountBalance } from "@/lib/finance/calculations";
 import { getCurrencyDecimalDigits, toMinorUnits } from "@/lib/finance/currency";
 import { isValidCurrencyAmountInput } from "@/lib/finance/currency-input";
 
 import { useFinanceStore } from "@/stores/use-finance-store";
-import { useWorkspaceStore } from "@/stores/use-workspace-store";
 
 import type { accountType, updateAccountInput } from "@/types/finances";
 
@@ -69,40 +68,93 @@ export default function EditAccountScreen() {
 
   const accounts = useFinanceStore((state) => state.accounts);
   const editAccount = useFinanceStore((state) => state.editAccount);
+  const adjustAccountBalance = useFinanceStore(
+    (state) => state.adjustAccountBalance,
+  );
+
+  const transactions = useFinanceStore((state) => state.transactions);
+  const transactionsWorkspaceId = useFinanceStore(
+    (state) => state.transactionsWorkspaceId,
+  );
+  const transactionsLoading = useFinanceStore(
+    (state) => state.transactionsLoading,
+  );
+  const transactionsError = useFinanceStore((state) => state.transactionsError);
+  const fetchTransactions = useFinanceStore((state) => state.fetchTransactions);
 
   const account = accounts.find((item) => item.id === id);
 
-  const workspaces = useWorkspaceStore((state) => state.workspaces);
-  const activeWorkspaceId = useWorkspaceStore(
-    (state) => state.activeWorkspaceId,
-  );
-
-  const workspace = workspaces.find((item) => item.id === activeWorkspaceId);
+  const currency = account?.currency ?? "MYR";
 
   const [name, setName] = useState("");
   const [type, setType] = useState<accountType>("bank");
   const [icon, setIcon] = useState<accountIconName>("wallet");
   const [color, setColor] = useState<string>(accountColors[0]);
-  const [openingBalance, setOpeningBalance] = useState("");
+  const [currentBalanceInput, setCurrentBalanceInput] = useState("");
   const [saving, setSaving] = useState(false);
   const [initialized, setInitialized] = useState(false);
 
-  const currency = workspace?.currency_code ?? "MYR";
+  const transactionsReady =
+    !!account &&
+    transactionsWorkspaceId === account.workspaceId &&
+    !transactionsLoading &&
+    !transactionsError;
+
+  const currentBalanceMinor = useMemo(() => {
+    if (!account || !transactionsReady) return 0;
+
+    return getAccountBalance(account, transactions);
+  }, [account, transactions, transactionsReady]);
 
   const selectedIconLabel = useMemo(
     () => accountIcons.find((item) => item.name === icon)?.label ?? "Account",
     [icon],
   );
 
-  const parsedBalance = parseAmountToMinor(openingBalance, currency);
+  const parsedBalance = parseAmountToMinor(currentBalanceInput, currency);
 
   const previewBalance = formatMoney(parsedBalance ?? 0, currency);
+  const actualCurrentBalance = formatMoney(currentBalanceMinor, currency);
 
-  const handleOpeningBalanceChange = (value: string) => {
+  const handleCurrentBalanceChange = (value: string) => {
     if (isValidCurrencyAmountInput(value, currency)) {
-      setOpeningBalance(value);
+      setCurrentBalanceInput(value);
     }
   };
+
+  // Load transactions if the account's workspace is not currently loaded.
+  useEffect(() => {
+    if (
+      account &&
+      transactionsWorkspaceId !== account.workspaceId &&
+      !transactionsLoading
+    ) {
+      fetchTransactions(account.workspaceId);
+    }
+  }, [
+    account,
+    transactionsWorkspaceId,
+    transactionsLoading,
+    fetchTransactions,
+  ]);
+
+  // Initialize the form only after the account's transactions are available.
+  useEffect(() => {
+    if (!account || !transactionsReady || initialized) return;
+
+    const decimals = getCurrencyDecimalDigits(currency);
+
+    setName(account.name);
+    setType(account.type);
+    setIcon((account.icon ?? "wallet") as accountIconName);
+    setColor(account.color ?? accountColors[0]);
+
+    setCurrentBalanceInput(
+      (currentBalanceMinor / 10 ** decimals).toFixed(decimals),
+    );
+
+    setInitialized(true);
+  }, [account, currency, currentBalanceMinor, transactionsReady, initialized]);
 
   const handleSave = async () => {
     const trimmedName = name.trim();
@@ -117,18 +169,27 @@ export default function EditAccountScreen() {
       return;
     }
 
+    if (!transactionsReady || !initialized) {
+      Alert.alert(
+        "Transactions not ready",
+        "Please wait until your account transactions have loaded.",
+      );
+      return;
+    }
+
     if (parsedBalance === null) {
       Alert.alert(
-        "Invalid opening balance",
+        "Invalid current balance",
         "Please enter a valid non-negative amount.",
       );
       return;
     }
 
+    // Only update account metadata.
+    // The opening balance must remain unchanged.
     const updates: updateAccountInput = {
       name: trimmedName,
       type,
-      initialBalanceMinor: parsedBalance,
       icon,
       color,
     };
@@ -137,6 +198,9 @@ export default function EditAccountScreen() {
       setSaving(true);
 
       await editAccount(account.id, updates);
+
+      // Record a balance adjustment only if the desired balance differs.
+      await adjustAccountBalance(account.id, parsedBalance);
 
       Alert.alert("Account updated", "Your account has been updated.", [
         {
@@ -158,23 +222,6 @@ export default function EditAccountScreen() {
     }
   };
 
-  useEffect(() => {
-    if (!account || initialized) return;
-
-    const decimals = getCurrencyDecimalDigits(currency);
-
-    setName(account.name);
-    setType(account.type);
-    setIcon((account.icon ?? "wallet") as accountIconName);
-    setColor(account.color ?? accountColors[0]);
-
-    setOpeningBalance(
-      (account.initialBalanceMinor / 10 ** decimals).toFixed(decimals),
-    );
-
-    setInitialized(true);
-  }, [account, currency, initialized]);
-
   if (!account) {
     return (
       <SafeScreen backgroundColor={colors.background} edges={["bottom"]}>
@@ -187,6 +234,39 @@ export default function EditAccountScreen() {
           <Pressable style={styles.saveButton} onPress={() => router.back()}>
             <Text style={styles.saveButtonText}>Go Back</Text>
           </Pressable>
+        </View>
+      </SafeScreen>
+    );
+  }
+
+  if (transactionsError && !transactionsLoading) {
+    return (
+      <SafeScreen backgroundColor={colors.background} edges={["bottom"]}>
+        <View style={styles.content}>
+          <Text style={styles.sectionTitle}>
+            Unable to load account balance
+          </Text>
+
+          <Text style={styles.helperText}>{transactionsError}</Text>
+
+          <Pressable
+            style={styles.saveButton}
+            onPress={() => fetchTransactions(account.workspaceId)}
+          >
+            <Text style={styles.saveButtonText}>Try Again</Text>
+          </Pressable>
+        </View>
+      </SafeScreen>
+    );
+  }
+
+  if (!initialized || transactionsLoading) {
+    return (
+      <SafeScreen backgroundColor={colors.background} edges={["bottom"]}>
+        <View style={styles.content}>
+          <Text style={styles.sectionTitle}>
+            Loading account information...
+          </Text>
         </View>
       </SafeScreen>
     );
@@ -260,16 +340,20 @@ export default function EditAccountScreen() {
           <AccountColorPicker value={color} onChange={setColor} />
         </View>
 
-        {/* Opening Balance */}
+        {/* Current Balance */}
         <View style={styles.section}>
           <View style={styles.balanceHeader}>
-            <Text style={styles.sectionTitle}>Opening balance</Text>
+            <Text style={styles.sectionTitle}>Current balance</Text>
             <Text style={styles.currencyLabel}>{currency}</Text>
           </View>
 
+          <Text style={styles.helperText}>
+            Recorded balance: {actualCurrentBalance}
+          </Text>
+
           <AmountInput
-            value={openingBalance}
-            onChangeText={handleOpeningBalanceChange}
+            value={currentBalanceInput}
+            onChangeText={handleCurrentBalanceChange}
             currency={currency}
             placeholder={
               getCurrencyDecimalDigits(currency) === 0 ? "0" : "0.00"
@@ -279,9 +363,14 @@ export default function EditAccountScreen() {
             returnKeyType="done"
           />
 
-          <Text style={styles.previewBalance}>Preview: {previewBalance}</Text>
+          <Text style={styles.previewBalance}>
+            New balance: {previewBalance}
+          </Text>
+
           <Text style={styles.helperText}>
-            Enter the amount currently available in this account.
+            Enter the actual amount currently available in this account. Nomad
+            will record the difference as a balance adjustment without changing
+            your opening balance.
           </Text>
         </View>
 
@@ -315,7 +404,7 @@ export default function EditAccountScreen() {
           </View>
 
           <View style={styles.previewBalanceContainer}>
-            <Text style={styles.previewBalanceLabel}>Opening balance</Text>
+            <Text style={styles.previewBalanceLabel}>Current balance</Text>
             <Text style={styles.previewBalance}>{previewBalance}</Text>
           </View>
         </View>
@@ -323,10 +412,11 @@ export default function EditAccountScreen() {
         {/* Save Button */}
         <Pressable
           onPress={handleSave}
-          disabled={saving || !account || !initialized}
+          disabled={saving || !account || !initialized || !transactionsReady}
           style={[
             styles.saveButton,
-            (saving || !account || !initialized) && styles.disabledButton,
+            (saving || !account || !initialized || !transactionsReady) &&
+              styles.disabledButton,
           ]}
         >
           <Check size={20} color="#FFFFFF" />

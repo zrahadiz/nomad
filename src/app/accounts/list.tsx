@@ -9,45 +9,14 @@ import { WorkspaceGate } from "@/components/feedbacks/workspace-gate";
 import { SafeScreen } from "@/components/layout/safe-screen";
 
 import { colors, radius, spacing, typography } from "@/constants/theme";
-import { formatMoney } from "@/lib/finance/calculations";
+import { formatMoney, getAccountBalance } from "@/lib/finance/calculations";
 
 import { useFinanceStore } from "@/stores/use-finance-store";
 import { useWorkspaceStore } from "@/stores/use-workspace-store";
 
 import type { accountIconName } from "@/constants/account-options";
-import type { financialAccount, transaction } from "@/types/finances";
+import type { financialAccount } from "@/types/finances";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
-
-function getAccountBalance(
-  account: financialAccount,
-  transactions: transaction[],
-): number {
-  return transactions.reduce((balance, item) => {
-    if (item.workspaceId !== account.workspaceId) {
-      return balance;
-    }
-
-    if (item.type === "income" && item.accountId === account.id) {
-      return balance + item.amountMinor;
-    }
-
-    if (item.type === "expense" && item.accountId === account.id) {
-      return balance - item.amountMinor;
-    }
-
-    if (item.type === "transfer") {
-      if (item.accountId === account.id) {
-        return balance - item.amountMinor;
-      }
-
-      if (item.destinationAccountId === account.id) {
-        return balance + item.amountMinor;
-      }
-    }
-
-    return balance;
-  }, account.initialBalanceMinor);
-}
 
 function getAccountTypeLabel(type: financialAccount["type"]): string {
   if (type === "e-wallet") return "E-wallet";
