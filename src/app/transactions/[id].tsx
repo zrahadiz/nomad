@@ -13,19 +13,27 @@ import {
 } from "react-native";
 
 import {
+  AlignLeft,
+  ArrowDown,
   ArrowDownLeft,
   ArrowLeft,
   ArrowLeftRight,
   ArrowUpRight,
   Calendar,
   CreditCard,
+  Globe,
+  Info,
   Pencil,
   RefreshCw,
+  Tag,
   Trash2,
   Wallet,
 } from "lucide-react-native";
 
+import { AccountIcon } from "@/components/accounts/account-icon";
 import { SafeScreen } from "@/components/layout/safe-screen";
+import type { accountIconName } from "@/constants/account-options";
+import { getCountryByCode } from "@/constants/countries";
 import { colors, radius, spacing, typography } from "@/constants/theme";
 import { formatMoney } from "@/lib/finance/calculations";
 import { useCategoryStore } from "@/stores/use-category-store";
@@ -206,7 +214,6 @@ export default function TransactionDetailsScreen() {
     transfersLoading &&
     transfersWorkspaceId === transaction?.workspaceId;
 
-  // Transaction not found
   if (isInitialLoading) {
     return (
       <SafeScreen backgroundColor={colors.background}>
@@ -218,11 +225,14 @@ export default function TransactionDetailsScreen() {
     );
   }
 
+  // Transaction not found
   if (!transaction) {
     return (
       <SafeScreen backgroundColor={colors.background}>
         <View style={styles.centerState}>
-          <Wallet size={36} color={colors.textSecondary} />
+          <View style={styles.emptyIcon}>
+            <Wallet size={32} color={colors.textSecondary} />
+          </View>
 
           <Text style={styles.emptyTitle}>Transaction not found</Text>
 
@@ -230,7 +240,14 @@ export default function TransactionDetailsScreen() {
             This transaction may have been deleted or is no longer available.
           </Text>
 
-          <Pressable onPress={() => router.back()} style={styles.primaryButton}>
+          <Pressable
+            onPress={() => router.back()}
+            accessibilityRole="button"
+            style={({ pressed }) => [
+              styles.primaryButton,
+              pressed && styles.primaryButtonPressed,
+            ]}
+          >
             <Text style={styles.primaryButtonText}>Go back</Text>
           </Pressable>
         </View>
@@ -238,302 +255,511 @@ export default function TransactionDetailsScreen() {
     );
   }
 
+  // Display values
+  const tone = isTransfer
+    ? typeTones.transfer
+    : isIncome
+      ? typeTones.income
+      : typeTones.expense;
+
+  // Which side of a transfer this record is (the other side lives in the other workspace).
+  const typeLabel = isTransferIn
+    ? "Transfer in"
+    : isTransfer
+      ? "Transfer out"
+      : transactionTitle;
+
+  const amountColor = isPositive
+    ? colors.success
+    : isTransfer
+      ? colors.text
+      : colors.danger;
+
+  const amountSign = isPositive ? "+" : isTransfer ? "" : "−";
+
   return (
-    <SafeScreen backgroundColor={colors.background} edges={["top"]}>
-      <ScrollView
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Header */}
-        <View style={styles.header}>
-          <Pressable
-            onPress={() => router.back()}
-            style={styles.backButton}
-            hitSlop={8}
-          >
-            <ArrowLeft size={22} color={colors.text} />
-          </Pressable>
-
-          <Text style={styles.headerTitle}>Transaction details</Text>
-
-          <View style={styles.headerActions}>
-            {!isTransfer && (
-              <Pressable
-                onPress={() =>
-                  router.push({
-                    pathname: "/transactions/edit/[id]",
-                    params: { id: transaction.id },
-                  })
-                }
-                style={styles.editButton}
-                hitSlop={8}
-              >
-                <Pencil size={18} color={colors.primary} />
-              </Pressable>
-            )}
-
+    <SafeScreen backgroundColor={colors.background} edges={["top", "bottom"]}>
+      <View style={styles.screen}>
+        <ScrollView
+          style={styles.flex}
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Header */}
+          <View style={styles.header}>
             <Pressable
-              onPress={handleDelete}
-              style={styles.deleteButton}
+              onPress={() => router.back()}
+              accessibilityRole="button"
+              accessibilityLabel="Go back"
+              style={styles.backButton}
               hitSlop={8}
             >
-              <Trash2 size={18} color={colors.danger} />
+              <ArrowLeft size={22} color={colors.text} />
             </Pressable>
-          </View>
-        </View>
 
-        {/* Amount summary */}
-        <View style={styles.amountCard}>
-          <View style={styles.mainIcon}>
-            <TransactionIcon
-              size={26}
-              color={
-                isTransfer
-                  ? colors.primary
-                  : isPositive
-                    ? colors.success
-                    : colors.danger
-              }
-            />
+            <Text style={styles.headerTitle}>Transaction details</Text>
+
+            {/* Keeps the title centered */}
+            <View style={styles.headerSpacer} />
           </View>
 
-          <Text style={styles.typeLabel}>{transactionTitle}</Text>
+          {/* Hero: what happened, how much, when */}
+          <View style={styles.heroCard}>
+            <View
+              style={[styles.heroIcon, { backgroundColor: tone.background }]}
+            >
+              <TransactionIcon size={26} color={tone.color} />
+            </View>
 
-          <Text
-            style={[
-              styles.amount,
-              isPositive && styles.incomeText,
-              !isPositive && !isTransfer && styles.expenseText,
-            ]}
-          >
-            {isPositive ? "+" : isTransfer ? "" : "−"}
-            {formatMoney(transaction.amountMinor, transaction.currency)}
-          </Text>
+            <Text style={styles.typeLabel}>{typeLabel}</Text>
 
-          <Text style={styles.dateLabel}>{transaction.date}</Text>
-        </View>
+            <Text
+              style={[styles.amount, { color: amountColor }]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+            >
+              {amountSign}
+              {formatMoney(transaction.amountMinor, transaction.currency)}
+            </Text>
 
-        {/* General information */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Information</Text>
-
-          <View style={styles.detailCard}>
-            <DetailRow
-              icon={<Wallet size={18} color={colors.textSecondary} />}
-              label="Transaction type"
-              value={transactionTitle}
-            />
-
-            <View style={styles.divider} />
-
-            <DetailRow
-              icon={<CreditCard size={18} color={colors.textSecondary} />}
-              label="Account"
-              value={account?.name ?? "Unknown account"}
-            />
-
-            {!isTransfer && (
-              <>
-                <View style={styles.divider} />
-
-                <DetailRow
-                  label="Category"
-                  value={category?.name ?? "Unknown category"}
-                />
-              </>
-            )}
-
-            <View style={styles.divider} />
-
-            <DetailRow
-              icon={<Calendar size={18} color={colors.textSecondary} />}
-              label="Date"
-              value={transaction.date}
-            />
-
-            <View style={styles.divider} />
-
-            <DetailRow
-              icon={<Wallet size={18} color={colors.textSecondary} />}
-              label="Workspace"
-              value={workspace?.name ?? "Unknown workspace"}
-            />
-
-            <View style={styles.divider} />
-
-            <DetailRow
-              icon={<Wallet size={18} color={colors.textSecondary} />}
-              label="Description"
-              value={transaction.description || "No description"}
-            />
+            <View style={styles.dateRow}>
+              <Calendar size={14} color={colors.textSecondary} />
+              <Text style={styles.dateLabel}>
+                {formatDisplayDate(transaction.date)}
+              </Text>
+            </View>
           </View>
-        </View>
 
-        {/* Transfer information */}
-        {isTransfer && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Transfer details</Text>
+          {/* Transfer details: the most important part of a transfer, so it comes first */}
+          {isTransfer && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Transfer details</Text>
 
-            {isTransferMetadataLoading ? (
-              <View style={styles.detailCard}>
-                <ActivityIndicator color={colors.primary} size="small" />
+              {isTransferMetadataLoading ? (
+                <View style={[styles.card, styles.messageCard]}>
+                  <ActivityIndicator color={colors.primary} size="small" />
 
-                <Text style={styles.emptyDescription}>
-                  Loading transfer details...
-                </Text>
-              </View>
-            ) : transfer ? (
-              <View style={styles.detailCard}>
-                {/* Source */}
-                <View style={styles.transferAccount}>
-                  <Text style={styles.detailLabel}>From</Text>
-
-                  <Text style={styles.detailValue}>
-                    {fromAccount?.name ?? "Unknown account"}
+                  <Text style={styles.emptyDescription}>
+                    Loading transfer details...
                   </Text>
-
-                  <Text style={styles.detailHint}>
-                    {fromWorkspace?.name ?? "Unknown workspace"}
-                  </Text>
-
-                  <Text style={styles.transferAmountOut}>
-                    −
-                    {formatMoney(
+                </View>
+              ) : transfer ? (
+                <View style={styles.card}>
+                  {/* Source */}
+                  <TransferLeg
+                    label="From"
+                    account={fromAccount}
+                    accountFallback="Unknown account"
+                    workspace={fromWorkspace}
+                    amount={`−${formatMoney(
                       transfer.amountSentMinor,
                       transfer.fromCurrencyCode,
-                    )}
-                  </Text>
-                </View>
+                    )}`}
+                    amountColor={colors.danger}
+                  />
 
-                <View style={styles.transferArrow}>
-                  <ArrowDownLeft size={20} color={colors.primary} />
-                </View>
+                  <View style={styles.connector}>
+                    <View style={styles.connectorLine} />
 
-                {/* Destination */}
-                <View style={styles.transferAccount}>
-                  <Text style={styles.detailLabel}>To</Text>
+                    <View style={styles.connectorCircle}>
+                      <ArrowDown size={16} color={colors.primary} />
+                    </View>
 
-                  <Text style={styles.detailValue}>
-                    {toAccount?.name ?? "Unknown account"}
-                  </Text>
+                    <View style={styles.connectorLine} />
+                  </View>
 
-                  <Text style={styles.detailHint}>
-                    {toWorkspace?.name ?? "Unknown workspace"}
-                  </Text>
-
-                  <Text style={styles.transferAmountIn}>
-                    +
-                    {formatMoney(
+                  {/* Destination */}
+                  <TransferLeg
+                    label="To"
+                    account={toAccount}
+                    accountFallback="Unknown account"
+                    workspace={toWorkspace}
+                    amount={`+${formatMoney(
                       transfer.amountReceivedMinor,
                       transfer.toCurrencyCode,
-                    )}
-                  </Text>
+                    )}`}
+                    amountColor={colors.success}
+                  />
+
+                  <View style={styles.divider} />
+
+                  <DetailRow
+                    leading={
+                      <IconTile>
+                        <ArrowLeftRight size={18} color={colors.primary} />
+                      </IconTile>
+                    }
+                    label="Exchange rate"
+                    value={`1 ${transfer.fromCurrencyCode} = ${transfer.exchangeRate.toLocaleString(
+                      "en",
+                      {
+                        maximumFractionDigits: 8,
+                      },
+                    )} ${transfer.toCurrencyCode}`}
+                  />
+
+                  <View style={styles.divider} />
+
+                  <DetailRow
+                    leading={
+                      <IconTile>
+                        <Info size={18} color={colors.primary} />
+                      </IconTile>
+                    }
+                    label="Rate source"
+                    value={
+                      transfer.exchangeRateSource === "automatic"
+                        ? "Automatic"
+                        : transfer.exchangeRateSource === "manual"
+                          ? "Manual"
+                          : "Actual received amount"
+                    }
+                  />
+
+                  <View style={styles.divider} />
+
+                  <DetailRow
+                    leading={
+                      <IconTile>
+                        <Calendar size={18} color={colors.primary} />
+                      </IconTile>
+                    }
+                    label="Transfer date"
+                    value={formatDisplayDate(transfer.transferDate)}
+                  />
                 </View>
-
-                <View style={styles.divider} />
-
-                <DetailRow
-                  label="Exchange rate"
-                  value={`1 ${transfer.fromCurrencyCode} = ${transfer.exchangeRate.toLocaleString(
-                    "en",
-                    {
-                      maximumFractionDigits: 8,
-                    },
-                  )} ${transfer.toCurrencyCode}`}
-                />
-
-                <View style={styles.divider} />
-
-                <DetailRow
-                  label="Rate source"
-                  value={
-                    transfer.exchangeRateSource === "automatic"
-                      ? "Automatic"
-                      : transfer.exchangeRateSource === "manual"
-                        ? "Manual"
-                        : "Actual received amount"
-                  }
-                />
-
-                <View style={styles.divider} />
-
-                <DetailRow
-                  label="Transfer date"
-                  value={transfer.transferDate}
-                />
-              </View>
-            ) : (
-              <View style={styles.detailCard}>
-                <Text style={styles.emptyDescription}>
-                  {transfersError
-                    ? "Unable to load transfer information. Please try again."
-                    : "Transfer information is not available."}
-                </Text>
-
-                <Pressable
-                  onPress={() => void fetchTransfers(transaction.workspaceId)}
-                  disabled={transfersLoading}
-                  style={[
-                    styles.retryButton,
-                    transfersLoading && styles.disabledButton,
-                  ]}
-                >
-                  {transfersLoading ? (
-                    <ActivityIndicator size="small" color={colors.surface} />
-                  ) : (
-                    <RefreshCw size={16} color={colors.surface} />
-                  )}
-
-                  <Text style={styles.retryButtonText}>
-                    {transfersLoading ? "Loading..." : "Try again"}
+              ) : (
+                <View style={[styles.card, styles.messageCard]}>
+                  <Text style={styles.emptyDescription}>
+                    {transfersError
+                      ? "Unable to load transfer information. Please try again."
+                      : "Transfer information is not available."}
                   </Text>
-                </Pressable>
-              </View>
-            )}
-          </View>
-        )}
 
-        {/* Footer */}
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>
-            Created on {new Date(transaction.createdAt).toLocaleDateString()}
-          </Text>
+                  <Pressable
+                    onPress={() => void fetchTransfers(transaction.workspaceId)}
+                    disabled={transfersLoading}
+                    accessibilityRole="button"
+                    style={[
+                      styles.retryButton,
+                      transfersLoading && styles.disabledButton,
+                    ]}
+                  >
+                    {transfersLoading ? (
+                      <ActivityIndicator
+                        size="small"
+                        color={colors.textOnPrimary}
+                      />
+                    ) : (
+                      <RefreshCw size={16} color={colors.textOnPrimary} />
+                    )}
+
+                    <Text style={styles.retryButtonText}>
+                      {transfersLoading ? "Loading..." : "Try again"}
+                    </Text>
+                  </Pressable>
+                </View>
+              )}
+            </View>
+          )}
+
+          {/* General information */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Information</Text>
+
+            <View style={styles.card}>
+              <DetailRow
+                leading={
+                  account ? (
+                    <AccountAvatar account={account} />
+                  ) : (
+                    <IconTile>
+                      <CreditCard size={18} color={colors.primary} />
+                    </IconTile>
+                  )
+                }
+                label="Account"
+                value={account?.name ?? "Unknown account"}
+                muted={!account}
+              />
+
+              {!isTransfer && (
+                <>
+                  <View style={styles.divider} />
+
+                  <DetailRow
+                    leading={
+                      <IconTile>
+                        <Tag size={18} color={colors.primary} />
+                      </IconTile>
+                    }
+                    label="Category"
+                    value={category?.name ?? "Unknown category"}
+                    muted={!category}
+                  />
+                </>
+              )}
+
+              <View style={styles.divider} />
+
+              <DetailRow
+                leading={
+                  <WorkspaceAvatar countryCode={workspace?.country_code} />
+                }
+                label="Workspace"
+                value={workspace?.name ?? "Unknown workspace"}
+                muted={!workspace}
+              />
+
+              <View style={styles.divider} />
+
+              <DetailRow
+                leading={
+                  <IconTile>
+                    <AlignLeft size={18} color={colors.primary} />
+                  </IconTile>
+                }
+                label="Description"
+                value={transaction.description || "No description"}
+                muted={!transaction.description}
+              />
+            </View>
+          </View>
+
+          {/* Footer */}
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>
+              Created on {new Date(transaction.createdAt).toLocaleDateString()}
+            </Text>
+          </View>
+        </ScrollView>
+
+        {/* Actions: always visible. Delete sits apart from Edit so it's harder to hit by accident. */}
+        <View style={styles.actionBar}>
+          <Pressable
+            onPress={handleDelete}
+            accessibilityRole="button"
+            accessibilityLabel={
+              isTransfer ? "Delete transfer" : "Delete transaction"
+            }
+            style={({ pressed }) => [
+              styles.deleteAction,
+              pressed && styles.deleteActionPressed,
+            ]}
+          >
+            <Trash2 size={18} color={colors.danger} />
+
+            <Text style={styles.deleteActionText}>
+              {isTransfer ? "Delete transfer" : "Delete"}
+            </Text>
+          </Pressable>
+
+          {!isTransfer && (
+            <Pressable
+              onPress={() =>
+                router.push({
+                  pathname: "/transactions/edit/[id]",
+                  params: { id: transaction.id },
+                })
+              }
+              accessibilityRole="button"
+              accessibilityLabel="Edit transaction"
+              style={({ pressed }) => [
+                styles.editAction,
+                pressed && styles.editActionPressed,
+              ]}
+            >
+              <Pencil size={18} color={colors.textOnPrimary} />
+
+              <Text style={styles.editActionText}>Edit transaction</Text>
+            </Pressable>
+          )}
         </View>
-      </ScrollView>
+      </View>
     </SafeScreen>
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/* Helpers                                                                     */
+/* -------------------------------------------------------------------------- */
+
+const typeTones = {
+  expense: { color: colors.danger, background: colors.dangerLight },
+  income: { color: colors.success, background: colors.successLight },
+  transfer: { color: colors.primary, background: colors.primaryLight },
+};
+
+// "2026-11-13" -> "Fri, 13 Nov 2026". Falls back to the raw value if it isn't a date.
+function formatDisplayDate(value: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+
+  if (!match) return value;
+
+  const date = new Date(
+    Number(match[1]),
+    Number(match[2]) - 1,
+    Number(match[3]),
+  );
+
+  return date.toLocaleDateString("en-GB", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+/* -------------------------------------------------------------------------- */
+/* Presentational pieces                                                       */
+/* (same family as the Add Transaction screen: share them when you extract)    */
+/* -------------------------------------------------------------------------- */
+
+function IconTile({
+  children,
+  background = colors.primaryLight,
+}: {
+  children: ReactNode;
+  background?: string;
+}) {
+  return (
+    <View style={[styles.iconTile, { backgroundColor: background }]}>
+      {children}
+    </View>
+  );
+}
+
+function WorkspaceAvatar({ countryCode }: { countryCode?: string | null }) {
+  const flag = countryCode ? getCountryByCode(countryCode)?.flag : undefined;
+
+  return (
+    <IconTile background={colors.background}>
+      {flag ? (
+        <Text style={styles.flag}>{flag}</Text>
+      ) : (
+        <Globe size={18} color={colors.primary} />
+      )}
+    </IconTile>
+  );
+}
+
+function AccountAvatar({
+  account,
+}: {
+  account: { icon?: string | null; color?: string | null };
+}) {
+  return (
+    <AccountIcon
+      name={(account.icon ?? "wallet") as accountIconName}
+      color={account.color ?? colors.primary}
+      size={40}
+      iconSize={20}
+    />
+  );
+}
+
 function DetailRow({
-  icon,
+  leading,
   label,
   value,
+  muted = false,
 }: {
-  icon?: ReactNode;
+  leading: ReactNode;
   label: string;
   value: string;
+  muted?: boolean;
 }) {
   return (
     <View style={styles.detailRow}>
-      {icon && <View style={styles.detailRowIcon}>{icon}</View>}
+      {leading}
 
-      <View style={styles.detailRowContent}>
+      <View style={styles.flex}>
         <Text style={styles.detailLabel}>{label}</Text>
 
-        <Text style={styles.detailValue}>{value}</Text>
+        <Text style={[styles.detailValue, muted && styles.detailValueMuted]}>
+          {value}
+        </Text>
       </View>
     </View>
   );
 }
 
+function TransferLeg({
+  label,
+  account,
+  accountFallback,
+  workspace,
+  amount,
+  amountColor,
+}: {
+  label: string;
+  account?: { name: string; icon?: string | null; color?: string | null };
+  accountFallback: string;
+  workspace?: { name: string; country_code?: string | null };
+  amount: string;
+  amountColor: string;
+}) {
+  const flag = workspace?.country_code
+    ? getCountryByCode(workspace.country_code)?.flag
+    : undefined;
+
+  return (
+    <View style={styles.legRow}>
+      {account ? (
+        <AccountAvatar account={account} />
+      ) : (
+        <IconTile>
+          <Wallet size={20} color={colors.primary} />
+        </IconTile>
+      )}
+
+      <View style={styles.flex}>
+        <Text style={styles.eyebrow}>{label}</Text>
+
+        <Text
+          style={[styles.legName, !account && styles.detailValueMuted]}
+          numberOfLines={1}
+        >
+          {account?.name ?? accountFallback}
+        </Text>
+
+        <Text style={styles.legHint} numberOfLines={1}>
+          {flag ? `${flag} ` : ""}
+          {workspace?.name ?? "Unknown workspace"}
+        </Text>
+      </View>
+
+      <Text
+        style={[styles.legAmount, { color: amountColor }]}
+        numberOfLines={1}
+      >
+        {amount}
+      </Text>
+    </View>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Styles                                                                      */
+/* -------------------------------------------------------------------------- */
+
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+  },
+
+  flex: {
+    flex: 1,
+  },
+
   content: {
     padding: spacing.lg,
     paddingTop: spacing.md,
-    paddingBottom: spacing.xxxl,
+    paddingBottom: spacing.xl,
     gap: spacing.xl,
   },
 
+  /* Header */
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -545,6 +771,8 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: radius.md,
     backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -555,76 +783,57 @@ const styles = StyleSheet.create({
     fontWeight: typography.weight.semibold,
   },
 
-  headerActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-  },
-
-  editButton: {
+  headerSpacer: {
     width: 40,
-    height: 40,
-    borderRadius: radius.md,
-    backgroundColor: colors.primaryLight,
-    alignItems: "center",
-    justifyContent: "center",
   },
 
-  deleteButton: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.md,
-    backgroundColor: "#FCE8E6",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  amountCard: {
+  /* Hero */
+  heroCard: {
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.lg,
-    padding: spacing.xl,
+    borderRadius: radius.xl,
+    paddingVertical: spacing.xl,
+    paddingHorizontal: spacing.lg,
     alignItems: "center",
     gap: spacing.sm,
   },
 
-  mainIcon: {
+  heroIcon: {
     width: 56,
     height: 56,
-    borderRadius: radius.lg,
-    backgroundColor: colors.primaryLight,
+    borderRadius: radius.full,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
   },
 
   typeLabel: {
     color: colors.textSecondary,
     fontSize: typography.size.sm,
+    fontWeight: typography.weight.medium,
   },
 
   amount: {
-    color: colors.text,
-    fontSize: 30,
+    fontSize: typography.size.xxxl,
     fontWeight: typography.weight.bold,
   },
 
-  incomeText: {
-    color: colors.success,
-  },
-
-  expenseText: {
-    color: colors.danger,
+  dateRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    marginTop: spacing.xs,
   },
 
   dateLabel: {
     color: colors.textSecondary,
-    fontSize: typography.size.xs,
+    fontSize: typography.size.caption,
   },
 
+  /* Sections and cards */
   section: {
-    gap: spacing.md,
+    gap: spacing.sm,
   },
 
   sectionTitle: {
@@ -633,44 +842,18 @@ const styles = StyleSheet.create({
     fontWeight: typography.weight.semibold,
   },
 
-  detailCard: {
+  card: {
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radius.lg,
+    overflow: "hidden",
+  },
+
+  messageCard: {
     padding: spacing.lg,
-    gap: spacing.md,
-  },
-
-  detailRow: {
-    flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
-  },
-
-  detailRowIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.md,
-    backgroundColor: colors.background,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  detailRowContent: {
-    flex: 1,
-    gap: spacing.xs,
-  },
-
-  detailLabel: {
-    color: colors.textSecondary,
-    fontSize: typography.size.xs,
-  },
-
-  detailValue: {
-    color: colors.text,
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.medium,
   },
 
   divider: {
@@ -678,51 +861,185 @@ const styles = StyleSheet.create({
     backgroundColor: colors.border,
   },
 
-  transferAccount: {
-    gap: spacing.xs,
+  /* Detail rows */
+  detailRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
   },
 
-  transferArrow: {
+  iconTile: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.md,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: spacing.xs,
   },
 
-  transferAmountOut: {
-    color: colors.danger,
+  flag: {
+    fontSize: 20,
+  },
+
+  detailLabel: {
+    color: colors.textSecondary,
+    fontSize: typography.size.caption,
+  },
+
+  detailValue: {
+    color: colors.text,
     fontSize: typography.size.md,
-    fontWeight: typography.weight.bold,
-    marginTop: spacing.xs,
+    fontWeight: typography.weight.medium,
+    marginTop: 2,
   },
 
-  transferAmountIn: {
-    color: colors.success,
-    fontSize: typography.size.md,
-    fontWeight: typography.weight.bold,
-    marginTop: spacing.xs,
+  detailValueMuted: {
+    color: colors.textSecondary,
+    fontWeight: typography.weight.regular,
   },
 
-  detailHint: {
+  /* Transfer legs */
+  legRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+  },
+
+  eyebrow: {
     color: colors.textSecondary,
     fontSize: typography.size.xs,
+    fontWeight: typography.weight.medium,
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
   },
 
+  legName: {
+    color: colors.text,
+    fontSize: typography.size.md,
+    fontWeight: typography.weight.semibold,
+    marginTop: 2,
+  },
+
+  legHint: {
+    color: colors.textSecondary,
+    fontSize: typography.size.caption,
+    marginTop: 2,
+  },
+
+  legAmount: {
+    flexShrink: 0,
+    fontSize: typography.size.md,
+    fontWeight: typography.weight.bold,
+  },
+
+  connector: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+  },
+
+  connectorLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: colors.border,
+  },
+
+  connectorCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: radius.full,
+    backgroundColor: colors.primaryLight,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  /* Footer text */
   footer: {
     alignItems: "center",
-    paddingTop: spacing.sm,
   },
 
   footerText: {
     color: colors.textSecondary,
-    fontSize: typography.size.xs,
+    fontSize: typography.size.caption,
   },
 
+  /* Action bar */
+  actionBar: {
+    flexDirection: "row",
+    gap: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    backgroundColor: colors.background,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+
+  deleteAction: {
+    flex: 1,
+    minHeight: 52,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.danger,
+    borderRadius: radius.md,
+  },
+
+  deleteActionPressed: {
+    backgroundColor: colors.dangerLight,
+  },
+
+  deleteActionText: {
+    color: colors.danger,
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.semibold,
+  },
+
+  editAction: {
+    flex: 1.5,
+    minHeight: 52,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm,
+    backgroundColor: colors.primary,
+    borderRadius: radius.md,
+  },
+
+  editActionPressed: {
+    backgroundColor: colors.primaryDark,
+  },
+
+  editActionText: {
+    color: colors.textOnPrimary,
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.semibold,
+  },
+
+  /* Loading / empty */
   centerState: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
     padding: spacing.xl,
     gap: spacing.md,
+  },
+
+  emptyIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: radius.full,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   emptyTitle: {
@@ -745,8 +1062,12 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
 
+  primaryButtonPressed: {
+    backgroundColor: colors.primaryDark,
+  },
+
   primaryButtonText: {
-    color: colors.surface,
+    color: colors.textOnPrimary,
     fontSize: typography.size.sm,
     fontWeight: typography.weight.semibold,
   },
@@ -763,7 +1084,7 @@ const styles = StyleSheet.create({
   },
 
   retryButtonText: {
-    color: colors.surface,
+    color: colors.textOnPrimary,
     fontSize: typography.size.sm,
     fontWeight: typography.weight.semibold,
   },
