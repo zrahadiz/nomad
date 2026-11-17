@@ -2,6 +2,7 @@ import { Stack, useRouter } from "expo-router";
 import { ArrowLeft, Check, Search } from "lucide-react-native";
 import { useState } from "react";
 import {
+  ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -9,12 +10,12 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { countries, type Country } from "@/constants/countries";
 import { colors, radius, spacing, typography } from "@/constants/theme";
 import { useWorkspaceStore } from "@/stores/use-workspace-store";
-import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
 export default function NewWorkspaceScreen() {
   const router = useRouter();
@@ -89,43 +90,46 @@ export default function NewWorkspaceScreen() {
     <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
       <Stack.Screen options={{ headerShown: false }} />
 
+      {/* Header */}
+      <View style={styles.header}>
+        <Pressable
+          style={styles.backButton}
+          onPress={() => router.back()}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+          hitSlop={8}
+        >
+          <ArrowLeft size={22} color={colors.text} />
+        </Pressable>
+
+        <Text style={styles.headerTitle}>New workspace</Text>
+
+        <View style={styles.headerSpacer} />
+      </View>
+
       <KeyboardAwareScrollView
-        contentContainerStyle={[styles.content]}
+        style={styles.flex}
+        contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <Pressable
-            style={styles.backButton}
-            onPress={() => router.back()}
-            accessibilityRole="button"
-            accessibilityLabel="Go back"
-            hitSlop={8}
-          >
-            <ArrowLeft size={22} color={colors.text} />
-          </Pressable>
-
-          <Text style={styles.headerTitle}>New workspace</Text>
-
-          <View style={styles.headerSpacer} />
-        </View>
-
-        {/* Introduction */}
+        {/* Introduction: compact, so the form starts higher on the screen */}
         <View style={styles.intro}>
           <View style={styles.illustration}>
             <Text style={styles.illustrationEmoji}>🌏</Text>
           </View>
 
-          <Text style={styles.title}>Manage money across borders</Text>
+          <View style={styles.introText}>
+            <Text style={styles.title}>Manage money across borders</Text>
 
-          <Text style={styles.description}>
-            Create a separate financial space for each country where you live,
-            study, or travel.
-          </Text>
+            <Text style={styles.description}>
+              Create a separate financial space for each country where you live,
+              study, or travel.
+            </Text>
+          </View>
         </View>
 
-        {/* Workspace name */}
+        {/* 1. Workspace name */}
         <View style={styles.fieldGroup}>
           <Text style={styles.label}>Workspace name</Text>
 
@@ -149,11 +153,10 @@ export default function NewWorkspaceScreen() {
           </Text>
         </View>
 
-        {/* Country selection */}
+        {/* 2. Country */}
         <View style={styles.fieldGroup}>
           <Text style={styles.label}>Country or region</Text>
 
-          {/* Search */}
           <View style={styles.searchContainer}>
             <Search size={20} color={colors.textSecondary} />
 
@@ -168,7 +171,6 @@ export default function NewWorkspaceScreen() {
             />
           </View>
 
-          {/* Country list */}
           <ScrollView
             style={styles.countryList}
             nestedScrollEnabled
@@ -217,31 +219,32 @@ export default function NewWorkspaceScreen() {
           <Text style={styles.helperText}>
             Select a country to automatically determine your default currency.
           </Text>
+
+          {/* Confirmation of the choice, right under the list it belongs to */}
+          {selectedCountry && (
+            <View style={styles.currencyCard}>
+              <View style={styles.currencyIcon}>
+                <Text style={styles.currencyFlag}>{selectedCountry.flag}</Text>
+              </View>
+
+              <View style={styles.currencyDetails}>
+                <Text style={styles.currencyLabel}>DEFAULT CURRENCY</Text>
+                <Text style={styles.currencyValue}>
+                  {selectedCountry.currencyCode}
+                </Text>
+                <Text style={styles.currencyName} numberOfLines={1}>
+                  {selectedCountry.currencyName}
+                </Text>
+              </View>
+
+              <View style={styles.automaticBadge}>
+                <Text style={styles.automaticBadgeText}>Automatic</Text>
+              </View>
+            </View>
+          )}
         </View>
 
-        {/* Currency preview */}
-        {selectedCountry && (
-          <View style={styles.currencyCard}>
-            <View style={styles.currencyIcon}>
-              <Text style={styles.currencyIconText}>
-                {selectedCountry.currencyCode.slice(0, 1)}
-              </Text>
-            </View>
-
-            <View style={styles.currencyDetails}>
-              <Text style={styles.currencyLabel}>DEFAULT CURRENCY</Text>
-              <Text style={styles.currencyValue}>
-                {selectedCountry.currencyCode}
-              </Text>
-            </View>
-
-            <View style={styles.automaticBadge}>
-              <Text style={styles.automaticBadgeText}>Automatic</Text>
-            </View>
-          </View>
-        )}
-
-        {/* Initial state information */}
+        {/* 3. What happens next */}
         <View style={styles.infoCard}>
           <Text style={styles.infoTitle}>What happens next?</Text>
 
@@ -251,37 +254,51 @@ export default function NewWorkspaceScreen() {
             workspaces will remain separate.
           </Text>
         </View>
+      </KeyboardAwareScrollView>
 
+      {/* Actions: pinned, with the error right next to the button that caused it */}
+      <View style={styles.footer}>
         {error && (
           <Text style={styles.errorText} accessibilityRole="alert">
             {error}
           </Text>
         )}
 
-        {/* Submit */}
-        <Pressable
-          style={[
-            styles.createButton,
-            isSubmitting && styles.createButtonDisabled,
-          ]}
-          onPress={handleCreateWorkspace}
-          disabled={isSubmitting}
-          accessibilityRole="button"
-        >
-          <Text style={styles.createButtonText}>
-            {isSubmitting ? "Creating..." : "Create workspace"}
-          </Text>
-        </Pressable>
+        <View style={styles.footerButtons}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.cancelButton,
+              pressed && styles.cancelButtonPressed,
+              isSubmitting && styles.disabledButton,
+            ]}
+            onPress={() => router.back()}
+            disabled={isSubmitting}
+            accessibilityRole="button"
+          >
+            <Text style={styles.cancelButtonText}>Cancel</Text>
+          </Pressable>
 
-        <Pressable
-          style={styles.cancelButton}
-          onPress={() => router.back()}
-          disabled={isSubmitting}
-          accessibilityRole="button"
-        >
-          <Text style={styles.cancelButtonText}>Cancel</Text>
-        </Pressable>
-      </KeyboardAwareScrollView>
+          <Pressable
+            style={({ pressed }) => [
+              styles.createButton,
+              pressed && styles.createButtonPressed,
+              isSubmitting && styles.disabledButton,
+            ]}
+            onPress={handleCreateWorkspace}
+            disabled={isSubmitting}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: isSubmitting, busy: isSubmitting }}
+          >
+            {isSubmitting && (
+              <ActivityIndicator size="small" color={colors.textOnPrimary} />
+            )}
+
+            <Text style={styles.createButtonText}>
+              {isSubmitting ? "Creating..." : "Create workspace"}
+            </Text>
+          </Pressable>
+        </View>
+      </View>
     </SafeAreaView>
   );
 }
@@ -296,16 +313,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
 
-  content: {
-    padding: spacing.lg,
-    paddingBottom: spacing.xxxl,
-  },
-
+  /* Header */
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: spacing.xl,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.md,
   },
 
   backButton: {
@@ -329,50 +344,59 @@ const styles = StyleSheet.create({
     width: 44,
   },
 
+  content: {
+    padding: spacing.lg,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xl,
+    gap: spacing.xl,
+  },
+
+  /* Intro */
   intro: {
+    flexDirection: "row",
     alignItems: "center",
-    marginBottom: spacing.xxl,
+    gap: spacing.md,
   },
 
   illustration: {
-    width: 76,
-    height: 76,
+    width: 64,
+    height: 64,
     borderRadius: radius.xl,
     backgroundColor: colors.primaryLight,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: spacing.lg,
   },
 
   illustrationEmoji: {
-    fontSize: 38,
+    fontSize: 32,
+  },
+
+  introText: {
+    flex: 1,
+    gap: spacing.xs,
   },
 
   title: {
     color: colors.text,
-    fontSize: typography.size.xl,
+    fontSize: typography.size.lg,
     fontWeight: typography.weight.bold,
-    textAlign: "center",
   },
 
   description: {
     color: colors.textSecondary,
     fontSize: typography.size.sm,
-    lineHeight: 22,
-    textAlign: "center",
-    marginTop: spacing.sm,
-    maxWidth: 320,
+    lineHeight: 20,
   },
 
+  /* Fields */
   fieldGroup: {
-    marginBottom: spacing.xl,
+    gap: spacing.sm,
   },
 
   label: {
     color: colors.text,
-    fontSize: typography.size.sm,
+    fontSize: typography.size.md,
     fontWeight: typography.weight.semibold,
-    marginBottom: spacing.sm,
   },
 
   input: {
@@ -388,27 +412,8 @@ const styles = StyleSheet.create({
 
   helperText: {
     color: colors.textSecondary,
-    fontSize: typography.size.xs,
+    fontSize: typography.size.caption,
     lineHeight: 18,
-    marginTop: spacing.sm,
-  },
-
-  countryInput: {
-    minHeight: 54,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    paddingHorizontal: spacing.md,
-    backgroundColor: colors.surface,
-  },
-
-  countryInputText: {
-    flex: 1,
-    color: colors.text,
-    fontSize: typography.size.md,
   },
 
   searchContainer: {
@@ -430,9 +435,9 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
 
+  /* Country list */
   countryList: {
-    maxHeight: 280,
-    marginTop: spacing.sm,
+    maxHeight: 264,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radius.lg,
@@ -447,14 +452,6 @@ const styles = StyleSheet.create({
   noResultsText: {
     color: colors.textSecondary,
     fontSize: typography.size.sm,
-  },
-
-  placeholder: {
-    color: colors.textSecondary,
-  },
-
-  selectedFlag: {
-    fontSize: 24,
   },
 
   countryOption: {
@@ -476,7 +473,7 @@ const styles = StyleSheet.create({
 
   countryDetails: {
     flex: 1,
-    gap: spacing.xs,
+    gap: 2,
   },
 
   countryName: {
@@ -490,16 +487,14 @@ const styles = StyleSheet.create({
     fontSize: typography.size.xs,
   },
 
+  /* Default currency */
   currencyCard: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
+    backgroundColor: colors.successLight,
     borderRadius: radius.lg,
     padding: spacing.md,
-    marginBottom: spacing.lg,
   },
 
   currencyIcon: {
@@ -508,18 +503,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: radius.md,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: colors.surface,
   },
 
-  currencyIconText: {
-    color: colors.primary,
-    fontSize: typography.size.xl,
-    fontWeight: typography.weight.bold,
+  currencyFlag: {
+    fontSize: 24,
   },
 
   currencyDetails: {
     flex: 1,
-    gap: spacing.xs,
+    gap: 2,
   },
 
   currencyLabel: {
@@ -534,31 +527,36 @@ const styles = StyleSheet.create({
     fontWeight: typography.weight.bold,
   },
 
+  currencyName: {
+    color: colors.textSecondary,
+    fontSize: typography.size.xs,
+  },
+
   automaticBadge: {
-    backgroundColor: colors.primaryLight,
+    backgroundColor: colors.surface,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
     borderRadius: radius.full,
   },
 
   automaticBadgeText: {
-    color: colors.primary,
+    color: colors.success,
     fontSize: typography.size.xs,
-    fontWeight: typography.weight.medium,
+    fontWeight: typography.weight.semibold,
   },
 
+  /* Info */
   infoCard: {
     backgroundColor: colors.primaryLight,
     borderRadius: radius.lg,
     padding: spacing.lg,
-    marginBottom: spacing.lg,
+    gap: spacing.sm,
   },
 
   infoTitle: {
     color: colors.primaryDark,
     fontSize: typography.size.sm,
     fontWeight: typography.weight.semibold,
-    marginBottom: spacing.sm,
   },
 
   infoDescription: {
@@ -567,42 +565,70 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
 
+  /* Footer */
+  footer: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    gap: spacing.sm,
+    backgroundColor: colors.background,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+
   errorText: {
     color: colors.danger,
     fontSize: typography.size.sm,
-    marginBottom: spacing.md,
   },
 
-  createButton: {
+  footerButtons: {
+    flexDirection: "row",
+    gap: spacing.md,
+  },
+
+  cancelButton: {
+    flex: 1,
     minHeight: 54,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: radius.lg,
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.lg,
-    marginTop: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
   },
 
-  createButtonDisabled: {
-    opacity: 0.6,
-  },
-
-  createButtonText: {
-    color: "#FFFFFF",
-    fontSize: typography.size.md,
-    fontWeight: typography.weight.semibold,
-  },
-
-  cancelButton: {
-    minHeight: 48,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: spacing.sm,
+  cancelButtonPressed: {
+    backgroundColor: colors.background,
   },
 
   cancelButtonText: {
     color: colors.textSecondary,
-    fontSize: typography.size.sm,
+    fontSize: typography.size.md,
     fontWeight: typography.weight.medium,
+  },
+
+  createButton: {
+    flex: 2,
+    minHeight: 54,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm,
+    borderRadius: radius.lg,
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.lg,
+  },
+
+  createButtonPressed: {
+    backgroundColor: colors.primaryDark,
+  },
+
+  disabledButton: {
+    opacity: 0.6,
+  },
+
+  createButtonText: {
+    color: colors.textOnPrimary,
+    fontSize: typography.size.md,
+    fontWeight: typography.weight.semibold,
   },
 });

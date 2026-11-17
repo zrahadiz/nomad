@@ -14,7 +14,7 @@ import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { AmountInput } from "@/components/forms/amount-input";
 import { SafeScreen } from "@/components/layout/safe-screen";
 import { BottomSheetModal } from "@/components/ui/bottom-modal";
-import { colors, radius, spacing } from "@/constants/theme";
+import { colors, radius, spacing, typography } from "@/constants/theme";
 
 import { useBudgetStore } from "@/stores/use-budget-store";
 import { useCategoryStore } from "@/stores/use-category-store";
@@ -433,12 +433,16 @@ export default function ManageBudgetScreen() {
               <Text style={styles.errorText}>{error}</Text>
 
               <Pressable
-                style={styles.retryButton}
+                style={({ pressed }) => [
+                  styles.retryButton,
+                  pressed && styles.addButtonPressed,
+                ]}
                 onPress={() => {
                   if (activeWorkspaceId) {
                     void fetchBudgetOverview(activeWorkspaceId, budgetMonth);
                   }
                 }}
+                accessibilityRole="button"
               >
                 <Text style={styles.retryButtonText}>Try again</Text>
               </Pressable>
@@ -459,284 +463,321 @@ export default function ManageBudgetScreen() {
 
   return (
     <SafeScreen>
-      <KeyboardAwareScrollView
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        {/* HEADER */}
+      <View style={styles.screen}>
+        <KeyboardAwareScrollView
+          style={styles.flex}
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* HEADER */}
 
-        <View style={styles.header}>
-          <Text style={styles.title}>Manage budget</Text>
+          <View style={styles.header}>
+            <Text style={styles.title}>Manage budget</Text>
 
-          <Text style={styles.subtitle}>
-            Update your spending limits for {formatMonthLabel(budgetMonth)}.
-          </Text>
-        </View>
-
-        {/* WORKSPACE */}
-
-        <View style={styles.workspaceCard}>
-          <Text style={styles.workspaceLabel}>Workspace</Text>
-
-          <View style={styles.workspaceValue}>
-            <View style={styles.workspaceDot} />
-
-            <Text style={styles.workspaceName}>
-              {activeWorkspace?.name ?? "No workspace selected"}
-            </Text>
-
-            <Text style={styles.currencyBadge}>{currencyCode}</Text>
-          </View>
-        </View>
-
-        {/* BUDGET PERIOD */}
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Budget period</Text>
-
-          <View style={styles.periodCard}>
-            <Text style={styles.periodText}>
-              {formatMonthLabel(budgetMonth)}
-            </Text>
-
-            <Text style={styles.periodHelper}>
-              The budget period cannot be changed here.
+            <Text style={styles.subtitle}>
+              Update your spending limits for {formatMonthLabel(budgetMonth)}.
             </Text>
           </View>
-        </View>
 
-        {/* OVERALL LIMIT */}
+          {/* WORKSPACE */}
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Overall spending limit</Text>
+          <View style={styles.workspaceCard}>
+            <Text style={styles.workspaceLabel}>Workspace</Text>
 
-          <Text style={styles.sectionDescription}>
-            The maximum amount you plan to spend during this month.
-          </Text>
+            <View style={styles.workspaceValue}>
+              <View style={styles.workspaceDot} />
 
-          <View style={styles.amountInputContainer}>
-            <Text style={styles.currencyPrefix}>{currencyCode}</Text>
+              <Text style={styles.workspaceName} numberOfLines={1}>
+                {activeWorkspace?.name ?? "No workspace selected"}
+              </Text>
 
-            <AmountInput
-              value={overallAmount}
-              onChangeText={handleOverallAmountChange}
-              currency={currencyCode}
-              placeholder={
-                getCurrencyDecimalDigits(currencyCode) === 0 ? "0" : "0.00"
-              }
-              placeholderTextColor={colors.textSecondary}
-              style={styles.amountInput}
-            />
+              <Text style={styles.currencyBadge}>{currencyCode}</Text>
+            </View>
           </View>
-        </View>
 
-        {/* CATEGORY LIMITS */}
+          {/* MONTH */}
 
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <View style={styles.sectionHeaderText}>
-              <Text style={styles.sectionTitle}>Category limits</Text>
+          <View style={styles.group}>
+            <Text style={styles.sectionTitle}>Budget period</Text>
+
+            <View style={[styles.card, styles.cardPadded]}>
+              <Text style={styles.periodText}>
+                {formatMonthLabel(budgetMonth)}
+              </Text>
+
+              <Text style={styles.periodHelper}>
+                The budget period cannot be changed here.
+              </Text>
+            </View>
+          </View>
+
+          {/* OVERALL LIMIT */}
+
+          <View style={styles.group}>
+            <View>
+              <Text style={styles.sectionTitle}>Overall spending limit</Text>
 
               <Text style={styles.sectionDescription}>
-                Optional limits for individual expense categories.
+                The maximum amount you plan to spend during this month.
               </Text>
             </View>
 
-            <Pressable
-              style={styles.addButton}
-              onPress={() => setCategoryModalVisible(true)}
-              disabled={availableCategories.length === 0}
-            >
-              <Plus
-                size={17}
-                color={
-                  availableCategories.length === 0
-                    ? colors.textSecondary
-                    : colors.primary
-                }
-              />
+            <View style={[styles.card, styles.cardPadded]}>
+              <View style={styles.amountInputContainer}>
+                <Text style={styles.currencyPrefix}>{currencyCode}</Text>
 
-              <Text
-                style={[
-                  styles.addButtonText,
-                  availableCategories.length === 0 && styles.disabledText,
-                ]}
-              >
-                Add
-              </Text>
-            </Pressable>
+                <AmountInput
+                  value={overallAmount}
+                  onChangeText={handleOverallAmountChange}
+                  currency={currencyCode}
+                  placeholder={
+                    getCurrencyDecimalDigits(currencyCode) === 0 ? "0" : "0.00"
+                  }
+                  placeholderTextColor={colors.textSecondary}
+                  style={styles.amountInput}
+                />
+              </View>
+            </View>
           </View>
 
-          {categoriesLoading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator color={colors.primary} />
-              <Text style={styles.loadingText}>Loading categories...</Text>
-            </View>
-          ) : categoriesError ? (
-            <View style={styles.messageCard}>
-              <Text style={styles.errorText}>{categoriesError}</Text>
+          {/* CATEGORY LIMITS */}
 
-              <Pressable onPress={() => void fetchCategories()}>
-                <Text style={styles.retryButtonText}>Try again</Text>
+          <View style={styles.group}>
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionHeaderText}>
+                <Text style={styles.sectionTitle}>Category limits</Text>
+
+                <Text style={styles.sectionDescription}>
+                  Optional limits for individual expense categories.
+                </Text>
+              </View>
+
+              <Pressable
+                style={({ pressed }) => [
+                  styles.addButton,
+                  pressed && styles.addButtonPressed,
+                  availableCategories.length === 0 && styles.addButtonDisabled,
+                ]}
+                onPress={() => setCategoryModalVisible(true)}
+                disabled={availableCategories.length === 0}
+                accessibilityRole="button"
+              >
+                <Plus
+                  size={17}
+                  color={
+                    availableCategories.length === 0
+                      ? colors.textSecondary
+                      : colors.primary
+                  }
+                />
+
+                <Text
+                  style={[
+                    styles.addButtonText,
+                    availableCategories.length === 0 && styles.disabledText,
+                  ]}
+                >
+                  Add
+                </Text>
               </Pressable>
             </View>
-          ) : categoryDrafts.length === 0 ? (
-            <View style={styles.emptyCategories}>
-              <Text style={styles.emptyTitle}>No category limits added</Text>
 
-              <Text style={styles.emptyDescription}>
-                Add limits for categories such as Food, Transport, Shopping, or
-                Entertainment.
-              </Text>
-            </View>
-          ) : (
-            <View style={styles.categoryList}>
-              {categoryDrafts.map((item) => {
-                const category = getCategory(item.categoryId);
+            {categoriesLoading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator color={colors.primary} />
+                <Text style={styles.loadingText}>Loading categories...</Text>
+              </View>
+            ) : categoriesError ? (
+              <View style={styles.messageCard}>
+                <Text style={styles.errorText}>{categoriesError}</Text>
 
-                return (
-                  <View key={item.categoryId} style={styles.categoryCard}>
-                    <View style={styles.categoryHeader}>
-                      <View style={styles.categoryInfo}>
-                        <View
-                          style={[
-                            styles.categoryIcon,
-                            {
-                              backgroundColor:
-                                category?.color ?? colors.primaryLight,
-                            },
-                          ]}
-                        >
-                          <Text style={styles.categoryIconText}>
-                            {category?.icon ?? "•"}
+                <Pressable
+                  onPress={() => void fetchCategories()}
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.retryText}>Try again</Text>
+                </Pressable>
+              </View>
+            ) : categoryDrafts.length === 0 ? (
+              <View style={styles.emptyCategories}>
+                <Text style={styles.emptyTitle}>No category limits added</Text>
+
+                <Text style={styles.emptyDescription}>
+                  Add limits for categories such as Food, Transport, Shopping,
+                  or Entertainment.
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.categoryList}>
+                {categoryDrafts.map((item) => {
+                  const category = getCategory(item.categoryId);
+
+                  return (
+                    <View key={item.categoryId} style={styles.categoryCard}>
+                      <View style={styles.categoryHeader}>
+                        <View style={styles.categoryInfo}>
+                          <View
+                            style={[
+                              styles.categoryIcon,
+                              {
+                                backgroundColor:
+                                  category?.color ?? colors.primaryLight,
+                              },
+                            ]}
+                          >
+                            <Text style={styles.categoryIconText}>
+                              {category?.icon ?? "•"}
+                            </Text>
+                          </View>
+
+                          <Text style={styles.categoryName} numberOfLines={1}>
+                            {category?.name ?? "Unknown category"}
                           </Text>
                         </View>
 
-                        <Text style={styles.categoryName}>
-                          {category?.name ?? "Unknown category"}
-                        </Text>
+                        <Pressable
+                          onPress={() => handleRemoveCategory(item.categoryId)}
+                          hitSlop={8}
+                          style={styles.removeButton}
+                          accessibilityRole="button"
+                          accessibilityLabel="Remove category limit"
+                        >
+                          <Trash2 size={17} color={colors.danger} />
+                        </Pressable>
                       </View>
 
-                      <Pressable
-                        onPress={() => handleRemoveCategory(item.categoryId)}
-                        hitSlop={8}
-                        style={styles.removeButton}
-                      >
-                        <Trash2 size={17} color={colors.danger} />
-                      </Pressable>
+                      <View style={styles.categoryAmountContainer}>
+                        <Text style={styles.categoryCurrency}>
+                          {currencyCode}
+                        </Text>
+
+                        <AmountInput
+                          value={item.amount}
+                          onChangeText={(value) =>
+                            handleCategoryAmountChange(item.categoryId, value)
+                          }
+                          currency={currencyCode}
+                          placeholder={
+                            getCurrencyDecimalDigits(currencyCode) === 0
+                              ? "0"
+                              : "0.00"
+                          }
+                          placeholderTextColor={colors.textSecondary}
+                          style={styles.categoryAmountInput}
+                        />
+                      </View>
                     </View>
+                  );
+                })}
+              </View>
+            )}
 
-                    <View style={styles.categoryAmountContainer}>
-                      <Text style={styles.categoryCurrency}>
-                        {currencyCode}
-                      </Text>
+            {/* CATEGORY TOTAL WARNING */}
 
-                      <AmountInput
-                        value={item.amount}
-                        onChangeText={(value) =>
-                          handleCategoryAmountChange(item.categoryId, value)
-                        }
-                        currency={currencyCode}
-                        placeholder={
-                          getCurrencyDecimalDigits(currencyCode) === 0
-                            ? "0"
-                            : "0.00"
-                        }
-                        placeholderTextColor={colors.textSecondary}
-                        style={styles.categoryAmountInput}
-                      />
-                    </View>
-                  </View>
-                );
-              })}
-            </View>
-          )}
+            {exceedsOverallLimit && (
+              <View style={styles.warningCard}>
+                <Text style={styles.warningTitle}>
+                  Category limits exceed overall budget
+                </Text>
 
-          {exceedsOverallLimit && (
-            <View style={styles.warningCard}>
-              <Text style={styles.warningTitle}>
-                Category limits exceed overall budget
-              </Text>
+                <Text style={styles.warningDescription}>
+                  Your combined category limits are higher than your overall
+                  budget. You can still save these changes.
+                </Text>
+              </View>
+            )}
 
-              <Text style={styles.warningDescription}>
-                Your combined category limits are higher than your overall
-                budget. You can still save these changes.
-              </Text>
-            </View>
-          )}
-
-          <Text style={styles.helperText}>
-            Category limits are included in your overall budget. They do not add
-            extra spending allowance.
-          </Text>
-        </View>
-
-        {/* SUMMARY */}
-
-        {overallAmountMinor !== null && (
-          <View style={styles.summaryCard}>
-            <Text style={styles.summaryTitle}>Budget summary</Text>
-
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Overall limit</Text>
-
-              <Text style={styles.summaryValue}>
-                {currencyCode}{" "}
-                {formatAmountInput(overallAmountMinor, currencyCode)}
-              </Text>
-            </View>
-
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Category limits</Text>
-
-              <Text style={styles.summaryValue}>
-                {currencyCode}{" "}
-                {formatAmountInput(categoryTotalMinor, currencyCode)}
-              </Text>
-            </View>
+            <Text style={styles.helperText}>
+              Category limits are included in your overall budget. They do not
+              add extra spending allowance.
+            </Text>
           </View>
-        )}
 
-        {/* SAVE */}
+          {/* SUMMARY */}
 
-        <Pressable
-          style={[styles.saveButton, saving && styles.saveButtonDisabled]}
-          onPress={handleSave}
-          disabled={saving}
-        >
-          {saving ? (
-            <>
-              <ActivityIndicator color={colors.surface} />
-              <Text style={styles.saveButtonText}>Saving changes...</Text>
-            </>
-          ) : (
-            <>
-              <Check size={19} color={colors.surface} />
-              <Text style={styles.saveButtonText}>Save changes</Text>
-            </>
+          {overallAmountMinor !== null && (
+            <View style={styles.summaryCard}>
+              <Text style={styles.summaryTitle}>Budget summary</Text>
+
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Overall limit</Text>
+
+                <Text style={styles.summaryValue}>
+                  {currencyCode}{" "}
+                  {formatAmountInput(overallAmountMinor, currencyCode)}
+                </Text>
+              </View>
+
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Category limits</Text>
+
+                <Text style={styles.summaryValue}>
+                  {currencyCode}{" "}
+                  {formatAmountInput(categoryTotalMinor, currencyCode)}
+                </Text>
+              </View>
+            </View>
           )}
-        </Pressable>
 
-        {/* DELETE */}
+          {/* DELETE: separated from the save actions */}
 
-        <Pressable
-          style={styles.deleteButton}
-          onPress={handleDeleteBudget}
-          disabled={saving}
-        >
-          <Trash2 size={17} color={colors.danger} />
-          <Text style={styles.deleteButtonText}>Delete budget</Text>
-        </Pressable>
+          <Pressable
+            style={({ pressed }) => [
+              styles.deleteButton,
+              pressed && styles.deleteButtonPressed,
+              saving && styles.disabledButton,
+            ]}
+            onPress={handleDeleteBudget}
+            disabled={saving}
+            accessibilityRole="button"
+          >
+            <Trash2 size={17} color={colors.danger} />
+            <Text style={styles.deleteButtonText}>Delete budget</Text>
+          </Pressable>
+        </KeyboardAwareScrollView>
 
-        <Pressable
-          style={styles.cancelButton}
-          onPress={() => router.back()}
-          disabled={saving}
-        >
-          <Text style={styles.cancelButtonText}>Cancel</Text>
-        </Pressable>
-      </KeyboardAwareScrollView>
+        {/* ACTIONS: always visible */}
+
+        <View style={styles.footer}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.cancelButton,
+              pressed && styles.cancelButtonPressed,
+              saving && styles.disabledButton,
+            ]}
+            onPress={() => router.back()}
+            disabled={saving}
+            accessibilityRole="button"
+          >
+            <Text style={styles.cancelButtonText}>Cancel</Text>
+          </Pressable>
+
+          <Pressable
+            style={({ pressed }) => [
+              styles.saveButton,
+              pressed && styles.saveButtonPressed,
+              saving && styles.disabledButton,
+            ]}
+            onPress={handleSave}
+            disabled={saving}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: saving, busy: saving }}
+          >
+            {saving ? (
+              <>
+                <ActivityIndicator size="small" color={colors.textOnPrimary} />
+                <Text style={styles.saveButtonText}>Saving changes...</Text>
+              </>
+            ) : (
+              <>
+                <Check size={19} color={colors.textOnPrimary} />
+                <Text style={styles.saveButtonText}>Save changes</Text>
+              </>
+            )}
+          </Pressable>
+        </View>
+      </View>
 
       {/* CATEGORY SELECTOR */}
 
@@ -758,6 +799,7 @@ export default function ManageBudgetScreen() {
               key={category.id}
               style={styles.categoryOption}
               onPress={() => handleAddCategory(category)}
+              accessibilityRole="button"
             >
               <View style={styles.categoryInfo}>
                 <View
@@ -790,158 +832,117 @@ export default function ManageBudgetScreen() {
 // =====================================================
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+  },
+
+  flex: {
+    flex: 1,
+  },
+
   content: {
     padding: spacing.lg,
-    paddingBottom: spacing.xxxl,
+    paddingBottom: spacing.xl,
+    gap: spacing.xl,
   },
 
-  centerContainer: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: spacing.xl,
-    gap: spacing.md,
+  group: {
+    gap: spacing.sm,
   },
 
+  /* Header */
   header: {
-    marginBottom: spacing.xl,
+    gap: spacing.xs,
   },
 
   title: {
-    fontSize: 26,
-    fontWeight: "700",
+    fontSize: typography.size.xl,
+    fontWeight: typography.weight.bold,
     color: colors.text,
   },
 
   subtitle: {
-    fontSize: 14,
+    fontSize: typography.size.sm,
     lineHeight: 21,
     color: colors.textSecondary,
-    marginTop: spacing.xs,
   },
 
+  /* Workspace */
   workspaceCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.md,
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
-    padding: spacing.md,
-    marginBottom: spacing.xl,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
     borderWidth: 1,
     borderColor: colors.border,
   },
 
   workspaceLabel: {
-    fontSize: 12,
+    fontSize: typography.size.caption,
     color: colors.textSecondary,
-    marginBottom: spacing.sm,
   },
 
   workspaceValue: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "flex-end",
+    gap: spacing.sm,
   },
 
   workspaceDot: {
-    width: 9,
-    height: 9,
-    borderRadius: 5,
+    width: 8,
+    height: 8,
+    borderRadius: radius.full,
     backgroundColor: colors.primary,
-    marginRight: spacing.sm,
   },
 
   workspaceName: {
-    flex: 1,
-    fontSize: 15,
-    fontWeight: "600",
+    flexShrink: 1,
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.semibold,
     color: colors.text,
   },
 
   currencyBadge: {
-    fontSize: 12,
-    fontWeight: "600",
+    fontSize: typography.size.xs,
+    fontWeight: typography.weight.semibold,
     color: colors.primary,
     backgroundColor: colors.primaryLight,
     paddingHorizontal: spacing.sm,
-    paddingVertical: 5,
-    borderRadius: radius.sm,
+    paddingVertical: 4,
+    borderRadius: radius.full,
+    overflow: "hidden",
   },
 
-  section: {
-    marginBottom: spacing.xl,
-  },
-
+  /* Sections */
   sectionTitle: {
-    fontSize: 17,
-    fontWeight: "700",
+    fontSize: typography.size.md,
+    fontWeight: typography.weight.semibold,
     color: colors.text,
-    marginBottom: spacing.xs,
   },
 
   sectionDescription: {
-    fontSize: 13,
-    lineHeight: 19,
+    fontSize: typography.size.caption,
+    lineHeight: 18,
     color: colors.textSecondary,
+    marginTop: 2,
   },
 
   helperText: {
-    fontSize: 12,
+    fontSize: typography.size.caption,
     lineHeight: 18,
     color: colors.textSecondary,
-    marginTop: spacing.sm,
-  },
-
-  periodCard: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    marginTop: spacing.sm,
-  },
-
-  periodText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: colors.text,
-  },
-
-  periodHelper: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
-  },
-
-  amountInputContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    marginTop: spacing.md,
-    minHeight: 56,
-  },
-
-  currencyPrefix: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: colors.textSecondary,
-    marginRight: spacing.sm,
-  },
-
-  amountInput: {
-    flex: 1,
-    fontSize: 22,
-    fontWeight: "600",
-    color: colors.text,
-    paddingVertical: spacing.md,
   },
 
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: spacing.md,
   },
 
   sectionHeaderText: {
@@ -949,26 +950,88 @@ const styles = StyleSheet.create({
     paddingRight: spacing.sm,
   },
 
+  /* Cards */
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+
+  cardPadded: {
+    padding: spacing.lg,
+    gap: spacing.md,
+  },
+
+  /* Period */
+  periodText: {
+    fontSize: typography.size.md,
+    fontWeight: typography.weight.semibold,
+    color: colors.text,
+  },
+
+  periodHelper: {
+    fontSize: typography.size.caption,
+    color: colors.textSecondary,
+  },
+
+  /* Overall amount */
+  amountInputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    minHeight: 56,
+  },
+
+  currencyPrefix: {
+    fontSize: typography.size.md,
+    fontWeight: typography.weight.semibold,
+    color: colors.textSecondary,
+  },
+
+  amountInput: {
+    flex: 1,
+    height: 56,
+    paddingHorizontal: 0,
+    backgroundColor: "transparent",
+    borderWidth: 0,
+    fontSize: typography.size.xxxl,
+    fontWeight: typography.weight.bold,
+    color: colors.text,
+  },
+
+  /* Add button */
   addButton: {
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    borderRadius: radius.md,
+    borderRadius: radius.full,
     backgroundColor: colors.primaryLight,
+  },
+
+  addButtonPressed: {
+    opacity: 0.8,
+  },
+
+  addButtonDisabled: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
 
   addButtonText: {
     color: colors.primary,
-    fontSize: 13,
-    fontWeight: "600",
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.semibold,
   },
 
   disabledText: {
     color: colors.textSecondary,
   },
 
+  /* States */
   loadingContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -977,60 +1040,53 @@ const styles = StyleSheet.create({
   },
 
   loadingText: {
-    fontSize: 13,
+    fontSize: typography.size.caption,
     color: colors.textSecondary,
   },
 
   messageCard: {
     padding: spacing.md,
     backgroundColor: colors.surface,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
   },
 
   errorText: {
     color: colors.danger,
-    fontSize: 13,
-    textAlign: "center",
+    fontSize: typography.size.sm,
   },
 
-  retryButton: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.primaryLight,
-    borderRadius: radius.md,
-  },
-
-  retryButtonText: {
+  retryText: {
     color: colors.primary,
-    fontSize: 13,
-    fontWeight: "600",
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.semibold,
     marginTop: spacing.sm,
   },
 
   emptyCategories: {
     backgroundColor: colors.surface,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
     borderStyle: "dashed",
     padding: spacing.lg,
+    gap: spacing.xs,
   },
 
   emptyTitle: {
-    fontSize: 14,
-    fontWeight: "600",
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.semibold,
     color: colors.text,
-    marginBottom: spacing.xs,
   },
 
   emptyDescription: {
-    fontSize: 13,
-    lineHeight: 19,
+    fontSize: typography.size.caption,
+    lineHeight: 18,
     color: colors.textSecondary,
   },
 
+  /* Category cards */
   categoryList: {
     gap: spacing.md,
   },
@@ -1039,8 +1095,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     padding: spacing.md,
+    gap: spacing.md,
   },
 
   categoryHeader: {
@@ -1070,8 +1127,9 @@ const styles = StyleSheet.create({
   },
 
   categoryName: {
-    fontSize: 14,
-    fontWeight: "600",
+    flexShrink: 1,
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.semibold,
     color: colors.text,
   },
 
@@ -1082,83 +1140,161 @@ const styles = StyleSheet.create({
   categoryAmountContainer: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: spacing.md,
     paddingHorizontal: spacing.md,
     backgroundColor: colors.background,
     borderRadius: radius.md,
-    minHeight: 46,
+    minHeight: 48,
   },
 
   categoryCurrency: {
-    fontSize: 13,
-    fontWeight: "600",
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.semibold,
     color: colors.textSecondary,
     marginRight: spacing.sm,
   },
 
   categoryAmountInput: {
     flex: 1,
-    fontSize: 16,
+    fontSize: typography.size.md,
     color: colors.text,
     paddingVertical: spacing.sm,
   },
 
+  /* Warning */
   warningCard: {
-    backgroundColor: "#FFF5E5",
+    backgroundColor: colors.warningLight,
     borderRadius: radius.md,
     padding: spacing.md,
-    marginTop: spacing.md,
+    gap: spacing.xs,
   },
 
   warningTitle: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#9A681C",
-    marginBottom: spacing.xs,
+    fontSize: typography.size.caption,
+    fontWeight: typography.weight.bold,
+    color: colors.warning,
   },
 
   warningDescription: {
-    fontSize: 12,
+    fontSize: typography.size.caption,
     lineHeight: 18,
-    color: "#8B6A35",
+    color: colors.textSecondary,
   },
 
+  /* Summary */
   summaryCard: {
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radius.lg,
     padding: spacing.lg,
-    marginBottom: spacing.xl,
+    gap: spacing.sm,
   },
 
   summaryTitle: {
-    fontSize: 15,
-    fontWeight: "700",
+    fontSize: typography.size.md,
+    fontWeight: typography.weight.semibold,
     color: colors.text,
-    marginBottom: spacing.md,
+    marginBottom: spacing.xs,
   },
 
   summaryRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: spacing.sm,
+    gap: spacing.md,
   },
 
   summaryLabel: {
-    fontSize: 13,
+    fontSize: typography.size.sm,
     color: colors.textSecondary,
   },
 
   summaryValue: {
-    fontSize: 13,
-    fontWeight: "600",
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.semibold,
     color: colors.text,
   },
 
+  /* Delete */
+  deleteButton: {
+    minHeight: 48,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.danger,
+    backgroundColor: colors.dangerLight,
+  },
+
+  deleteButtonPressed: {
+    opacity: 0.8,
+  },
+
+  deleteButtonText: {
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.semibold,
+    color: colors.danger,
+  },
+
+  /* Loading / error / empty (full screen) */
+  centerContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: spacing.xl,
+    gap: spacing.md,
+  },
+
+  retryButton: {
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
+    backgroundColor: colors.primaryLight,
+    borderRadius: radius.md,
+  },
+
+  retryButtonText: {
+    color: colors.primary,
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.semibold,
+  },
+
+  /* Footer */
+  footer: {
+    flexDirection: "row",
+    gap: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    backgroundColor: colors.background,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+
+  cancelButton: {
+    flex: 1,
+    minHeight: 54,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+
+  cancelButtonPressed: {
+    backgroundColor: colors.background,
+  },
+
+  cancelButtonText: {
+    fontSize: typography.size.md,
+    fontWeight: typography.weight.medium,
+    color: colors.textSecondary,
+  },
+
   saveButton: {
-    minHeight: 52,
+    flex: 2,
+    minHeight: 54,
     backgroundColor: colors.primary,
     borderRadius: radius.md,
     flexDirection: "row",
@@ -1167,44 +1303,21 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
 
-  saveButtonDisabled: {
-    opacity: 0.6,
+  saveButtonPressed: {
+    backgroundColor: colors.primaryDark,
+  },
+
+  disabledButton: {
+    opacity: 0.5,
   },
 
   saveButtonText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: colors.surface,
+    fontSize: typography.size.md,
+    fontWeight: typography.weight.semibold,
+    color: colors.textOnPrimary,
   },
 
-  deleteButton: {
-    minHeight: 48,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: spacing.sm,
-    marginTop: spacing.md,
-  },
-
-  deleteButtonText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: colors.danger,
-  },
-
-  cancelButton: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: spacing.md,
-    marginTop: spacing.xs,
-  },
-
-  cancelButtonText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: colors.textSecondary,
-  },
-
+  /* Category sheet */
   modalEmpty: {
     padding: spacing.lg,
   },
@@ -1219,8 +1332,8 @@ const styles = StyleSheet.create({
   },
 
   categoryOptionName: {
-    fontSize: 14,
-    fontWeight: "500",
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.medium,
     color: colors.text,
   },
 });

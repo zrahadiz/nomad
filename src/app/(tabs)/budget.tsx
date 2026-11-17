@@ -10,10 +10,12 @@ import {
 
 import {
   AlertTriangle,
-  ChartPie,
+  CalendarDays,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Lightbulb,
+  Pencil,
   Plus,
   TrendingUp,
   Wallet,
@@ -23,7 +25,8 @@ import { useRouter } from "expo-router";
 
 import { WorkspaceGate } from "@/components/feedbacks/workspace-gate";
 import { SafeScreen } from "@/components/layout/safe-screen";
-import { colors, radius, spacing } from "@/constants/theme";
+import { BottomSheetModal } from "@/components/ui/bottom-modal";
+import { colors, radius, spacing, typography } from "@/constants/theme";
 import { formatMoney } from "@/lib/finance/calculations";
 import { formatConvertedMoney } from "@/lib/finance/currency-converter";
 import { useBudgetStore } from "@/stores/use-budget-store";
@@ -77,6 +80,19 @@ function getStatusLabel(status: spendingStatus) {
       return "On track";
   }
 }
+
+function getStatusBackground(status: spendingStatus) {
+  switch (status) {
+    case "over":
+      return colors.dangerLight;
+    case "warning":
+      return colors.warningLight;
+    default:
+      return colors.successLight;
+  }
+}
+
+const MONTH_COLUMNS = 3;
 
 export default function BudgetScreen() {
   const router = useRouter();
@@ -169,12 +185,42 @@ export default function BudgetScreen() {
     percentage: spent > 0 ? (category.amountSpent / spent) * 100 : 0,
   }));
 
+  // =================================================
+  // MONTH PICKER (jump straight to any month / year)
+  // =================================================
+
+  const [monthPickerVisible, setMonthPickerVisible] = useState(false);
+  const [pickerYear, setPickerYear] = useState(selectedMonth.getFullYear());
+
+  const today = new Date();
+  const currentYear = today.getFullYear();
+  const currentMonthIndex = today.getMonth();
+
+  const isCurrentMonth =
+    selectedMonth.getFullYear() === currentYear &&
+    selectedMonth.getMonth() === currentMonthIndex;
+
+  const openMonthPicker = () => {
+    setPickerYear(selectedMonth.getFullYear());
+    setMonthPickerVisible(true);
+  };
+
+  const selectMonth = (year: number, monthIndex: number) => {
+    setSelectedMonth(new Date(year, monthIndex, 1));
+    setMonthPickerVisible(false);
+  };
+
+  const monthNames = Array.from({ length: 12 }, (_, index) =>
+    new Date(2000, index, 1).toLocaleDateString("en", { month: "short" }),
+  );
+
   return (
     <SafeScreen backgroundColor={colors.background} edges={["top"]}>
       <WorkspaceGate>
         <ScrollView
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
+          stickyHeaderIndices={[1]}
         >
           <View>
             <Text style={styles.title}>Budget</Text>
@@ -183,25 +229,47 @@ export default function BudgetScreen() {
             </Text>
           </View>
 
-          {/* Month selector */}
-          <View style={styles.monthSelector}>
-            <Pressable
-              onPress={goToPreviousMonth}
-              style={styles.monthButton}
-              hitSlop={8}
-            >
-              <ChevronLeft size={20} color={colors.text} />
-            </Pressable>
+          {/* Month selector: arrows for neighbours, tap the month to jump anywhere */}
+          <View style={styles.monthSelectorWrap}>
+            <View style={styles.monthSelector}>
+              <Pressable
+                onPress={goToPreviousMonth}
+                style={styles.monthButton}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Previous month"
+              >
+                <ChevronLeft size={20} color={colors.text} />
+              </Pressable>
 
-            <Text style={styles.monthText}>{formatMonth(selectedMonth)}</Text>
+              <Pressable
+                onPress={openMonthPicker}
+                style={({ pressed }) => [
+                  styles.monthPill,
+                  pressed && styles.monthPillPressed,
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel="Choose month"
+              >
+                <CalendarDays size={18} color={colors.primary} />
 
-            <Pressable
-              onPress={goToNextMonth}
-              style={styles.monthButton}
-              hitSlop={8}
-            >
-              <ChevronRight size={20} color={colors.text} />
-            </Pressable>
+                <Text style={styles.monthText}>
+                  {formatMonth(selectedMonth)}
+                </Text>
+
+                <ChevronDown size={18} color={colors.textSecondary} />
+              </Pressable>
+
+              <Pressable
+                onPress={goToNextMonth}
+                style={styles.monthButton}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Next month"
+              >
+                <ChevronRight size={20} color={colors.text} />
+              </Pressable>
+            </View>
           </View>
 
           {loading ? (
@@ -221,6 +289,7 @@ export default function BudgetScreen() {
                     void fetchBudgetOverview(activeWorkspaceId, budgetMonth);
                   }
                 }}
+                accessibilityRole="button"
               >
                 <Text style={styles.retryButtonText}>Try again</Text>
               </Pressable>
@@ -240,8 +309,9 @@ export default function BudgetScreen() {
               <Pressable
                 style={styles.createBudgetButton}
                 onPress={() => router.push("/budget/new")}
+                accessibilityRole="button"
               >
-                <Plus size={18} color={colors.surface} />
+                <Plus size={18} color={colors.textOnPrimary} />
                 <Text style={styles.createBudgetButtonText}>Create budget</Text>
               </Pressable>
             </View>
@@ -250,9 +320,13 @@ export default function BudgetScreen() {
               {/* Overall budget */}
               <View style={styles.overviewCard}>
                 <View style={styles.cardHeader}>
-                  <View>
+                  <View style={styles.cardHeaderText}>
                     <Text style={styles.cardLabel}>Total spending</Text>
-                    <Text style={styles.spentAmount}>
+                    <Text
+                      style={styles.spentAmount}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                    >
                       {formatCurrency(spent, currencyCode)}
                     </Text>
 
@@ -263,66 +337,69 @@ export default function BudgetScreen() {
                     )}
                   </View>
 
-                  <View style={styles.overviewIcon}>
-                    <ChartPie size={22} color={colors.primary} />
-                  </View>
-                </View>
-
-                <View style={styles.statusRow}>
-                  <View
-                    style={[
-                      styles.statusDot,
-                      { backgroundColor: progressColor },
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.manageChip,
+                      pressed && styles.manageChipPressed,
                     ]}
-                  />
-                  <Text style={[styles.statusText, { color: progressColor }]}>
-                    {getStatusLabel(overallStatus)}
-                  </Text>
-                  <Text style={styles.statusPercentage}>
-                    {percentage.toFixed(1)}% used
-                  </Text>
+                    onPress={() =>
+                      router.push({
+                        pathname: "/budget/manage",
+                        params: { month: budgetMonth },
+                      })
+                    }
+                    hitSlop={6}
+                    accessibilityRole="button"
+                    accessibilityLabel="Manage budget"
+                  >
+                    <Pencil size={14} color={colors.primary} />
+                    <Text style={styles.manageChipText}>Manage</Text>
+                  </Pressable>
                 </View>
 
-                <View style={styles.progressTrack}>
-                  <View
-                    style={[
-                      styles.progressFill,
-                      {
-                        width: `${progress * 100}%`,
-                        backgroundColor: progressColor,
-                      },
-                    ]}
-                  />
-                </View>
-
-                <View style={styles.progressLabels}>
-                  <View>
-                    <Text style={styles.progressPercentage}>
-                      {formatCurrency(spent, currencyCode)} spent
-                    </Text>
-                    {formatSecondaryCurrency(spent) && (
-                      <Text style={styles.secondaryAmount}>
-                        {formatSecondaryCurrency(spent)}
+                <View style={styles.progressBlock}>
+                  <View style={styles.statusRow}>
+                    <View
+                      style={[
+                        styles.statusChip,
+                        { backgroundColor: getStatusBackground(overallStatus) },
+                      ]}
+                    >
+                      <View
+                        style={[
+                          styles.statusDot,
+                          { backgroundColor: progressColor },
+                        ]}
+                      />
+                      <Text
+                        style={[styles.statusText, { color: progressColor }]}
+                      >
+                        {getStatusLabel(overallStatus)}
                       </Text>
-                    )}
+                    </View>
+
+                    <Text style={styles.statusPercentage}>
+                      {percentage.toFixed(1)}% used
+                    </Text>
                   </View>
 
-                  <View style={styles.progressRightLabel}>
-                    <Text style={styles.progressLimit}>
-                      {formatCurrency(limit, currencyCode)} limit
-                    </Text>
-                    {formatSecondaryCurrency(limit) && (
-                      <Text style={styles.secondaryAmount}>
-                        {formatSecondaryCurrency(limit)}
-                      </Text>
-                    )}
+                  <View style={styles.progressTrack}>
+                    <View
+                      style={[
+                        styles.progressFill,
+                        {
+                          width: `${progress * 100}%`,
+                          backgroundColor: progressColor,
+                        },
+                      ]}
+                    />
                   </View>
                 </View>
 
                 <View style={styles.summaryDivider} />
 
                 <View style={styles.summaryRow}>
-                  <View>
+                  <View style={styles.summaryCell}>
                     <Text style={styles.summaryLabel}>Remaining</Text>
                     <Text
                       style={[
@@ -340,7 +417,7 @@ export default function BudgetScreen() {
                     )}
                   </View>
 
-                  <View style={styles.summaryRight}>
+                  <View style={[styles.summaryCell, styles.summaryRight]}>
                     <Text style={styles.summaryLabel}>Budget limit</Text>
                     <Text style={styles.summaryAmount}>
                       {formatCurrency(limit, currencyCode)}
@@ -358,10 +435,7 @@ export default function BudgetScreen() {
                   <View
                     style={[
                       styles.alertCard,
-                      {
-                        backgroundColor:
-                          overallStatus === "over" ? "#FCEDEA" : "#FFF5E5",
-                      },
+                      { backgroundColor: getStatusBackground(overallStatus) },
                     ]}
                   >
                     <AlertTriangle size={18} color={progressColor} />
@@ -384,18 +458,6 @@ export default function BudgetScreen() {
                   </View>
                 )}
               </View>
-
-              <Pressable
-                style={styles.manageBudgetButton}
-                onPress={() =>
-                  router.push({
-                    pathname: "/budget/manage",
-                    params: { month: budgetMonth },
-                  })
-                }
-              >
-                <Text style={styles.manageBudgetButtonText}>Manage budget</Text>
-              </Pressable>
 
               {/* Category budget alerts */}
               <View style={styles.section}>
@@ -449,7 +511,10 @@ export default function BudgetScreen() {
                             </View>
 
                             <View style={styles.categoryNameContainer}>
-                              <Text style={styles.categoryName}>
+                              <Text
+                                style={styles.categoryName}
+                                numberOfLines={1}
+                              >
                                 {category.categoryName}
                               </Text>
 
@@ -510,7 +575,15 @@ export default function BudgetScreen() {
                         </View>
 
                         {categoryStatus !== "normal" && (
-                          <View style={styles.categoryAlert}>
+                          <View
+                            style={[
+                              styles.categoryAlert,
+                              {
+                                backgroundColor:
+                                  getStatusBackground(categoryStatus),
+                              },
+                            ]}
+                          >
                             <AlertTriangle size={14} color={categoryColor} />
                             <Text
                               style={[
@@ -569,7 +642,7 @@ export default function BudgetScreen() {
                 ) : (
                   <>
                     {highestSpendingCategory && (
-                      <View style={styles.insightCard}>
+                      <View style={styles.highlightCard}>
                         <View style={styles.insightIcon}>
                           <TrendingUp size={20} color={colors.primary} />
                         </View>
@@ -629,7 +702,10 @@ export default function BudgetScreen() {
                                   },
                                 ]}
                               />
-                              <Text style={styles.insightCategoryName}>
+                              <Text
+                                style={styles.insightCategoryName}
+                                numberOfLines={1}
+                              >
                                 {category.categoryIcon
                                   ? `${category.categoryIcon} `
                                   : ""}
@@ -682,6 +758,86 @@ export default function BudgetScreen() {
             </>
           )}
         </ScrollView>
+
+        {/* MONTH PICKER */}
+
+        <BottomSheetModal
+          visible={monthPickerVisible}
+          onClose={() => setMonthPickerVisible(false)}
+          title="Select month"
+          subtitle="Jump straight to any month and year."
+        >
+          <View style={styles.pickerYearRow}>
+            <Pressable
+              onPress={() => setPickerYear((year) => year - 1)}
+              style={styles.monthButton}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Previous year"
+            >
+              <ChevronLeft size={20} color={colors.text} />
+            </Pressable>
+
+            <Text style={styles.pickerYear}>{pickerYear}</Text>
+
+            <Pressable
+              onPress={() => setPickerYear((year) => year + 1)}
+              style={styles.monthButton}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Next year"
+            >
+              <ChevronRight size={20} color={colors.text} />
+            </Pressable>
+          </View>
+
+          <View style={styles.monthGrid}>
+            {monthNames.map((name, index) => {
+              const isSelected =
+                selectedMonth.getFullYear() === pickerYear &&
+                selectedMonth.getMonth() === index;
+
+              const isToday =
+                pickerYear === currentYear && index === currentMonthIndex;
+
+              return (
+                <Pressable
+                  key={name}
+                  onPress={() => selectMonth(pickerYear, index)}
+                  style={[
+                    styles.monthCell,
+                    isToday && styles.monthCellToday,
+                    isSelected && styles.monthCellSelected,
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: isSelected }}
+                >
+                  <Text
+                    style={[
+                      styles.monthCellText,
+                      isSelected && styles.monthCellTextSelected,
+                    ]}
+                  >
+                    {name}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <Pressable
+            onPress={() => selectMonth(currentYear, currentMonthIndex)}
+            disabled={isCurrentMonth}
+            style={({ pressed }) => [
+              styles.todayButton,
+              pressed && styles.todayButtonPressed,
+              isCurrentMonth && styles.todayButtonDisabled,
+            ]}
+            accessibilityRole="button"
+          >
+            <Text style={styles.todayButtonText}>Go to current month</Text>
+          </Pressable>
+        </BottomSheetModal>
       </WorkspaceGate>
     </SafeScreen>
   );
@@ -690,27 +846,38 @@ export default function BudgetScreen() {
 const styles = StyleSheet.create({
   content: {
     padding: spacing.lg,
+    paddingBottom: spacing.xxxl,
     gap: spacing.xl,
     flexGrow: 1,
   },
+
   title: {
-    fontSize: 28,
-    fontWeight: "700",
+    fontSize: typography.size.xxxl,
+    fontWeight: typography.weight.bold,
     color: colors.text,
   },
+
   subtitle: {
-    fontSize: 14,
+    fontSize: typography.size.sm,
     color: colors.textSecondary,
     marginTop: spacing.xs,
   },
+
+  /* Month selector (sticky) */
+  monthSelectorWrap: {
+    backgroundColor: colors.background,
+    paddingVertical: spacing.xs,
+  },
+
   monthSelector: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    gap: spacing.sm,
   },
+
   monthButton: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.surface,
@@ -718,21 +885,120 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
+
+  monthPill: {
+    flex: 1,
+    minHeight: 44,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.md,
+  },
+
+  monthPillPressed: {
+    backgroundColor: colors.primaryLight,
+  },
+
   monthText: {
-    fontSize: 16,
-    fontWeight: "600",
+    fontSize: typography.size.md,
+    fontWeight: typography.weight.semibold,
     color: colors.text,
   },
+
+  /* Month picker sheet */
+  pickerYearRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: spacing.lg,
+  },
+
+  pickerYear: {
+    fontSize: typography.size.lg,
+    fontWeight: typography.weight.bold,
+    color: colors.text,
+  },
+
+  monthGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    rowGap: spacing.sm,
+  },
+
+  monthCell: {
+    width: `${100 / MONTH_COLUMNS - 2}%`,
+    minHeight: 48,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+
+  monthCellToday: {
+    borderColor: colors.primary,
+  },
+
+  monthCellSelected: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+
+  monthCellText: {
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.medium,
+    color: colors.text,
+  },
+
+  monthCellTextSelected: {
+    color: colors.textOnPrimary,
+    fontWeight: typography.weight.semibold,
+  },
+
+  todayButton: {
+    minHeight: 48,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.md,
+    backgroundColor: colors.primaryLight,
+    marginTop: spacing.lg,
+    marginBottom: spacing.sm,
+  },
+
+  todayButtonPressed: {
+    opacity: 0.8,
+  },
+
+  todayButtonDisabled: {
+    opacity: 0.5,
+  },
+
+  todayButtonText: {
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.semibold,
+    color: colors.primary,
+  },
+
+  /* States */
   centerState: {
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: spacing.xxxl,
     gap: spacing.md,
   },
+
   stateText: {
-    fontSize: 14,
+    fontSize: typography.size.sm,
     color: colors.textSecondary,
   },
+
   emptyCard: {
     alignItems: "center",
     backgroundColor: colors.surface,
@@ -742,6 +1008,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     gap: spacing.md,
   },
+
   emptyIcon: {
     width: 56,
     height: 56,
@@ -750,17 +1017,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+
   emptyTitle: {
-    fontSize: 18,
-    fontWeight: "700",
+    fontSize: typography.size.lg,
+    fontWeight: typography.weight.bold,
     color: colors.text,
   },
+
   emptyDescription: {
-    fontSize: 14,
+    fontSize: typography.size.sm,
     lineHeight: 21,
     color: colors.textSecondary,
     textAlign: "center",
   },
+
   createBudgetButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -769,25 +1039,30 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     borderRadius: radius.md,
     paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    marginTop: spacing.lg,
+    paddingHorizontal: spacing.xl,
+    marginTop: spacing.sm,
   },
+
   createBudgetButtonText: {
-    color: colors.surface,
-    fontSize: 14,
-    fontWeight: "600",
+    color: colors.textOnPrimary,
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.semibold,
   },
+
   retryButton: {
     backgroundColor: colors.primary,
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
     borderRadius: radius.md,
   },
+
   retryButtonText: {
-    color: colors.surface,
-    fontSize: 14,
-    fontWeight: "600",
+    color: colors.textOnPrimary,
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.semibold,
   },
+
+  /* Overview */
   overviewCard: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
@@ -796,103 +1071,139 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     gap: spacing.lg,
   },
+
   cardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    gap: spacing.md,
   },
+
+  cardHeaderText: {
+    flex: 1,
+  },
+
   cardLabel: {
-    fontSize: 14,
+    fontSize: typography.size.sm,
     color: colors.textSecondary,
   },
+
   spentAmount: {
-    fontSize: 28,
-    fontWeight: "700",
+    fontSize: typography.size.xxxl,
+    fontWeight: typography.weight.bold,
     color: colors.text,
     marginTop: spacing.xs,
   },
+
   secondaryAmount: {
-    fontSize: 11,
+    fontSize: typography.size.xs,
     color: colors.textSecondary,
     marginTop: 3,
   },
-  overviewIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.md,
-    backgroundColor: colors.primaryLight,
+
+  manageChip: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    gap: spacing.xs,
+    alignSelf: "flex-start",
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.full,
+    backgroundColor: colors.primaryLight,
   },
+
+  manageChipPressed: {
+    opacity: 0.8,
+  },
+
+  manageChipText: {
+    fontSize: typography.size.caption,
+    fontWeight: typography.weight.semibold,
+    color: colors.primary,
+  },
+
+  progressBlock: {
+    gap: spacing.sm,
+  },
+
   statusRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.sm,
+    justifyContent: "space-between",
   },
+
+  statusChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.full,
+  },
+
   statusDot: {
     width: 8,
     height: 8,
     borderRadius: radius.full,
   },
+
   statusText: {
-    fontSize: 13,
-    fontWeight: "600",
+    fontSize: typography.size.caption,
+    fontWeight: typography.weight.semibold,
   },
+
   statusPercentage: {
-    marginLeft: "auto",
-    fontSize: 12,
+    fontSize: typography.size.caption,
     color: colors.textSecondary,
   },
+
   progressTrack: {
     height: 10,
     backgroundColor: colors.border,
     borderRadius: radius.full,
     overflow: "hidden",
   },
+
   progressFill: {
     height: "100%",
     borderRadius: radius.full,
   },
-  progressLabels: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  progressRightLabel: {
-    alignItems: "flex-end",
-  },
-  progressPercentage: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: colors.textSecondary,
-  },
-  progressLimit: {
-    fontSize: 12,
-    color: colors.textSecondary,
-  },
+
   summaryDivider: {
     height: 1,
     backgroundColor: colors.border,
   },
+
   summaryRow: {
     flexDirection: "row",
     justifyContent: "space-between",
+    gap: spacing.md,
   },
+
+  summaryCell: {
+    flex: 1,
+  },
+
   summaryRight: {
     alignItems: "flex-end",
   },
+
   summaryLabel: {
-    fontSize: 12,
+    fontSize: typography.size.caption,
     color: colors.textSecondary,
   },
+
   summaryAmount: {
-    fontSize: 16,
-    fontWeight: "700",
+    fontSize: typography.size.md,
+    fontWeight: typography.weight.bold,
     color: colors.text,
     marginTop: spacing.xs,
   },
+
   negativeAmount: {
     color: colors.danger,
   },
+
   alertCard: {
     flexDirection: "row",
     alignItems: "flex-start",
@@ -900,75 +1211,74 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     borderRadius: radius.md,
   },
+
   alertText: {
     flex: 1,
-    fontSize: 13,
+    fontSize: typography.size.caption,
     lineHeight: 19,
-    fontWeight: "500",
+    fontWeight: typography.weight.medium,
   },
+
+  /* Sections */
   section: {
     gap: spacing.md,
   },
+
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
+
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: "700",
+    fontSize: typography.size.lg,
+    fontWeight: typography.weight.bold,
     color: colors.text,
   },
-  manageBudgetButton: {
-    minHeight: 46,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: colors.primary,
-    borderRadius: radius.md,
-    marginTop: spacing.lg,
-  },
-  manageBudgetButtonText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: colors.primary,
-  },
+
   categoryCount: {
-    fontSize: 12,
+    fontSize: typography.size.caption,
     color: colors.textSecondary,
   },
+
   emptyCategoryCard: {
     backgroundColor: colors.surface,
     padding: spacing.lg,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
   },
+
   emptyCategoryText: {
-    fontSize: 14,
+    fontSize: typography.size.sm,
     lineHeight: 20,
     color: colors.textSecondary,
   },
+
+  /* Category cards */
   categoryCard: {
     backgroundColor: colors.surface,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     padding: spacing.lg,
     borderWidth: 1,
     borderColor: colors.border,
     gap: spacing.md,
   },
+
   categoryHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     gap: spacing.md,
   },
+
   categoryInfo: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
     flex: 1,
   },
+
   categoryIcon: {
     width: 40,
     height: 40,
@@ -976,55 +1286,81 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+
   categoryEmoji: {
     fontSize: 18,
   },
+
   categoryNameContainer: {
     flex: 1,
     gap: 3,
   },
+
   categoryName: {
-    fontSize: 14,
-    fontWeight: "600",
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.semibold,
     color: colors.text,
   },
+
   categorySpent: {
-    fontSize: 12,
+    fontSize: typography.size.caption,
     color: colors.textSecondary,
   },
+
   categoryLimitContainer: {
     alignItems: "flex-end",
     gap: 3,
   },
+
   categoryPercentage: {
-    fontSize: 14,
-    fontWeight: "700",
+    fontSize: typography.size.md,
+    fontWeight: typography.weight.bold,
     color: colors.text,
   },
+
   categoryStatus: {
-    fontSize: 11,
-    fontWeight: "600",
+    fontSize: typography.size.xs,
+    fontWeight: typography.weight.semibold,
   },
+
   categoryProgressTrack: {
     height: 6,
     backgroundColor: colors.border,
     borderRadius: radius.full,
     overflow: "hidden",
   },
+
   categoryProgressFill: {
     height: "100%",
     borderRadius: radius.full,
   },
+
   categoryAlert: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.xs,
+    padding: spacing.sm,
+    borderRadius: radius.md,
   },
+
   categoryAlertText: {
-    fontSize: 12,
-    fontWeight: "500",
+    fontSize: typography.size.caption,
+    fontWeight: typography.weight.medium,
     flex: 1,
   },
+
+  /* Insights */
+  highlightCard: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: spacing.md,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+
   insightCard: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
@@ -1033,6 +1369,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     gap: spacing.lg,
   },
+
   insightIcon: {
     width: 40,
     height: 40,
@@ -1041,72 +1378,87 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+
   insightContent: {
     flex: 1,
     gap: spacing.xs,
   },
+
   insightLabel: {
-    fontSize: 12,
+    fontSize: typography.size.caption,
     color: colors.textSecondary,
   },
+
   insightTitle: {
-    fontSize: 16,
-    fontWeight: "700",
+    fontSize: typography.size.md,
+    fontWeight: typography.weight.bold,
     color: colors.text,
   },
+
   insightDescription: {
-    fontSize: 13,
+    fontSize: typography.size.caption,
     color: colors.textSecondary,
   },
+
   insightSectionTitle: {
-    fontSize: 14,
-    fontWeight: "700",
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.bold,
     color: colors.text,
   },
+
   insightCategory: {
     gap: spacing.sm,
   },
+
   insightCategoryHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     gap: spacing.md,
   },
+
   insightCategoryNameRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.sm,
     flex: 1,
   },
+
   insightCategoryDot: {
     width: 8,
     height: 8,
     borderRadius: radius.full,
   },
+
   insightCategoryName: {
-    fontSize: 13,
+    fontSize: typography.size.caption,
     color: colors.text,
     flexShrink: 1,
   },
+
   insightCategoryAmount: {
     alignItems: "flex-end",
     gap: 2,
   },
+
   insightAmount: {
-    fontSize: 12,
-    fontWeight: "600",
+    fontSize: typography.size.caption,
+    fontWeight: typography.weight.semibold,
     color: colors.text,
   },
+
   insightPercentage: {
-    fontSize: 11,
+    fontSize: typography.size.xs,
     color: colors.textSecondary,
   },
+
   insightProgressTrack: {
     height: 6,
     backgroundColor: colors.border,
     borderRadius: radius.full,
     overflow: "hidden",
   },
+
   insightProgressFill: {
     height: "100%",
     borderRadius: radius.full,

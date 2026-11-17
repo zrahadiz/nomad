@@ -1,5 +1,6 @@
 import { Link, router } from "expo-router";
-import { useState } from "react";
+import { Eye, EyeOff } from "lucide-react-native";
+import { useRef, useState, type ComponentRef, type RefObject } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -11,10 +12,12 @@ import {
 } from "react-native";
 
 import { GoogleButton } from "@/components/auth/google-button";
-import { colors, radius, spacing } from "@/constants/theme";
+import { colors, radius, spacing, typography } from "@/constants/theme";
 import { register, signInWithGoogle } from "@/services/auth-service";
 
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
+
+type textInputRef = ComponentRef<typeof TextInput>;
 
 export default function RegisterScreen() {
   const [fullname, setFullname] = useState("");
@@ -86,15 +89,26 @@ export default function RegisterScreen() {
     }
   }
 
+  // UI-only state: show/hide passwords and move between fields with the keyboard.
+  const [showPassword, setShowPassword] = useState(false);
+  const emailRef = useRef<textInputRef>(null);
+  const passwordRef = useRef<textInputRef>(null);
+  const confirmPasswordRef = useRef<textInputRef>(null);
+
   return (
     <KeyboardAwareScrollView
       style={styles.container}
-      contentContainerStyle={[styles.content, { paddingBottom: 48 }]}
+      contentContainerStyle={styles.content}
       bottomOffset={24}
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
     >
+      {/* Brand */}
       <View style={styles.brand}>
+        <View style={styles.logo}>
+          <Text style={styles.logoText}>N</Text>
+        </View>
+
         <Text style={styles.appName}>nomad.</Text>
         <Text style={styles.tagline}>
           Start your journey to better money management.
@@ -102,66 +116,102 @@ export default function RegisterScreen() {
       </View>
 
       <View style={styles.form}>
-        <Text style={styles.heading}>Create your account</Text>
-        <Text style={styles.subtitle}>
-          A clearer view of your finances starts here.
-        </Text>
+        {/* Heading */}
+        <View style={styles.headingGroup}>
+          <Text style={styles.heading}>Create your account</Text>
+          <Text style={styles.subtitle}>
+            A clearer view of your finances starts here.
+          </Text>
+        </View>
 
-        <Text style={styles.label}>Full name</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="John Doe"
-          placeholderTextColor={colors.textSecondary}
-          value={fullname}
-          onChangeText={setFullname}
-          autoCapitalize="words"
-          editable={!loading}
-        />
+        {/* Fields */}
+        <View style={styles.fieldGroup}>
+          <Text style={styles.label}>Full name</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="John Doe"
+            placeholderTextColor={colors.textSecondary}
+            value={fullname}
+            onChangeText={setFullname}
+            autoCapitalize="words"
+            autoComplete="name"
+            textContentType="name"
+            returnKeyType="next"
+            onSubmitEditing={() => emailRef.current?.focus()}
+            editable={!loading}
+            accessibilityLabel="Full name"
+          />
+        </View>
 
-        <Text style={styles.label}>Email address</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="you@example.com"
-          placeholderTextColor={colors.textSecondary}
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          autoComplete="email"
-          editable={!loading}
-        />
+        <View style={styles.fieldGroup}>
+          <Text style={styles.label}>Email address</Text>
+          <TextInput
+            ref={emailRef}
+            style={styles.input}
+            placeholder="you@example.com"
+            placeholderTextColor={colors.textSecondary}
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+            autoComplete="email"
+            textContentType="emailAddress"
+            returnKeyType="next"
+            onSubmitEditing={() => passwordRef.current?.focus()}
+            editable={!loading}
+            accessibilityLabel="Email address"
+          />
+        </View>
 
-        <Text style={styles.label}>Password</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="At least 8 characters"
-          placeholderTextColor={colors.textSecondary}
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          autoComplete="new-password"
-          editable={!loading}
-        />
+        <View style={styles.fieldGroup}>
+          <Text style={styles.label}>Password</Text>
+          <PasswordField
+            inputRef={passwordRef}
+            placeholder="At least 8 characters"
+            value={password}
+            onChangeText={setPassword}
+            show={showPassword}
+            onToggleShow={() => setShowPassword((value) => !value)}
+            autoComplete="new-password"
+            returnKeyType="next"
+            onSubmitEditing={() => confirmPasswordRef.current?.focus()}
+            editable={!loading}
+            accessibilityLabel="Password"
+          />
+          <Text style={styles.helperText}>Use at least 8 characters.</Text>
+        </View>
 
-        <Text style={styles.label}>Confirm password</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Re-enter your password"
-          placeholderTextColor={colors.textSecondary}
-          value={confirmPassword}
-          onChangeText={setConfirmPassword}
-          secureTextEntry
-          editable={!loading}
-          onSubmitEditing={handleRegister}
-        />
+        <View style={styles.fieldGroup}>
+          <Text style={styles.label}>Confirm password</Text>
+          <PasswordField
+            inputRef={confirmPasswordRef}
+            placeholder="Re-enter your password"
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            show={showPassword}
+            onToggleShow={() => setShowPassword((value) => !value)}
+            returnKeyType="done"
+            onSubmitEditing={handleRegister}
+            editable={!loading}
+            accessibilityLabel="Confirm password"
+          />
+        </View>
 
+        {/* Actions */}
         <Pressable
-          style={[styles.button, loading && styles.disabled]}
+          style={({ pressed }) => [
+            styles.button,
+            pressed && styles.buttonPressed,
+            loading && styles.disabled,
+          ]}
           onPress={handleRegister}
           disabled={loading}
+          accessibilityRole="button"
+          accessibilityState={{ disabled: loading, busy: loading }}
         >
           {loading ? (
-            <ActivityIndicator color={colors.surface} />
+            <ActivityIndicator color={colors.textOnPrimary} />
           ) : (
             <Text style={styles.buttonText}>Create account</Text>
           )}
@@ -175,6 +225,7 @@ export default function RegisterScreen() {
 
         <GoogleButton loading={loading} onPress={handleGoogleSignIn} />
 
+        {/* Footer */}
         <View style={styles.footer}>
           <Text style={styles.footerText}>Already have an account? </Text>
           <Link href="/sign-in" style={styles.link}>
@@ -186,56 +237,161 @@ export default function RegisterScreen() {
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/* Password field with a show / hide toggle                                    */
+/* -------------------------------------------------------------------------- */
+
+function PasswordField({
+  inputRef,
+  placeholder,
+  value,
+  onChangeText,
+  show,
+  onToggleShow,
+  autoComplete,
+  returnKeyType,
+  onSubmitEditing,
+  editable,
+  accessibilityLabel,
+}: {
+  inputRef: RefObject<textInputRef | null>;
+  placeholder: string;
+  value: string;
+  onChangeText: (value: string) => void;
+  show: boolean;
+  onToggleShow: () => void;
+  autoComplete?: "new-password";
+  returnKeyType: "next" | "done";
+  onSubmitEditing: () => void;
+  editable: boolean;
+  accessibilityLabel: string;
+}) {
+  return (
+    <View style={styles.passwordField}>
+      <TextInput
+        ref={inputRef}
+        style={styles.passwordInput}
+        placeholder={placeholder}
+        placeholderTextColor={colors.textSecondary}
+        value={value}
+        onChangeText={onChangeText}
+        secureTextEntry={!show}
+        autoCapitalize="none"
+        autoCorrect={false}
+        autoComplete={autoComplete}
+        textContentType="newPassword"
+        returnKeyType={returnKeyType}
+        onSubmitEditing={onSubmitEditing}
+        editable={editable}
+        accessibilityLabel={accessibilityLabel}
+      />
+
+      <Pressable
+        onPress={onToggleShow}
+        hitSlop={8}
+        style={styles.eyeButton}
+        accessibilityRole="button"
+        accessibilityLabel={show ? "Hide passwords" : "Show passwords"}
+      >
+        {show ? (
+          <EyeOff size={20} color={colors.textSecondary} />
+        ) : (
+          <Eye size={20} color={colors.textSecondary} />
+        )}
+      </Pressable>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
   },
+
   content: {
     flexGrow: 1,
     justifyContent: "center",
     padding: spacing.xl,
     paddingVertical: spacing.xxxl,
   },
+
+  /* Brand */
   brand: {
     alignItems: "center",
-    marginBottom: spacing.xxxl,
+    marginBottom: spacing.xxl,
   },
+
+  logo: {
+    width: 60,
+    height: 60,
+    borderRadius: radius.xl,
+    backgroundColor: colors.primary,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: spacing.md,
+  },
+
+  logoText: {
+    color: colors.textOnPrimary,
+    fontSize: 34,
+    fontWeight: typography.weight.bold,
+  },
+
   appName: {
-    fontSize: 36,
-    fontWeight: "700",
+    fontSize: typography.size.xxxl,
+    fontWeight: typography.weight.bold,
     color: colors.primary,
     letterSpacing: -1,
   },
+
   tagline: {
     color: colors.textSecondary,
-    fontSize: 14,
-    marginTop: spacing.sm,
+    fontSize: typography.size.sm,
+    marginTop: spacing.xs,
     textAlign: "center",
   },
+
+  /* Form */
   form: {
     width: "100%",
     maxWidth: 420,
     alignSelf: "center",
+    gap: spacing.lg,
   },
+
+  headingGroup: {
+    gap: spacing.xs,
+    marginBottom: spacing.xs,
+  },
+
   heading: {
-    fontSize: 28,
-    fontWeight: "700",
+    fontSize: typography.size.xl,
+    fontWeight: typography.weight.bold,
     color: colors.text,
-    marginBottom: spacing.sm,
   },
+
   subtitle: {
-    fontSize: 14,
+    fontSize: typography.size.sm,
     color: colors.textSecondary,
-    marginBottom: spacing.xxxl,
     lineHeight: 21,
   },
-  label: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: colors.text,
-    marginBottom: spacing.sm,
+
+  fieldGroup: {
+    gap: spacing.sm,
   },
+
+  label: {
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.semibold,
+    color: colors.text,
+  },
+
+  helperText: {
+    fontSize: typography.size.caption,
+    color: colors.textSecondary,
+  },
+
   input: {
     backgroundColor: colors.surface,
     borderWidth: 1,
@@ -243,54 +399,91 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     paddingHorizontal: spacing.lg,
     height: 52,
-    fontSize: 16,
+    fontSize: typography.size.md,
     color: colors.text,
-    marginBottom: spacing.xl,
   },
+
+  passwordField: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingLeft: spacing.lg,
+    paddingRight: spacing.md,
+    height: 52,
+  },
+
+  passwordInput: {
+    flex: 1,
+    height: "100%",
+    fontSize: typography.size.md,
+    color: colors.text,
+  },
+
+  eyeButton: {
+    paddingLeft: spacing.sm,
+  },
+
+  /* Actions */
   button: {
     height: 54,
     backgroundColor: colors.primary,
     borderRadius: radius.md,
     justifyContent: "center",
     alignItems: "center",
-    marginTop: spacing.sm,
+    marginTop: spacing.xs,
   },
+
+  buttonPressed: {
+    backgroundColor: colors.primaryDark,
+  },
+
   disabled: {
     opacity: 0.65,
   },
+
   buttonText: {
-    color: colors.surface,
-    fontSize: 16,
-    fontWeight: "600",
+    color: colors.textOnPrimary,
+    fontSize: typography.size.md,
+    fontWeight: typography.weight.semibold,
   },
-  footer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    marginTop: spacing.xxl,
-  },
-  footerText: {
-    color: colors.textSecondary,
-    fontSize: 14,
-  },
-  link: {
-    color: colors.primary,
-    fontWeight: "600",
-    fontSize: 14,
-  },
+
   divider: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
-    marginTop: spacing.xl,
   },
+
   dividerLine: {
     flex: 1,
     height: 1,
     backgroundColor: colors.border,
   },
+
   dividerText: {
     color: colors.textSecondary,
-    fontSize: 12,
-    fontWeight: "600",
+    fontSize: typography.size.xs,
+    fontWeight: typography.weight.semibold,
+  },
+
+  /* Footer */
+  footer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: spacing.sm,
+  },
+
+  footerText: {
+    color: colors.textSecondary,
+    fontSize: typography.size.sm,
+  },
+
+  link: {
+    color: colors.primary,
+    fontWeight: typography.weight.semibold,
+    fontSize: typography.size.sm,
   },
 });
