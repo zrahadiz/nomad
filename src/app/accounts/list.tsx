@@ -1,13 +1,28 @@
 import { useRouter } from "expo-router";
-import { useMemo } from "react";
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import { useMemo, useState } from "react";
+import {
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
-import { EllipsisVertical, Plus, Wallet } from "lucide-react-native";
+import {
+  EllipsisVertical,
+  Pencil,
+  Plus,
+  Trash2,
+  Wallet,
+} from "lucide-react-native";
 
 import { AccountIcon } from "@/components/accounts/account-icon";
 import { WorkspaceGate } from "@/components/feedbacks/workspace-gate";
 import { SafeScreen } from "@/components/layout/safe-screen";
+import { BottomSheetModal } from "@/components/ui/bottom-modal";
 
+import { getCountryByCode } from "@/constants/countries";
 import { colors, radius, spacing, typography } from "@/constants/theme";
 import { formatMoney, getAccountBalance } from "@/lib/finance/calculations";
 
@@ -16,7 +31,6 @@ import { useWorkspaceStore } from "@/stores/use-workspace-store";
 
 import type { accountIconName } from "@/constants/account-options";
 import type { financialAccount } from "@/types/finances";
-import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
 function getAccountTypeLabel(type: financialAccount["type"]): string {
   if (type === "e-wallet") return "E-wallet";
@@ -26,6 +40,10 @@ function getAccountTypeLabel(type: financialAccount["type"]): string {
 
 export default function AccountsScreen() {
   const router = useRouter();
+
+  // Which account's actions sheet is open. Stored as an id so the sheet closes
+  // by itself if that account is deleted.
+  const [actionAccountId, setActionAccountId] = useState<string | null>(null);
 
   const activeWorkspaceId = useWorkspaceStore(
     (state) => state.activeWorkspaceId,
@@ -41,11 +59,16 @@ export default function AccountsScreen() {
   const workspace = workspaces.find((item) => item.id === activeWorkspaceId);
 
   const currency = workspace?.currency_code ?? "MYR";
+  const flag = getCountryByCode(workspace?.country_code ?? "")?.flag ?? "🌍";
 
   const workspaceAccounts = useMemo(
     () =>
       accounts.filter((account) => account.workspaceId === activeWorkspaceId),
     [accounts, activeWorkspaceId],
+  );
+
+  const actionAccount = workspaceAccounts.find(
+    (account) => account.id === actionAccountId,
   );
 
   const handleDeleteAccount = (account: financialAccount) => {
@@ -79,26 +102,13 @@ export default function AccountsScreen() {
     );
   };
 
-  const handleAccountActions = (account: financialAccount) => {
-    Alert.alert(account.name, "Manage this account", [
-      {
-        text: "Cancel",
-        style: "cancel",
-      },
-      {
-        text: "Edit",
-        onPress: () =>
-          router.push({
-            pathname: "/accounts/[id]/edit",
-            params: { id: account.id },
-          }),
-      },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: () => handleDeleteAccount(account),
-      },
-    ]);
+  const handleEditAccount = (account: financialAccount) => {
+    setActionAccountId(null);
+
+    router.push({
+      pathname: "/accounts/[id]/edit",
+      params: { id: account.id },
+    });
   };
 
   const totalBalanceMinor = useMemo(
@@ -116,166 +126,256 @@ export default function AccountsScreen() {
   return (
     <SafeScreen backgroundColor={colors.background} edges={["bottom"]}>
       <WorkspaceGate>
-        <KeyboardAwareScrollView
-          contentContainerStyle={[styles.content]}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Total balance */}
-          <View style={styles.balanceCard}>
-            <Text style={styles.balanceLabel}>TOTAL ACCOUNT BALANCE</Text>
+        <View style={styles.screen}>
+          <ScrollView
+            style={styles.flex}
+            contentContainerStyle={styles.content}
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Total balance */}
+            <View style={styles.balanceCard}>
+              <View style={styles.balanceHeader}>
+                <View style={styles.balanceLabelRow}>
+                  <Wallet size={18} color={colors.primaryLight} />
+                  <Text style={styles.balanceLabel}>TOTAL ACCOUNT BALANCE</Text>
+                </View>
 
-            <Text style={styles.balanceAmount}>
-              {formatCurrency(totalBalanceMinor)}
-            </Text>
-
-            <Text style={styles.balanceCaption}>
-              Across {workspaceAccounts.length}{" "}
-              {workspaceAccounts.length === 1 ? "account" : "accounts"}
-            </Text>
-          </View>
-
-          {/* Account list */}
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>All Accounts</Text>
-            <Text style={styles.accountCount}>{workspaceAccounts.length}</Text>
-
-            <Pressable
-              style={styles.addButton}
-              accessibilityRole="button"
-              accessibilityLabel="Add account"
-              onPress={() => router.push("/accounts/new")}
-            >
-              <Plus size={20} color="#FFFFFF" />
-            </Pressable>
-          </View>
-
-          {workspaceAccounts.length === 0 ? (
-            <View style={styles.emptyCard}>
-              <View style={styles.emptyIcon}>
-                <Wallet size={28} color={colors.primary} />
+                <View style={styles.balanceBadge}>
+                  <Text style={styles.balanceBadgeText}>{currency}</Text>
+                </View>
               </View>
 
-              <Text style={styles.emptyTitle}>No accounts yet</Text>
-
-              <Text style={styles.emptySubtitle}>
-                Add your first account to start tracking your money.
+              <Text
+                style={styles.balanceAmount}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+              >
+                {formatCurrency(totalBalanceMinor)}
               </Text>
 
-              <Pressable
-                style={styles.emptyButton}
-                onPress={() => router.push("/accounts/new")}
-                accessibilityRole="button"
-              >
-                <Plus size={18} color="#FFFFFF" />
-                <Text style={styles.emptyButtonText}>
-                  Add your first account
+              <View style={styles.balanceFooter}>
+                <Text style={styles.balanceCaption}>
+                  Across {workspaceAccounts.length}{" "}
+                  {workspaceAccounts.length === 1 ? "account" : "accounts"}
                 </Text>
-              </Pressable>
+
+                <View style={styles.workspacePill}>
+                  <Text style={styles.workspaceFlag}>{flag}</Text>
+
+                  <Text style={styles.workspaceName} numberOfLines={1}>
+                    {workspace?.name ?? "Workspace"}
+                  </Text>
+                </View>
+              </View>
             </View>
-          ) : (
-            <View style={styles.accountList}>
-              {workspaceAccounts.map((account, index) => (
-                <View key={account.id}>
-                  {index > 0 && <View style={styles.divider} />}
 
-                  <View style={styles.accountRow}>
-                    <AccountIcon
-                      name={(account.icon ?? "wallet") as accountIconName}
-                      color={account.color ?? colors.primary}
-                    />
+            {/* Account list */}
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>All Accounts</Text>
 
-                    <View style={styles.accountDetails}>
-                      <Text style={styles.accountName} numberOfLines={1}>
-                        {account.name}
-                      </Text>
+              <View style={styles.countBadge}>
+                <Text style={styles.countBadgeText}>
+                  {workspaceAccounts.length}
+                </Text>
+              </View>
+            </View>
 
-                      <Text style={styles.accountType}>
-                        {getAccountTypeLabel(account.type)}
-                      </Text>
-                    </View>
+            {workspaceAccounts.length === 0 ? (
+              <View style={styles.emptyCard}>
+                <View style={styles.emptyIcon}>
+                  <Wallet size={28} color={colors.primary} />
+                </View>
 
-                    <View style={styles.accountActions}>
-                      <Text style={styles.accountBalance}>
-                        {formatCurrency(
-                          getAccountBalance(account, transactions),
-                        )}
-                      </Text>
+                <Text style={styles.emptyTitle}>No accounts yet</Text>
 
+                <Text style={styles.emptySubtitle}>
+                  Add your first account to start tracking your money.
+                </Text>
+
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.emptyButton,
+                    pressed && styles.emptyButtonPressed,
+                  ]}
+                  onPress={() => router.push("/accounts/new")}
+                  accessibilityRole="button"
+                >
+                  <Plus size={18} color={colors.textOnPrimary} />
+                  <Text style={styles.emptyButtonText}>
+                    Add your first account
+                  </Text>
+                </Pressable>
+              </View>
+            ) : (
+              <View style={styles.accountList}>
+                {workspaceAccounts.map((account, index) => {
+                  const balance = getAccountBalance(account, transactions);
+
+                  return (
+                    <View key={account.id}>
+                      {index > 0 && <View style={styles.divider} />}
+
+                      {/* The whole row opens the account's actions */}
                       <Pressable
-                        onPress={() => handleAccountActions(account)}
-                        style={styles.accountActionsButton}
+                        onPress={() => setActionAccountId(account.id)}
                         accessibilityRole="button"
-                        accessibilityLabel={`Actions for ${account.name}`}
-                        hitSlop={8}
+                        accessibilityLabel={`${account.name}, ${getAccountTypeLabel(
+                          account.type,
+                        )}, balance ${formatCurrency(balance)}`}
+                        accessibilityHint="Opens actions for this account"
+                        style={({ pressed }) => [
+                          styles.accountRow,
+                          pressed && styles.accountRowPressed,
+                        ]}
                       >
+                        <AccountIcon
+                          name={(account.icon ?? "wallet") as accountIconName}
+                          color={account.color ?? colors.primary}
+                        />
+
+                        <View style={styles.accountDetails}>
+                          <Text style={styles.accountName} numberOfLines={1}>
+                            {account.name}
+                          </Text>
+
+                          <Text style={styles.accountType}>
+                            {getAccountTypeLabel(account.type)}
+                          </Text>
+                        </View>
+
+                        <Text
+                          style={[
+                            styles.accountBalance,
+                            balance < 0 && styles.negativeBalance,
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {formatCurrency(balance)}
+                        </Text>
+
                         <EllipsisVertical
                           size={20}
                           color={colors.textSecondary}
                         />
                       </Pressable>
                     </View>
-                  </View>
-                </View>
-              ))}
-            </View>
+                  );
+                })}
+              </View>
+            )}
+          </ScrollView>
+
+          {/* Floating add button (the empty state has its own button) */}
+          {workspaceAccounts.length > 0 && (
+            <Pressable
+              onPress={() => router.push("/accounts/new")}
+              style={({ pressed }) => [
+                styles.fab,
+                pressed && styles.fabPressed,
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel="Add account"
+            >
+              <Plus size={26} color={colors.textOnPrimary} />
+            </Pressable>
           )}
-        </KeyboardAwareScrollView>
+        </View>
+
+        {/* Account actions */}
+        <BottomSheetModal
+          visible={Boolean(actionAccount)}
+          onClose={() => setActionAccountId(null)}
+          title={actionAccount?.name ?? "Account"}
+          subtitle="Manage this account"
+        >
+          {actionAccount && (
+            <>
+              <Pressable
+                onPress={() => handleEditAccount(actionAccount)}
+                accessibilityRole="button"
+                style={({ pressed }) => [
+                  styles.actionOption,
+                  pressed && styles.actionOptionPressed,
+                ]}
+              >
+                <View style={styles.actionIcon}>
+                  <Pencil size={20} color={colors.primary} />
+                </View>
+
+                <View style={styles.flex}>
+                  <Text style={styles.actionLabel}>Edit account</Text>
+
+                  <Text style={styles.actionDescription}>
+                    Update this account's details
+                  </Text>
+                </View>
+              </Pressable>
+
+              {/* The confirmation alert appears over the sheet; the sheet closes on its own once the account is gone. */}
+              <Pressable
+                onPress={() => handleDeleteAccount(actionAccount)}
+                accessibilityRole="button"
+                style={({ pressed }) => [
+                  styles.actionOption,
+                  pressed && styles.actionOptionPressed,
+                ]}
+              >
+                <View style={[styles.actionIcon, styles.actionIconDanger]}>
+                  <Trash2 size={20} color={colors.danger} />
+                </View>
+
+                <View style={styles.flex}>
+                  <Text style={[styles.actionLabel, styles.actionLabelDanger]}>
+                    Delete account
+                  </Text>
+
+                  <Text style={styles.actionDescription}>
+                    Also deletes all of its transactions
+                  </Text>
+                </View>
+              </Pressable>
+            </>
+          )}
+        </BottomSheetModal>
       </WorkspaceGate>
     </SafeScreen>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+  },
+
+  flex: {
+    flex: 1,
+  },
+
   content: {
     padding: spacing.lg,
-    paddingTop: spacing.xl,
-    paddingBottom: spacing.xxxl,
+    paddingTop: spacing.lg,
+    // Room so the last row can scroll clear of the floating button.
+    paddingBottom: 96,
     gap: spacing.lg,
   },
 
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: spacing.md,
-  },
-
-  backButton: {
-    width: 40,
-    height: 40,
-    justifyContent: "center",
-  },
-
-  headerText: {
-    flex: 1,
-    gap: spacing.xs,
-  },
-
-  title: {
-    color: colors.text,
-    fontSize: typography.size.xl,
-    fontWeight: typography.weight.bold,
-  },
-
-  subtitle: {
-    color: colors.textSecondary,
-    fontSize: typography.size.sm,
-  },
-
-  addButton: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.md,
-    backgroundColor: colors.primary,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
+  /* Balance card */
   balanceCard: {
     backgroundColor: colors.primary,
     borderRadius: radius.xl,
     padding: spacing.xl,
+  },
+
+  balanceHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+
+  balanceLabelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
   },
 
   balanceLabel: {
@@ -285,60 +385,95 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
   },
 
-  balanceAmount: {
-    color: "#FFFFFF",
-    fontSize: 30,
-    fontWeight: typography.weight.bold,
-    marginTop: spacing.md,
-  },
-
-  balanceCaption: {
-    color: colors.primaryLight,
-    fontSize: typography.size.sm,
-    marginTop: spacing.xs,
-  },
-
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-  },
-
-  sectionTitle: {
-    color: colors.text,
-    fontSize: typography.size.md,
-    fontWeight: typography.weight.semibold,
-  },
-
-  accountActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-  },
-
-  accountActionsButton: {
-    width: 36,
-    height: 36,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: radius.md,
-  },
-
-  accountCount: {
-    color: colors.textSecondary,
-    fontSize: typography.size.xs,
-    backgroundColor: colors.primaryLight,
+  balanceBadge: {
+    backgroundColor: colors.onPrimarySubtle,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
     borderRadius: radius.full,
   },
 
+  balanceBadgeText: {
+    color: colors.textOnPrimary,
+    fontSize: typography.size.xs,
+    fontWeight: typography.weight.semibold,
+  },
+
+  balanceAmount: {
+    color: colors.textOnPrimary,
+    fontSize: typography.size.xxxl,
+    fontWeight: typography.weight.bold,
+    marginTop: spacing.lg,
+  },
+
+  balanceFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.md,
+    marginTop: spacing.sm,
+  },
+
+  balanceCaption: {
+    color: colors.primaryLight,
+    fontSize: typography.size.sm,
+  },
+
+  workspacePill: {
+    flexShrink: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    backgroundColor: colors.onPrimarySubtle,
+    borderRadius: radius.full,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+  },
+
+  workspaceFlag: {
+    fontSize: 14,
+  },
+
+  workspaceName: {
+    flexShrink: 1,
+    color: colors.textOnPrimary,
+    fontSize: typography.size.caption,
+    fontWeight: typography.weight.medium,
+  },
+
+  /* Section header */
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+  },
+
+  sectionTitle: {
+    color: colors.text,
+    fontSize: typography.size.lg,
+    fontWeight: typography.weight.bold,
+  },
+
+  countBadge: {
+    backgroundColor: colors.primaryLight,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+  },
+
+  countBadgeText: {
+    color: colors.primary,
+    fontSize: typography.size.xs,
+    fontWeight: typography.weight.semibold,
+  },
+
+  /* Account list */
   accountList: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
-    paddingHorizontal: spacing.md,
+    overflow: "hidden",
   },
 
   accountRow: {
@@ -346,28 +481,38 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing.md,
     paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+  },
+
+  accountRowPressed: {
+    backgroundColor: colors.background,
   },
 
   accountDetails: {
     flex: 1,
-    gap: spacing.xs,
+    gap: 2,
   },
 
   accountName: {
     color: colors.text,
-    fontSize: typography.size.sm,
+    fontSize: typography.size.md,
     fontWeight: typography.weight.semibold,
   },
 
   accountType: {
     color: colors.textSecondary,
-    fontSize: typography.size.xs,
+    fontSize: typography.size.caption,
   },
 
   accountBalance: {
+    flexShrink: 0,
     color: colors.text,
     fontSize: typography.size.sm,
     fontWeight: typography.weight.semibold,
+  },
+
+  negativeBalance: {
+    color: colors.danger,
   },
 
   divider: {
@@ -375,6 +520,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.border,
   },
 
+  /* Empty state */
   emptyCard: {
     alignItems: "center",
     backgroundColor: colors.surface,
@@ -418,9 +564,80 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
 
+  emptyButtonPressed: {
+    backgroundColor: colors.primaryDark,
+  },
+
   emptyButtonText: {
-    color: "#FFFFFF",
+    color: colors.textOnPrimary,
     fontSize: typography.size.sm,
     fontWeight: typography.weight.semibold,
+  },
+
+  /* Floating action button */
+  fab: {
+    position: "absolute",
+    right: spacing.lg,
+    bottom: spacing.lg,
+    width: 56,
+    height: 56,
+    borderRadius: radius.full,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.primary,
+    shadowColor: "#202824",
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+  },
+
+  fabPressed: {
+    backgroundColor: colors.primaryDark,
+  },
+
+  /* Actions sheet */
+  actionOption: {
+    minHeight: 64,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.md,
+    marginBottom: spacing.xs,
+  },
+
+  actionOptionPressed: {
+    backgroundColor: colors.background,
+  },
+
+  actionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.md,
+    backgroundColor: colors.primaryLight,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  actionIconDanger: {
+    backgroundColor: colors.dangerLight,
+  },
+
+  actionLabel: {
+    color: colors.text,
+    fontSize: typography.size.md,
+    fontWeight: typography.weight.semibold,
+  },
+
+  actionLabelDanger: {
+    color: colors.danger,
+  },
+
+  actionDescription: {
+    color: colors.textSecondary,
+    fontSize: typography.size.caption,
+    marginTop: 2,
   },
 });

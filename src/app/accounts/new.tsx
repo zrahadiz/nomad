@@ -1,7 +1,8 @@
 import { useRouter } from "expo-router";
-import { Plus } from "lucide-react-native";
-import { useMemo, useState } from "react";
+import { Info, Plus } from "lucide-react-native";
+import { useMemo, useState, type ReactNode } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Pressable,
   StyleSheet,
@@ -22,7 +23,7 @@ import {
   accountIcons,
   type accountIconName,
 } from "@/constants/account-options";
-import { colors, radius, spacing } from "@/constants/theme";
+import { colors, radius, spacing, typography } from "@/constants/theme";
 
 import { formatMoney } from "@/lib/finance/calculations";
 import { getCurrencyDecimalDigits, toMinorUnits } from "@/lib/finance/currency";
@@ -155,291 +156,451 @@ export default function NewAccountScreen() {
     }
   };
 
+  const typeLabel =
+    accountTypeOptions.find((item) => item.value === type)?.label ?? "";
+
+  const trimmedName = name.trim();
+  const saveDisabled = saving || !workspace;
+
   return (
     <SafeScreen backgroundColor={colors.background} edges={["bottom"]}>
-      <KeyboardAwareScrollView
-        contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Account Name */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Account name</Text>
-
-          <TextInput
-            value={name}
-            onChangeText={setName}
-            placeholder="e.g. Maybank Savings"
-            placeholderTextColor={colors.textSecondary}
-            style={styles.textInput}
-            maxLength={40}
-            autoCapitalize="words"
-            returnKeyType="next"
-          />
-        </View>
-
-        {/* Account Type */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Account type</Text>
-
-          <View style={styles.typeContainer}>
-            {accountTypeOptions.map((option) => {
-              const selected = type === option.value;
-
-              return (
-                <Pressable
-                  key={option.value}
-                  onPress={() => setType(option.value)}
-                  style={[
-                    styles.typeOption,
-                    selected && styles.selectedTypeOption,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.typeText,
-                      selected && styles.selectedTypeText,
-                    ]}
-                  >
-                    {option.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        </View>
-
-        {/* Account Icon */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Choose an icon</Text>
-
-          <AccountIconPicker value={icon} color={color} onChange={setIcon} />
-        </View>
-
-        {/* Account Color */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Choose a color</Text>
-
-          <AccountColorPicker value={color} onChange={setColor} />
-        </View>
-
-        {/* Opening Balance */}
-        <View style={styles.section}>
-          <View style={styles.balanceHeader}>
-            <Text style={styles.sectionTitle}>Opening balance</Text>
-            <Text style={styles.currencyLabel}>{currency}</Text>
-          </View>
-
-          <AmountInput
-            value={openingBalance}
-            onChangeText={handleOpeningBalanceChange}
-            currency={currency}
-            placeholder="0"
-            placeholderTextColor={colors.textSecondary}
-            style={styles.textInput}
-            returnKeyType="done"
-          />
-
-          <Text style={styles.previewBalance}>Preview: {previewBalance}</Text>
-
-          <Text style={styles.helperText}>
-            Enter the amount currently available in this account.
-            {` Maximum ${decimalDigits} decimal places for ${currency}.`}
-          </Text>
-        </View>
-
-        {/* Workspace Currency */}
-        <View style={styles.currencyInfo}>
-          <View style={styles.currencyInfoText}>
-            <Text style={styles.currencyInfoTitle}>Account currency</Text>
-            <Text style={styles.helperText}>
-              This account uses your workspace currency.
-            </Text>
-          </View>
-
-          <Text style={styles.currencyCode}>{currency}</Text>
-        </View>
-
-        {/* Account Preview */}
-        <Text style={styles.sectionTitle}>Account Preview</Text>
-
-        <View style={styles.previewCard}>
-          <AccountIcon name={icon} color={color} size={56} iconSize={26} />
-
-          <View style={styles.previewDetails}>
-            <Text style={styles.previewName}>
-              {name.trim() || "Account name"}
-            </Text>
-
-            <Text style={styles.previewType}>
-              {selectedIconLabel} ·{" "}
-              {accountTypeOptions.find((item) => item.value === type)?.label}
-            </Text>
-          </View>
-
-          <View style={styles.previewBalanceContainer}>
-            <Text style={styles.previewBalanceLabel}>Opening balance</Text>
-            <Text style={styles.previewBalance}>{previewBalance}</Text>
-          </View>
-        </View>
-
-        {/* Save Button */}
-        <Pressable
-          onPress={handleSave}
-          disabled={saving || !workspace}
-          style={[
-            styles.saveButton,
-            (saving || !workspace) && styles.disabledButton,
-          ]}
+      <View style={styles.screen}>
+        <KeyboardAwareScrollView
+          style={styles.flex}
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          <Plus size={20} color="#FFFFFF" />
-          <Text style={styles.saveButtonText}>
-            {saving ? "Creating account..." : "Create Account"}
-          </Text>
-        </Pressable>
-      </KeyboardAwareScrollView>
+          {/* 2. Name */}
+          <View style={styles.group}>
+            <Text style={styles.sectionTitle}>Account name</Text>
+
+            <TextInput
+              value={name}
+              onChangeText={setName}
+              placeholder="e.g. Maybank Savings"
+              placeholderTextColor={colors.textSecondary}
+              style={styles.input}
+              maxLength={40}
+              autoCapitalize="words"
+              returnKeyType="next"
+            />
+          </View>
+
+          {/* 3. Type */}
+          <View style={styles.group}>
+            <Text style={styles.sectionTitle}>Account type</Text>
+
+            <SegmentedControl
+              options={accountTypeOptions}
+              value={type}
+              onChange={setType}
+            />
+          </View>
+
+          {/* 4. Appearance: icon and color together, since they style the same thing */}
+          <View style={styles.group}>
+            <Text style={styles.sectionTitle}>Appearance</Text>
+
+            <View style={[styles.card, styles.cardPadded]}>
+              <Text style={styles.cardLabel}>Choose an icon</Text>
+
+              <AccountIconPicker
+                value={icon}
+                color={color}
+                onChange={setIcon}
+              />
+
+              <View style={styles.divider} />
+
+              <Text style={styles.cardLabel}>Choose a color</Text>
+
+              <AccountColorPicker value={color} onChange={setColor} />
+            </View>
+          </View>
+
+          {/* 5. Opening balance */}
+          <FormCard title="Opening balance" currency={currency}>
+            <AmountInput
+              value={openingBalance}
+              onChangeText={handleOpeningBalanceChange}
+              currency={currency}
+              placeholder="0"
+              placeholderTextColor={colors.textSecondary}
+              style={styles.amountInput}
+              returnKeyType="done"
+            />
+
+            <Text style={styles.helperText}>Preview: {previewBalance}</Text>
+
+            <Text style={styles.helperText}>
+              Enter the amount currently available in this account.
+              {` Maximum ${decimalDigits} decimal places for ${currency}.`}
+            </Text>
+
+            <View style={styles.divider} />
+
+            <View style={styles.noteRow}>
+              <Info size={14} color={colors.textSecondary} />
+
+              <Text style={styles.helperText}>
+                {`Account currency: ${currency}. This account uses your workspace currency.`}
+              </Text>
+            </View>
+          </FormCard>
+          {/* 1. Live preview: updates as you type and pick, so it stays at the top */}
+          <View style={styles.group}>
+            <Text style={styles.sectionTitle}>Account Preview</Text>
+
+            <View style={styles.previewCard}>
+              <AccountIcon name={icon} color={color} size={56} iconSize={26} />
+
+              <View style={styles.flex}>
+                <Text
+                  style={[
+                    styles.previewName,
+                    !trimmedName && styles.previewNamePlaceholder,
+                  ]}
+                  numberOfLines={1}
+                >
+                  {trimmedName || "Account name"}
+                </Text>
+
+                <Text style={styles.previewType} numberOfLines={1}>
+                  {selectedIconLabel} · {typeLabel}
+                </Text>
+              </View>
+
+              <View style={styles.previewBalanceContainer}>
+                <Text style={styles.previewBalanceLabel}>Opening balance</Text>
+
+                <Text style={styles.previewBalance} numberOfLines={1}>
+                  {previewBalance}
+                </Text>
+              </View>
+            </View>
+          </View>
+        </KeyboardAwareScrollView>
+
+        {/* Save: always visible, outside the scroll area */}
+        <View style={styles.footer}>
+          <Pressable
+            onPress={handleSave}
+            disabled={saveDisabled}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: saveDisabled, busy: saving }}
+            style={({ pressed }) => [
+              styles.saveButton,
+              pressed && styles.saveButtonPressed,
+              saveDisabled && styles.disabledButton,
+            ]}
+          >
+            {saving ? (
+              <ActivityIndicator size="small" color={colors.textOnPrimary} />
+            ) : (
+              <Plus size={20} color={colors.textOnPrimary} />
+            )}
+
+            <Text style={styles.saveButtonText}>
+              {saving ? "Creating account..." : "Create account"}
+            </Text>
+          </Pressable>
+        </View>
+      </View>
     </SafeScreen>
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/* Presentational pieces                                                       */
+/* Same family as the transaction screens: share them when you extract.        */
+/* -------------------------------------------------------------------------- */
+
+function SegmentedControl<T extends string>({
+  options,
+  value,
+  onChange,
+}: {
+  options: { label: string; value: T }[];
+  value: T;
+  onChange: (value: T) => void;
+}) {
+  return (
+    <View style={styles.segmented}>
+      {options.map((option) => {
+        const selected = option.value === value;
+
+        return (
+          <Pressable
+            key={option.value}
+            onPress={() => onChange(option.value)}
+            accessibilityRole="button"
+            accessibilityState={{ selected }}
+            style={[styles.segment, selected && styles.segmentSelected]}
+          >
+            <Text
+              style={[
+                styles.segmentText,
+                selected && styles.segmentTextSelected,
+              ]}
+              numberOfLines={1}
+            >
+              {option.label}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+function FormCard({
+  title,
+  currency,
+  children,
+}: {
+  title: string;
+  currency?: string;
+  children: ReactNode;
+}) {
+  return (
+    <View style={[styles.card, styles.cardPadded]}>
+      <View style={styles.formCardHeader}>
+        <Text style={styles.cardLabel}>{title}</Text>
+
+        {currency ? (
+          <View style={styles.currencyChip}>
+            <Text style={styles.currencyChipText}>{currency}</Text>
+          </View>
+        ) : null}
+      </View>
+
+      {children}
+    </View>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Styles                                                                      */
+/* -------------------------------------------------------------------------- */
+
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+  },
+
+  flex: {
+    flex: 1,
+  },
+
   content: {
     padding: spacing.lg,
-    paddingBottom: spacing.xxxl,
-    gap: spacing.md,
+    paddingBottom: spacing.xl,
+    gap: spacing.xl,
   },
+
+  group: {
+    gap: spacing.sm,
+  },
+
+  sectionTitle: {
+    color: colors.text,
+    fontSize: typography.size.md,
+    fontWeight: typography.weight.semibold,
+  },
+
+  /* Preview */
   previewCard: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
     padding: spacing.lg,
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
+  },
+
+  previewName: {
+    color: colors.text,
+    fontSize: typography.size.md,
+    fontWeight: typography.weight.semibold,
+  },
+
+  previewNamePlaceholder: {
+    color: colors.textSecondary,
+    fontWeight: typography.weight.regular,
+  },
+
+  previewType: {
+    color: colors.textSecondary,
+    fontSize: typography.size.caption,
+    marginTop: 2,
+  },
+
+  previewBalanceContainer: {
+    flexShrink: 0,
+    maxWidth: "40%",
+    alignItems: "flex-end",
+    gap: 2,
+  },
+
+  previewBalanceLabel: {
+    color: colors.textSecondary,
+    fontSize: typography.size.xs,
+  },
+
+  previewBalance: {
+    color: colors.text,
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.semibold,
+  },
+
+  /* Inputs */
+  input: {
+    minHeight: 50,
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    color: colors.text,
+    fontSize: typography.size.md,
   },
-  previewDetails: {
+
+  /* Segmented control */
+  segmented: {
+    flexDirection: "row",
+    gap: spacing.xs,
+    padding: spacing.xs,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+  },
+
+  segment: {
     flex: 1,
-    gap: 4,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xs,
+    borderRadius: radius.md,
   },
-  previewName: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: colors.text,
+
+  segmentSelected: {
+    backgroundColor: colors.primaryLight,
   },
-  previewType: {
-    fontSize: 12,
+
+  segmentText: {
     color: colors.textSecondary,
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.medium,
   },
-  previewBalanceContainer: {
-    alignItems: "flex-end",
-    gap: 4,
+
+  segmentTextSelected: {
+    color: colors.primary,
+    fontWeight: typography.weight.semibold,
   },
-  previewBalanceLabel: {
-    fontSize: 10,
-    color: colors.textSecondary,
+
+  /* Cards */
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: "hidden",
   },
-  previewBalance: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: colors.text,
-  },
-  section: {
+
+  cardPadded: {
+    padding: spacing.md,
     gap: spacing.md,
   },
-  sectionTitle: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: colors.text,
-  },
-  textInput: {
-    height: 50,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    fontSize: 15,
-    color: colors.text,
-  },
-  typeContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm,
-  },
-  typeOption: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.full,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-  },
-  selectedTypeOption: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primaryLight,
-  },
-  typeText: {
-    fontSize: 13,
+
+  cardLabel: {
     color: colors.textSecondary,
-    fontWeight: "500",
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.medium,
   },
-  selectedTypeText: {
-    color: colors.primary,
-    fontWeight: "600",
-  },
-  balanceHeader: {
+
+  formCardHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
-  currencyLabel: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: colors.primary,
+
+  currencyChip: {
+    backgroundColor: colors.primaryLight,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
   },
+
+  currencyChipText: {
+    color: colors.primary,
+    fontSize: typography.size.xs,
+    fontWeight: typography.weight.semibold,
+  },
+
+  divider: {
+    height: 1,
+    backgroundColor: colors.border,
+  },
+
+  /* Amount */
+  amountInput: {
+    height: 56,
+    paddingHorizontal: 0,
+    backgroundColor: "transparent",
+    borderWidth: 0,
+    color: colors.text,
+    fontSize: typography.size.xxxl,
+    fontWeight: typography.weight.bold,
+  },
+
+  noteRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+  },
+
   helperText: {
-    fontSize: 12,
+    flexShrink: 1,
     color: colors.textSecondary,
+    fontSize: typography.size.caption,
     lineHeight: 18,
   },
-  currencyInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: spacing.md,
-    backgroundColor: colors.primaryLight,
-    borderRadius: radius.md,
+
+  /* Save bar */
+  footer: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    backgroundColor: colors.background,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
   },
-  currencyInfoText: {
-    flex: 1,
-    gap: 4,
-  },
-  currencyInfoTitle: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: colors.text,
-  },
-  currencyCode: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: colors.primary,
-  },
+
   saveButton: {
-    height: 52,
-    backgroundColor: colors.primary,
-    borderRadius: radius.md,
+    minHeight: 54,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: spacing.sm,
+    backgroundColor: colors.primary,
+    borderRadius: radius.md,
   },
+
+  saveButtonPressed: {
+    backgroundColor: colors.primaryDark,
+  },
+
   disabledButton: {
     opacity: 0.5,
   },
+
   saveButtonText: {
-    color: "#FFFFFF",
-    fontSize: 15,
-    fontWeight: "600",
+    color: colors.textOnPrimary,
+    fontSize: typography.size.md,
+    fontWeight: typography.weight.semibold,
   },
 });
