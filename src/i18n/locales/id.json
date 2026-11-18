@@ -1,0 +1,147 @@
+{
+  "common": {
+    "save": "Simpan",
+    "cancel": "Batal",
+    "delete": "Hapus",
+    "edit": "Ubah",
+    "search": "Cari",
+    "retry": "Coba lagi",
+    "loading": "Memuat...",
+    "seeAll": "Lihat semua",
+    "done": "Selesai",
+    "tryAgain": "Silakan coba lagi.",
+    "saving": "Menyimpan..."
+  },
+  "navigation": {
+    "home": "Beranda",
+    "transactions": "Transaksi",
+    "budget": "Anggaran",
+    "settings": "Pengaturan"
+  },
+  "settings": {
+    "title": "Pengaturan",
+    "preferences": "Preferensi",
+    "language": "Bahasa",
+    "languageDescription": "Pilih bahasa aplikasi yang kamu inginkan",
+    "account": "Akun",
+    "general": "Umum",
+    "profile": {
+      "defaultName": "Pengguna Nomad",
+      "noEmail": "Email tidak tersedia",
+      "loading": "Memuat profil...",
+      "edit": "Ubah Profil",
+      "signOut": "Keluar",
+      "changePhoto": "Ubah foto profil",
+      "fullName": "Nama Lengkap",
+      "namePlaceholder": "Masukkan nama lengkap",
+      "permissionRequired": "Izin diperlukan",
+      "photoPermissionMessage": "Izinkan Nomad mengakses galeri foto kamu.",
+      "photoError": "Tidak dapat memilih foto",
+      "invalidName": "Nama tidak valid",
+      "nameRequired": "Silakan masukkan nama lengkap.",
+      "success": "Berhasil",
+      "updateSuccess": "Profil kamu berhasil diperbarui.",
+      "updateFailed": "Gagal memperbarui profil",
+      "signOutFailed": "Gagal keluar",
+      "saveChanges": "Simpan"
+    }
+  },
+  "home": {
+    "greeting": {
+      "morning": "Selamat pagi",
+      "afternoon": "Selamat siang",
+      "evening": "Selamat malam"
+    },
+    "subtitle": "Kelola uangmu, ke mana pun hidup membawamu.",
+    "workspace": "RUANG KERJAMU",
+    "workspaceFallback": "Ruang kerja",
+    "totalBalance": "TOTAL SALDO",
+    "acrossAccounts": "Dari seluruh akunmu",
+    "cashFlow": {
+      "title": "Arus Kas Bulanan",
+      "thisMonth": "Bulan ini",
+      "income": "Pemasukan",
+      "expenses": "Pengeluaran",
+      "transferIn": "Transfer masuk",
+      "transferOut": "Transfer keluar",
+      "net": "Arus Kas Bersih"
+    },
+    "accounts": {
+      "title": "Akun Saya",
+      "viewAll": "Lihat semua ({{count}})",
+      "emptyTitle": "Belum ada akun",
+      "emptyDescription": "Tambahkan akun pertamamu untuk mulai mencatat keuangan.",
+      "add": "Tambah Akun"
+    },
+    "accountTypes": {
+      "cash": "Tunai",
+      "bank": "Bank",
+      "eWallet": "Dompet digital",
+      "other": "Lainnya"
+    },
+    "budget": {
+      "title": "Anggaran bulanan",
+      "view": "Lihat anggaran",
+      "loading": "Memuat anggaran bulanan...",
+      "unableToLoad": "Gagal memuat anggaran",
+      "tryAgain": "Silakan coba lagi.",
+      "retry": "Coba lagi",
+      "noBudget": "Belum ada anggaran untuk bulan ini",
+      "createDescription": "Buat anggaran bulanan untuk memantau pengeluaranmu.",
+      "create": "Buat anggaran",
+      "totalSpent": "TOTAL PENGELUARAN",
+      "used": "{{percentage}}% terpakai",
+      "monthlyLimit": "Batas bulanan",
+      "overBudget": "Melebihi anggaran",
+      "remaining": "Sisa",
+      "warningMessage": "Kamu telah menggunakan setidaknya 80% dari anggaran bulanan.",
+      "overMessage": "Pengeluaranmu telah melebihi batas anggaran bulanan."
+    },
+    "recentTransactions": {
+      "title": "Transaksi terbaru",
+      "seeAll": "Lihat semua",
+      "empty": "Belum ada transaksi."
+    },
+    "footerNote": "Langkah kecil hari ini, kebebasan lebih besar esok hari.",
+    "workspaceSheet": {
+      "title": "Ruang kerjamu",
+      "subtitle": "Pilih ruang kerja untuk mengelola keuanganmu.",
+      "currentlySelected": "sedang dipilih",
+      "edit": "Edit {{name}}",
+      "delete": "Hapus {{name}}",
+      "add": "Tambah ruang kerja"
+    },
+    "alerts": {
+      "deleteWorkspaceTitle": "Hapus ruang kerja?",
+      "deleteWorkspaceMessage": "Apakah kamu yakin ingin menghapus \"{{name}}\"? Tindakan ini tidak dapat dibatalkan.",
+      "cancel": "Batal",
+      "delete": "Hapus",
+      "deleteFailedTitle": "Gagal menghapus ruang kerja",
+      "deleteFailedMessage": "Terjadi kesalahan. Silakan coba lagi."
+    },
+    "accessibility": {
+      "openProfile": "Buka pengaturan profil",
+      "selectWorkspace": "Pilih ruang kerja. Ruang kerja saat ini: {{name}}",
+      "selectWorkspaceHint": "Membuka daftar ruang kerja keuanganmu",
+      "convertCurrency": "Konversi mata uang",
+      "convertCurrencyHint": "Membuka konverter mata uang"
+    }
+  },
+  "transactions": {
+    "title": "Transaksi",
+    "emptyTitle": "Belum ada transaksi",
+    "emptyDescription": "Transaksimu akan muncul di sini.",
+    "income": "Pemasukan",
+    "expense": "Pengeluaran",
+    "transfer": "Transfer",
+    "balanceAdjustment": "Penyesuaian saldo"
+  },
+  "budget": {
+    "title": "Anggaran",
+    "monthlyBudget": "Anggaran bulanan",
+    "remaining": "Sisa",
+    "spent": "Terpakai",
+    "emptyTitle": "Belum ada anggaran",
+    "emptyDescription": "Buat anggaran bulanan untuk mulai melacak pengeluaranmu."
+  }
+}

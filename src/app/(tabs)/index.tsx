@@ -11,6 +11,8 @@ import {
   Wallet,
 } from "lucide-react-native";
 
+import { useTranslation } from "react-i18next";
+
 import { useRouter } from "expo-router";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
@@ -71,15 +73,10 @@ function getInitials(name: string | null | undefined): string {
     .join("");
 }
 
-function getGreeting(hour: number): string {
-  if (hour < 12) return "Good morning";
-  if (hour < 18) return "Good afternoon";
-  return "Good evening";
-}
+function formatAccountType(type: string, t: (key: string) => string): string {
+  const key = type === "e-wallet" ? "eWallet" : type;
 
-function formatAccountType(type: string): string {
-  if (type === "e-wallet") return "E-wallet";
-  return type.charAt(0).toUpperCase() + type.slice(1);
+  return t(`home.accountTypes.${key}`);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -182,6 +179,7 @@ function FlowStat({
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
 
   const [workspaceSheetVisible, setWorkspaceSheetVisible] = useState(false);
 
@@ -256,11 +254,17 @@ export default function HomeScreen() {
   };
 
   const now = new Date();
-  const greeting = getGreeting(now.getHours());
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth() + 1;
   const monthPrefix = `${currentYear}-${String(currentMonth).padStart(2, "0")}`;
   const budgetMonth = `${monthPrefix}-01`;
+
+  const greeting =
+    now.getHours() < 12
+      ? t("home.greeting.morning")
+      : now.getHours() < 18
+        ? t("home.greeting.afternoon")
+        : t("home.greeting.evening");
 
   const workspaceAccounts = useMemo(
     () =>
@@ -379,12 +383,15 @@ export default function HomeScreen() {
 
   function handleDeleteWorkspace(id: string, name: string) {
     Alert.alert(
-      "Delete workspace?",
-      `Are you sure you want to delete "${name}"? This action cannot be undone.`,
+      t("home.alerts.deleteWorkspaceTitle"),
+      t("home.alerts.deleteWorkspaceMessage", { name }),
       [
-        { text: "Cancel", style: "cancel" },
         {
-          text: "Delete",
+          text: t("home.alerts.cancel"),
+          style: "cancel",
+        },
+        {
+          text: t("home.alerts.delete"),
           style: "destructive",
           onPress: async () => {
             try {
@@ -393,8 +400,8 @@ export default function HomeScreen() {
               console.error("Failed to delete workspace:", error);
 
               Alert.alert(
-                "Unable to delete workspace",
-                "Something went wrong. Please try again.",
+                t("home.alerts.deleteFailedTitle"),
+                t("home.alerts.deleteFailedMessage"),
               );
             }
           },
@@ -417,15 +424,13 @@ export default function HomeScreen() {
           <View style={styles.header}>
             <View style={styles.headerText}>
               <Text style={styles.greeting}>{greeting} 👋</Text>
-              <Text style={styles.subtitle}>
-                Your money, wherever life takes you.
-              </Text>
+              <Text style={styles.subtitle}>{t("home.subtitle")}</Text>
             </View>
 
             <Pressable
               style={styles.avatar}
               accessibilityRole="button"
-              accessibilityLabel="Open profile settings"
+              accessibilityLabel={t("home.accessibility.openProfile")}
               onPress={() => router.push("/(tabs)/settings")}
             >
               {profile?.avatar_url ? (
@@ -444,10 +449,10 @@ export default function HomeScreen() {
             <Pressable
               style={styles.workspaceSelector}
               accessibilityRole="button"
-              accessibilityLabel={`Select workspace. Current workspace: ${
-                workspace?.name ?? "Workspace"
-              }`}
-              accessibilityHint="Opens a list of your financial workspaces"
+              accessibilityLabel={t("home.accessibility.selectWorkspace", {
+                name: workspace?.name ?? t("home.workspaceFallback"),
+              })}
+              accessibilityHint={t("home.accessibility.selectWorkspaceHint")}
               onPress={() => setWorkspaceSheetVisible(true)}
             >
               <Text style={styles.workspaceFlag}>
@@ -455,9 +460,9 @@ export default function HomeScreen() {
               </Text>
 
               <View style={styles.workspaceInfo}>
-                <Text style={styles.workspaceLabel}>YOUR WORKSPACE</Text>
+                <Text style={styles.workspaceLabel}>{t("home.workspace")}</Text>
                 <Text style={styles.workspaceName} numberOfLines={1}>
-                  {workspace?.name ?? "Workspace"}
+                  {workspace?.name ?? t("home.workspaceFallback")}
                 </Text>
               </View>
 
@@ -473,8 +478,8 @@ export default function HomeScreen() {
                 pressed && styles.currencyButtonPressed,
               ]}
               accessibilityRole="button"
-              accessibilityLabel="Convert currency"
-              accessibilityHint="Opens the currency converter"
+              accessibilityLabel={t("home.accessibility.convertCurrency")}
+              accessibilityHint={t("home.accessibility.convertCurrencyHint")}
               onPress={() => router.push("/currency-converter")}
             >
               <CircleDollarSign size={22} color={colors.primary} />
@@ -487,7 +492,9 @@ export default function HomeScreen() {
               <View style={styles.balanceHeader}>
                 <View style={styles.balanceLabelRow}>
                   <Wallet size={18} color={colors.textOnPrimaryMuted} />
-                  <Text style={styles.balanceLabel}>TOTAL BALANCE</Text>
+                  <Text style={styles.balanceLabel}>
+                    {t("home.totalBalance")}
+                  </Text>
                 </View>
 
                 <View style={styles.balanceBadge}>
@@ -508,18 +515,24 @@ export default function HomeScreen() {
                 styles.secondaryBalanceAmount,
               )}
 
-              <Text style={styles.balanceCaption}>Across your accounts</Text>
+              <Text style={styles.balanceCaption}>
+                {t("home.acrossAccounts")}
+              </Text>
             </View>
 
             <View style={styles.cashFlowSection}>
               <View style={styles.cashFlowHeader}>
-                <Text style={styles.cashFlowTitle}>Monthly Cash Flow</Text>
-                <Text style={styles.cardCaption}>This month</Text>
+                <Text style={styles.cashFlowTitle}>
+                  {t("home.cashFlow.title")}
+                </Text>
+                <Text style={styles.cardCaption}>
+                  {t("home.cashFlow.thisMonth")}
+                </Text>
               </View>
 
               <View style={styles.flowRow}>
                 <FlowStat
-                  label="Income"
+                  label={t("home.cashFlow.income")}
                   direction="in"
                   tone="success"
                   amountColor={colors.success}
@@ -528,7 +541,7 @@ export default function HomeScreen() {
                 />
 
                 <FlowStat
-                  label="Expenses"
+                  label={t("home.cashFlow.expenses")}
                   direction="out"
                   tone="danger"
                   amountColor={colors.danger}
@@ -541,7 +554,7 @@ export default function HomeScreen() {
 
               <View style={styles.flowRow}>
                 <FlowStat
-                  label="Transfer in"
+                  label={t("home.cashFlow.transferIn")}
                   direction="in"
                   tone="neutral"
                   amountColor={colors.text}
@@ -550,7 +563,7 @@ export default function HomeScreen() {
                 />
 
                 <FlowStat
-                  label="Transfer out"
+                  label={t("home.cashFlow.transferOut")}
                   direction="out"
                   tone="neutral"
                   amountColor={colors.text}
@@ -562,7 +575,7 @@ export default function HomeScreen() {
               <View style={styles.divider} />
 
               <View style={styles.netRow}>
-                <Text style={styles.netLabel}>Net Cash Flow</Text>
+                <Text style={styles.netLabel}> {t("home.cashFlow.net")}</Text>
 
                 <View style={styles.netValueContainer}>
                   <Text style={[styles.netAmount, { color: netColor }]}>
@@ -578,10 +591,12 @@ export default function HomeScreen() {
 
           {/* 4. Accounts --------------------------------------------------------- */}
           <SectionHeading
-            title="My Accounts"
+            title={t("home.accounts.title")}
             action={
               workspaceAccounts.length > 0
-                ? `View all (${workspaceAccounts.length})`
+                ? t("home.accounts.viewAll", {
+                    count: workspaceAccounts.length,
+                  })
                 : undefined
             }
             onPress={() => router.push("/accounts/list")}
@@ -590,9 +605,11 @@ export default function HomeScreen() {
           <View style={styles.listCard}>
             {workspaceAccounts.length === 0 ? (
               <View style={styles.emptyState}>
-                <Text style={styles.emptyTitle}>No accounts yet</Text>
+                <Text style={styles.emptyTitle}>
+                  {t("home.accounts.emptyTitle")}
+                </Text>
                 <Text style={styles.emptySubtitle}>
-                  Add your first account to start tracking your money.
+                  {t("home.accounts.emptyDescription")}
                 </Text>
               </View>
             ) : (
@@ -616,7 +633,7 @@ export default function HomeScreen() {
                           {account.name}
                         </Text>
                         <Text style={styles.rowCaption}>
-                          {formatAccountType(account.type)}
+                          {formatAccountType(account.type, t)}
                         </Text>
                       </View>
 
@@ -641,26 +658,30 @@ export default function HomeScreen() {
               onPress={() => router.push("/accounts/new")}
             >
               <Plus size={18} color={colors.primary} />
-              <Text style={styles.accountAddButtonText}>Add Account</Text>
+              <Text style={styles.accountAddButtonText}>
+                {t("home.accounts.add")}
+              </Text>
             </Pressable>
           </View>
 
           {/* 7. Monthly budget --------------------------------------------------- */}
           <SectionHeading
-            title="Monthly budget"
-            action={hasCurrentBudget ? "View budget" : undefined}
+            title={t("home.budget.title")}
+            action={hasCurrentBudget ? t("home.budget.view") : undefined}
             onPress={() => router.push("/(tabs)/budget")}
           />
 
           <View style={styles.card}>
             {budgetLoading && !hasCurrentBudget ? (
-              <Text style={styles.cardCaption}>
-                Loading your monthly budget...
-              </Text>
+              <Text style={styles.cardCaption}>{t("home.budget.loading")}</Text>
             ) : budgetError && !hasCurrentBudget ? (
               <View style={styles.emptyState}>
-                <Text style={styles.emptyTitle}>Unable to load budget</Text>
-                <Text style={styles.emptySubtitle}>Please try again.</Text>
+                <Text style={styles.emptyTitle}>
+                  {t("home.budget.unableToLoad")}
+                </Text>
+                <Text style={styles.emptySubtitle}>
+                  {t("home.budget.tryAgain")}
+                </Text>
 
                 <Pressable
                   style={styles.smallButton}
@@ -671,17 +692,20 @@ export default function HomeScreen() {
                     }
                   }}
                 >
-                  <Text style={styles.smallButtonText}>Retry</Text>
+                  <Text style={styles.smallButtonText}>
+                    {" "}
+                    {t("home.budget.retry")}
+                  </Text>
                 </Pressable>
               </View>
             ) : !hasCurrentBudget ? (
               <View style={styles.emptyState}>
                 <Wallet size={28} color={colors.primary} />
                 <Text style={styles.emptyTitle}>
-                  No budget set for this month
+                  {t("home.budget.noBudget")}
                 </Text>
                 <Text style={styles.emptySubtitle}>
-                  Create a monthly budget to keep track of your spending.
+                  {t("home.budget.createDescription")}
                 </Text>
 
                 <Pressable
@@ -695,14 +719,18 @@ export default function HomeScreen() {
                   }
                 >
                   <Plus size={17} color={colors.textOnPrimary} />
-                  <Text style={styles.smallButtonText}>Create budget</Text>
+                  <Text style={styles.smallButtonText}>
+                    {t("home.budget.create")}
+                  </Text>
                 </Pressable>
               </View>
             ) : (
               <>
                 <View style={styles.budgetTopRow}>
                   <View style={styles.budgetTopText}>
-                    <Text style={styles.cardEyebrow}>TOTAL SPENT</Text>
+                    <Text style={styles.cardEyebrow}>
+                      {t("home.budget.totalSpent")}
+                    </Text>
 
                     <Text style={styles.spentAmount}>
                       {formatCurrency(budgetAmountSpent)}
@@ -723,7 +751,9 @@ export default function HomeScreen() {
                         { color: budgetStatusColor },
                       ]}
                     >
-                      {progressPercentage}% used
+                      {t("home.budget.used", {
+                        percentage: progressPercentage,
+                      })}
                     </Text>
                   </View>
                 </View>
@@ -750,7 +780,9 @@ export default function HomeScreen() {
 
                 <View style={styles.budgetBottomRow}>
                   <View>
-                    <Text style={styles.cardCaption}>Monthly limit</Text>
+                    <Text style={styles.cardCaption}>
+                      {t("home.budget.monthlyLimit")}
+                    </Text>
                     <Text style={styles.budgetValue}>
                       {formatCurrency(budgetAmountLimit)}
                     </Text>
@@ -759,7 +791,9 @@ export default function HomeScreen() {
 
                   <View style={styles.alignEnd}>
                     <Text style={styles.cardCaption}>
-                      {budgetRemaining < 0 ? "Over budget" : "Remaining"}
+                      {budgetRemaining < 0
+                        ? t("home.budget.overBudget")
+                        : t("home.budget.remaining")}
                     </Text>
                     <Text
                       style={[
@@ -792,8 +826,8 @@ export default function HomeScreen() {
                       ]}
                     >
                       {budgetStatus === "warning"
-                        ? "You've used at least 80% of your monthly budget."
-                        : "You've exceeded your monthly spending limit."}
+                        ? t("home.budget.warningMessage")
+                        : t("home.budget.overMessage")}
                     </Text>
                   </View>
                 )}
@@ -803,15 +837,17 @@ export default function HomeScreen() {
 
           {/* 8. Recent transactions --------------------------------------------- */}
           <SectionHeading
-            title="Recent transactions"
-            action="See all"
+            title={t("home.recentTransactions.title")}
+            action={t("home.recentTransactions.seeAll")}
             onPress={() => router.push("/transactions")}
           />
 
           <View style={styles.listCard}>
             {recentTransactions.length === 0 ? (
               <View style={styles.emptyState}>
-                <Text style={styles.emptySubtitle}>No transactions yet.</Text>
+                <Text style={styles.emptySubtitle}>
+                  {t("home.recentTransactions.empty")}
+                </Text>
               </View>
             ) : (
               <TransactionList
@@ -830,16 +866,14 @@ export default function HomeScreen() {
             )}
           </View>
 
-          <Text style={styles.footerNote}>
-            Small steps today, more freedom tomorrow.
-          </Text>
+          <Text style={styles.footerNote}>{t("home.footerNote")}</Text>
 
           {/* Workspace sheet ------------------------------------------------------ */}
           <BottomSheetModal
             visible={workspaceSheetVisible}
             onClose={() => setWorkspaceSheetVisible(false)}
-            title="Your workspaces"
-            subtitle="Choose where you want to manage your money."
+            title={t("home.workspaceSheet.title")}
+            subtitle={t("home.workspaceSheet.subtitle")}
           >
             {workspaces.map((item) => {
               const isActive = item.id === activeWorkspaceId;
@@ -857,7 +891,9 @@ export default function HomeScreen() {
                     accessibilityRole="button"
                     accessibilityState={{ selected: isActive }}
                     accessibilityLabel={`${item.name}, ${item.currency_code}${
-                      isActive ? ", currently selected" : ""
+                      isActive
+                        ? `, ${t("home.workspaceSheet.currentlySelected")}`
+                        : ""
                     }`}
                     onPress={() => {
                       setActiveWorkspace(item.id);
@@ -886,7 +922,9 @@ export default function HomeScreen() {
                     <Pressable
                       style={styles.workspaceActionButton}
                       accessibilityRole="button"
-                      accessibilityLabel={`Edit ${item.name}`}
+                      accessibilityLabel={t("home.workspaceSheet.edit", {
+                        name: item.name,
+                      })}
                       hitSlop={6}
                       onPress={() => {
                         setWorkspaceSheetVisible(false);
@@ -902,7 +940,9 @@ export default function HomeScreen() {
                     <Pressable
                       style={styles.workspaceActionButton}
                       accessibilityRole="button"
-                      accessibilityLabel={`Delete ${item.name}`}
+                      accessibilityLabel={t("home.workspaceSheet.delete", {
+                        name: item.name,
+                      })}
                       hitSlop={6}
                       onPress={() => handleDeleteWorkspace(item.id, item.name)}
                     >
@@ -922,7 +962,9 @@ export default function HomeScreen() {
               }}
             >
               <Plus size={20} color={colors.primary} />
-              <Text style={styles.addWorkspaceButtonText}>Add workspace</Text>
+              <Text style={styles.addWorkspaceButtonText}>
+                {t("home.workspaceSheet.add")}
+              </Text>
             </Pressable>
           </BottomSheetModal>
         </ScrollView>

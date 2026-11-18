@@ -1,0 +1,147 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "search": "Search",
+    "retry": "Retry",
+    "loading": "Loading...",
+    "seeAll": "See all",
+    "done": "Done",
+    "tryAgain": "Please try again.",
+    "saving": "Saving..."
+  },
+  "navigation": {
+    "home": "Home",
+    "transactions": "Transactions",
+    "budget": "Budget",
+    "settings": "Settings"
+  },
+  "settings": {
+    "title": "Settings",
+    "preferences": "Preferences",
+    "language": "Language",
+    "languageDescription": "Choose your preferred app language",
+    "account": "Account",
+    "general": "General",
+    "profile": {
+      "defaultName": "Nomad User",
+      "noEmail": "No email available",
+      "loading": "Loading profile...",
+      "edit": "Edit Profile",
+      "signOut": "Sign out",
+      "changePhoto": "Change profile photo",
+      "fullName": "Full Name",
+      "namePlaceholder": "Enter your full name",
+      "permissionRequired": "Permission required",
+      "photoPermissionMessage": "Please allow Nomad to access your photo library.",
+      "photoError": "Unable to select photo",
+      "invalidName": "Invalid name",
+      "nameRequired": "Please enter your full name.",
+      "success": "Success",
+      "updateSuccess": "Your profile has been updated.",
+      "updateFailed": "Update failed",
+      "signOutFailed": "Sign out failed",
+      "saveChanges": "Save Changes"
+    }
+  },
+  "home": {
+    "greeting": {
+      "morning": "Good morning",
+      "afternoon": "Good afternoon",
+      "evening": "Good evening"
+    },
+    "subtitle": "Your money, wherever life takes you.",
+    "workspace": "YOUR WORKSPACE",
+    "workspaceFallback": "Workspace",
+    "totalBalance": "TOTAL BALANCE",
+    "acrossAccounts": "Across your accounts",
+    "cashFlow": {
+      "title": "Monthly Cash Flow",
+      "thisMonth": "This month",
+      "income": "Income",
+      "expenses": "Expenses",
+      "transferIn": "Transfer in",
+      "transferOut": "Transfer out",
+      "net": "Net Cash Flow"
+    },
+    "accounts": {
+      "title": "My Accounts",
+      "viewAll": "View all ({{count}})",
+      "emptyTitle": "No accounts yet",
+      "emptyDescription": "Add your first account to start tracking your money.",
+      "add": "Add Account"
+    },
+    "accountTypes": {
+      "cash": "Cash",
+      "bank": "Bank",
+      "eWallet": "E-wallet",
+      "other": "Other"
+    },
+    "budget": {
+      "title": "Monthly budget",
+      "view": "View budget",
+      "loading": "Loading your monthly budget...",
+      "unableToLoad": "Unable to load budget",
+      "tryAgain": "Please try again.",
+      "retry": "Retry",
+      "noBudget": "No budget set for this month",
+      "createDescription": "Create a monthly budget to keep track of your spending.",
+      "create": "Create budget",
+      "totalSpent": "TOTAL SPENT",
+      "used": "{{percentage}}% used",
+      "monthlyLimit": "Monthly limit",
+      "overBudget": "Over budget",
+      "remaining": "Remaining",
+      "warningMessage": "You've used at least 80% of your monthly budget.",
+      "overMessage": "You've exceeded your monthly spending limit."
+    },
+    "recentTransactions": {
+      "title": "Recent transactions",
+      "seeAll": "See all",
+      "empty": "No transactions yet."
+    },
+    "footerNote": "Small steps today, more freedom tomorrow.",
+    "workspaceSheet": {
+      "title": "Your workspaces",
+      "subtitle": "Choose where you want to manage your money.",
+      "currentlySelected": "currently selected",
+      "edit": "Edit {{name}}",
+      "delete": "Delete {{name}}",
+      "add": "Add workspace"
+    },
+    "alerts": {
+      "deleteWorkspaceTitle": "Delete workspace?",
+      "deleteWorkspaceMessage": "Are you sure you want to delete \"{{name}}\"? This action cannot be undone.",
+      "cancel": "Cancel",
+      "delete": "Delete",
+      "deleteFailedTitle": "Unable to delete workspace",
+      "deleteFailedMessage": "Something went wrong. Please try again."
+    },
+    "accessibility": {
+      "openProfile": "Open profile settings",
+      "selectWorkspace": "Select workspace. Current workspace: {{name}}",
+      "selectWorkspaceHint": "Opens a list of your financial workspaces",
+      "convertCurrency": "Convert currency",
+      "convertCurrencyHint": "Opens the currency converter"
+    }
+  },
+  "transactions": {
+    "title": "Transactions",
+    "emptyTitle": "No transactions yet",
+    "emptyDescription": "Your transactions will appear here.",
+    "income": "Income",
+    "expense": "Expense",
+    "transfer": "Transfer",
+    "balanceAdjustment": "Balance adjustment"
+  },
+  "budget": {
+    "title": "Budget",
+    "monthlyBudget": "Monthly budget",
+    "remaining": "Remaining",
+    "spent": "Spent",
+    "emptyTitle": "No budget yet",
+    "emptyDescription": "Set a monthly budget to start tracking your expenses."
+  }
+}

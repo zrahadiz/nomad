@@ -1,17 +1,35 @@
 import { Stack } from "expo-router";
+import { useEffect, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { KeyboardProvider } from "react-native-keyboard-controller";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { AuthProvider } from "@/components/auth/auth-provider";
 import { colors } from "@/constants/theme";
+import { i18nReady } from "@/i18n";
 import { useAuthStore } from "@/stores/use-auth-store";
-import { SafeAreaProvider } from "react-native-safe-area-context";
 
 function RootNavigator() {
   const session = useAuthStore((state) => state.session);
   const initialized = useAuthStore((state) => state.initialized);
 
-  if (!initialized) {
+  const [languageInitialized, setLanguageInitialized] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+
+    i18nReady.then(() => {
+      if (mounted) {
+        setLanguageInitialized(true);
+      }
+    });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  if (!initialized || !languageInitialized) {
     return (
       <View
         style={{
@@ -31,6 +49,7 @@ function RootNavigator() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="auth/callback" />
+
       {/* Public authentication screens */}
       <Stack.Protected guard={!isAuthenticated} redirectTo="/">
         <Stack.Screen name="(auth)" />
