@@ -1,11 +1,11 @@
+import { useTranslation } from "react-i18next";
+
+import i18n from "@/i18n";
+
 import { X } from "lucide-react-native";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { colors, radius, spacing, typography } from "@/constants/theme";
-
-/* -------------------------------------------------------------------------- */
-/* Types                                                                       */
-/* -------------------------------------------------------------------------- */
 
 export type AppliedFilter = {
   key: string;
@@ -15,17 +15,11 @@ export type AppliedFilter = {
 
 type NamedItem = { id: string; name: string };
 
-/* -------------------------------------------------------------------------- */
-/* Labels                                                                      */
-/* -------------------------------------------------------------------------- */
-
-// Edit if your SortFilter labels differ. Unknown values fall back to a
-// humanized version of the raw value ("some_value" -> "Some value").
-const SORT_LABELS: Record<string, string> = {
-  newest: "Newest first",
-  oldest: "Oldest first",
-  highest: "Highest amount",
-  lowest: "Lowest amount",
+const SORT_LABEL_KEYS: Record<string, string> = {
+  newest: "transactions.filterModal.sorting.newest",
+  oldest: "transactions.filterModal.sorting.oldest",
+  highest: "transactions.filterModal.sorting.highest",
+  lowest: "transactions.filterModal.sorting.lowest",
 };
 
 function humanize(value: string): string {
@@ -45,7 +39,9 @@ function formatShortDate(value: string): string {
     Number(match[3]),
   );
 
-  return date.toLocaleDateString("en-GB", {
+  const locale = i18n.resolvedLanguage === "id" ? "id-ID" : "en-GB";
+
+  return date.toLocaleDateString(locale, {
     day: "numeric",
     month: "short",
     year:
@@ -60,8 +56,8 @@ function formatShortDate(value: string): string {
 
 export function buildAppliedFilters(params: {
   selectedPeriod: string;
-  periodLabel: string; // label of the selected period, from your `periods` list
-  dateRange: { start: string; end: string } | null; // resolved range (custom or preset)
+  periodLabel: string;
+  dateRange: { start: string; end: string } | null;
   selectedCategoryIds: string[];
   selectedAccountIds: string[];
   minimumAmount: string;
@@ -78,42 +74,49 @@ export function buildAppliedFilters(params: {
 }): AppliedFilter[] {
   const result: AppliedFilter[] = [];
 
+  const t = i18n.t.bind(i18n);
+
   // Period
   if (params.selectedPeriod !== "all") {
-    // A valid custom range shows its dates; an incomplete one still gets a chip
-    // (so it can be removed) but isn't being applied to the list yet.
     const label =
       params.selectedPeriod === "custom"
         ? params.dateRange
           ? `${formatShortDate(params.dateRange.start)} – ${formatShortDate(
               params.dateRange.end,
             )}`
-          : "Custom period"
+          : t("transactions.appliedFilters.customPeriod")
         : params.periodLabel;
 
-    result.push({ key: "period", label, onRemove: params.onClearPeriod });
+    result.push({
+      key: "period",
+      label,
+      onRemove: params.onClearPeriod,
+    });
   }
 
-  // Categories: one removable chip each
+  // Categories
   for (const id of params.selectedCategoryIds) {
     result.push({
       key: `category:${id}`,
       label:
-        params.categories.find((item) => item.id === id)?.name ?? "Category",
+        params.categories.find((item) => item.id === id)?.name ??
+        t("transactions.appliedFilters.categoryFallback"),
       onRemove: () => params.onRemoveCategory(id),
     });
   }
 
-  // Accounts: one removable chip each
+  // Accounts
   for (const id of params.selectedAccountIds) {
     result.push({
       key: `account:${id}`,
-      label: params.accounts.find((item) => item.id === id)?.name ?? "Account",
+      label:
+        params.accounts.find((item) => item.id === id)?.name ??
+        t("transactions.appliedFilters.accountFallback"),
       onRemove: () => params.onRemoveAccount(id),
     });
   }
 
-  // Amount range: a single chip that clears both ends
+  // Amount range
   const min = params.minimumAmount.trim();
   const max = params.maximumAmount.trim();
 
@@ -122,17 +125,25 @@ export function buildAppliedFilters(params: {
       min && max
         ? `${params.currency} ${min} – ${max}`
         : min
-          ? `Min ${params.currency} ${min}`
-          : `Max ${params.currency} ${max}`;
+          ? `${t("transactions.appliedFilters.minimum")} ${params.currency} ${min}`
+          : `${t("transactions.appliedFilters.maximum")} ${params.currency} ${max}`;
 
-    result.push({ key: "amount", label, onRemove: params.onClearAmount });
+    result.push({
+      key: "amount",
+      label,
+      onRemove: params.onClearAmount,
+    });
   }
 
-  // Sort (only when it differs from the default)
+  // Sorting
   if (params.sortBy !== "newest") {
+    const sortLabel = SORT_LABEL_KEYS[params.sortBy]
+      ? t(SORT_LABEL_KEYS[params.sortBy])
+      : humanize(params.sortBy);
+
     result.push({
       key: "sort",
-      label: `Sort: ${SORT_LABELS[params.sortBy] ?? humanize(params.sortBy)}`,
+      label: `${t("transactions.appliedFilters.sortPrefix")} ${sortLabel}`,
       onRemove: params.onClearSort,
     });
   }
@@ -151,7 +162,7 @@ export function AppliedFilterChips({
   filters: AppliedFilter[];
   onClearAll: () => void;
 }) {
-  // No filters applied: render nothing, so there's no empty gap in the layout.
+  const { t } = useTranslation();
   if (filters.length === 0) return null;
 
   return (
@@ -168,7 +179,10 @@ export function AppliedFilterChips({
             key={filter.key}
             onPress={filter.onRemove}
             accessibilityRole="button"
-            accessibilityLabel={`Remove filter: ${filter.label}`}
+            accessibilityLabel={t(
+              "transactions.appliedFilters.removeAccessibility",
+              { label: filter.label },
+            )}
             style={({ pressed }) => [
               styles.chip,
               pressed && styles.chipPressed,
@@ -187,11 +201,15 @@ export function AppliedFilterChips({
       <Pressable
         onPress={onClearAll}
         accessibilityRole="button"
-        accessibilityLabel="Clear all filters"
+        accessibilityLabel={t("transactions.appliedFilters.clearAccessibility")}
         hitSlop={8}
         style={styles.clearButton}
       >
-        <Text style={styles.clearFiltersText}>Clear all</Text>
+        <Text style={styles.clearFiltersText}>
+          <Text style={styles.clearFiltersText}>
+            {t("transactions.appliedFilters.clearAll")}
+          </Text>
+        </Text>
       </Pressable>
     </View>
   );

@@ -2,6 +2,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 
 import type { ReactNode } from "react";
 import { useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   Alert,
@@ -42,6 +43,7 @@ import { useWorkspaceStore } from "@/stores/use-workspace-store";
 
 export default function TransactionDetailsScreen() {
   const router = useRouter();
+  const { t, i18n } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
 
   // Finance store
@@ -157,10 +159,10 @@ export default function TransactionDetailsScreen() {
 
   // Transaction display
   const transactionTitle = isTransfer
-    ? "Transfer"
+    ? t("transactions.types.transfer")
     : isIncome
-      ? "Income"
-      : "Expense";
+      ? t("transactions.types.income")
+      : t("transactions.types.expense");
 
   const TransactionIcon = isTransfer
     ? ArrowLeftRight
@@ -172,19 +174,21 @@ export default function TransactionDetailsScreen() {
   const handleDelete = () => {
     if (!transaction) return;
 
-    const title = isTransfer ? "Delete transfer?" : "Delete transaction?";
+    const title = isTransfer
+      ? t("transactions.details.deleteTransferConfirm.title")
+      : t("transactions.details.deleteTransactionConfirm.title");
 
     const message = isTransfer
-      ? "This will permanently delete the transfer and both linked transactions, including the transaction in the other workspace. This action cannot be undone."
-      : "Are you sure you want to permanently delete this transaction? This action cannot be undone.";
+      ? t("transactions.details.deleteTransferConfirm.message")
+      : t("transactions.details.deleteTransactionConfirm.message");
 
     Alert.alert(title, message, [
       {
-        text: "Cancel",
+        text: t("common.cancel"),
         style: "cancel",
       },
       {
-        text: "Delete",
+        text: t("common.delete"),
         style: "destructive",
         onPress: async () => {
           try {
@@ -195,10 +199,10 @@ export default function TransactionDetailsScreen() {
             console.error("Failed to delete transaction:", error);
 
             Alert.alert(
-              "Unable to delete",
+              t("transactions.details.errors.deleteFailed"),
               error instanceof Error
                 ? error.message
-                : "Something went wrong. Please try again.",
+                : t("common.errors.generic"),
             );
           }
         },
@@ -219,7 +223,9 @@ export default function TransactionDetailsScreen() {
       <SafeScreen backgroundColor={colors.background}>
         <View style={styles.centerState}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.emptyDescription}>Loading transaction...</Text>
+          <Text style={styles.emptyDescription}>
+            {t("transactions.details.loading")}
+          </Text>
         </View>
       </SafeScreen>
     );
@@ -234,10 +240,12 @@ export default function TransactionDetailsScreen() {
             <Wallet size={32} color={colors.textSecondary} />
           </View>
 
-          <Text style={styles.emptyTitle}>Transaction not found</Text>
+          <Text style={styles.emptyTitle}>
+            {t("transactions.details.notFound.title")}
+          </Text>
 
           <Text style={styles.emptyDescription}>
-            This transaction may have been deleted or is no longer available.
+            {t("transactions.details.notFound.description")}
           </Text>
 
           <Pressable
@@ -248,7 +256,7 @@ export default function TransactionDetailsScreen() {
               pressed && styles.primaryButtonPressed,
             ]}
           >
-            <Text style={styles.primaryButtonText}>Go back</Text>
+            <Text style={styles.primaryButtonText}>{t("common.goBack")}</Text>
           </Pressable>
         </View>
       </SafeScreen>
@@ -264,9 +272,9 @@ export default function TransactionDetailsScreen() {
 
   // Which side of a transfer this record is (the other side lives in the other workspace).
   const typeLabel = isTransferIn
-    ? "Transfer in"
+    ? t("transactions.details.transferIn")
     : isTransfer
-      ? "Transfer out"
+      ? t("transactions.details.transferOut")
       : transactionTitle;
 
   const amountColor = isPositive
@@ -290,14 +298,16 @@ export default function TransactionDetailsScreen() {
             <Pressable
               onPress={() => router.back()}
               accessibilityRole="button"
-              accessibilityLabel="Go back"
+              accessibilityLabel={t("common.goBack")}
               style={styles.backButton}
               hitSlop={8}
             >
               <ArrowLeft size={22} color={colors.text} />
             </Pressable>
 
-            <Text style={styles.headerTitle}>Transaction details</Text>
+            <Text style={styles.headerTitle}>
+              {t("transactions.details.title")}
+            </Text>
 
             {/* Keeps the title centered */}
             <View style={styles.headerSpacer} />
@@ -325,7 +335,7 @@ export default function TransactionDetailsScreen() {
             <View style={styles.dateRow}>
               <Calendar size={14} color={colors.textSecondary} />
               <Text style={styles.dateLabel}>
-                {formatDisplayDate(transaction.date)}
+                {formatDisplayDate(transaction.date, i18n.language)}
               </Text>
             </View>
           </View>
@@ -333,24 +343,29 @@ export default function TransactionDetailsScreen() {
           {/* Transfer details: the most important part of a transfer, so it comes first */}
           {isTransfer && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Transfer details</Text>
+              <Text style={styles.sectionTitle}>
+                {t("transactions.details.transferDetails")}
+              </Text>
 
               {isTransferMetadataLoading ? (
                 <View style={[styles.card, styles.messageCard]}>
                   <ActivityIndicator color={colors.primary} size="small" />
 
                   <Text style={styles.emptyDescription}>
-                    Loading transfer details...
+                    {t("transactions.details.loadingTransfer")}
                   </Text>
                 </View>
               ) : transfer ? (
                 <View style={styles.card}>
                   {/* Source */}
                   <TransferLeg
-                    label="From"
+                    label={t("transactions.details.from")}
                     account={fromAccount}
-                    accountFallback="Unknown account"
+                    accountFallback={t("transactions.details.unknownAccount")}
                     workspace={fromWorkspace}
+                    workspaceFallback={t(
+                      "transactions.details.unknownWorkspace",
+                    )}
                     amount={`−${formatMoney(
                       transfer.amountSentMinor,
                       transfer.fromCurrencyCode,
@@ -370,10 +385,13 @@ export default function TransactionDetailsScreen() {
 
                   {/* Destination */}
                   <TransferLeg
-                    label="To"
+                    label={t("transactions.details.to")}
                     account={toAccount}
-                    accountFallback="Unknown account"
+                    accountFallback={t("transactions.details.unknownAccount")}
                     workspace={toWorkspace}
+                    workspaceFallback={t(
+                      "transactions.details.unknownWorkspace",
+                    )}
                     amount={`+${formatMoney(
                       transfer.amountReceivedMinor,
                       transfer.toCurrencyCode,
@@ -389,7 +407,7 @@ export default function TransactionDetailsScreen() {
                         <ArrowLeftRight size={18} color={colors.primary} />
                       </IconTile>
                     }
-                    label="Exchange rate"
+                    label={t("transactions.details.exchangeRate")}
                     value={`1 ${transfer.fromCurrencyCode} = ${transfer.exchangeRate.toLocaleString(
                       "en",
                       {
@@ -406,13 +424,15 @@ export default function TransactionDetailsScreen() {
                         <Info size={18} color={colors.primary} />
                       </IconTile>
                     }
-                    label="Rate source"
+                    label={t("transactions.details.rateSource")}
                     value={
                       transfer.exchangeRateSource === "automatic"
-                        ? "Automatic"
+                        ? t("transactions.details.rateSources.automatic")
                         : transfer.exchangeRateSource === "manual"
-                          ? "Manual"
-                          : "Actual received amount"
+                          ? t("transactions.details.rateSources.manual")
+                          : t(
+                              "transactions.details.rateSources.actualReceivedAmount",
+                            )
                     }
                   />
 
@@ -424,16 +444,19 @@ export default function TransactionDetailsScreen() {
                         <Calendar size={18} color={colors.primary} />
                       </IconTile>
                     }
-                    label="Transfer date"
-                    value={formatDisplayDate(transfer.transferDate)}
+                    label={t("transactions.details.transferDate")}
+                    value={formatDisplayDate(
+                      transfer.transferDate,
+                      i18n.language,
+                    )}
                   />
                 </View>
               ) : (
                 <View style={[styles.card, styles.messageCard]}>
                   <Text style={styles.emptyDescription}>
                     {transfersError
-                      ? "Unable to load transfer information. Please try again."
-                      : "Transfer information is not available."}
+                      ? t("transactions.details.transferLoadError")
+                      : t("transactions.details.transferUnavailable")}
                   </Text>
 
                   <Pressable
@@ -455,7 +478,9 @@ export default function TransactionDetailsScreen() {
                     )}
 
                     <Text style={styles.retryButtonText}>
-                      {transfersLoading ? "Loading..." : "Try again"}
+                      {transfersLoading
+                        ? t("common.loading")
+                        : t("common.tryAgain")}
                     </Text>
                   </Pressable>
                 </View>
@@ -465,7 +490,9 @@ export default function TransactionDetailsScreen() {
 
           {/* General information */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Information</Text>
+            <Text style={styles.sectionTitle}>
+              {t("transactions.details.information")}
+            </Text>
 
             <View style={styles.card}>
               <DetailRow
@@ -478,8 +505,10 @@ export default function TransactionDetailsScreen() {
                     </IconTile>
                   )
                 }
-                label="Account"
-                value={account?.name ?? "Unknown account"}
+                label={t("transactions.details.account")}
+                value={
+                  account?.name ?? t("transactions.details.unknownAccount")
+                }
                 muted={!account}
               />
 
@@ -493,8 +522,11 @@ export default function TransactionDetailsScreen() {
                         <Tag size={18} color={colors.primary} />
                       </IconTile>
                     }
-                    label="Category"
-                    value={category?.name ?? "Unknown category"}
+                    label={t("transactions.details.category")}
+                    value={
+                      category?.name ??
+                      t("transactions.details.unknownCategory")
+                    }
                     muted={!category}
                   />
                 </>
@@ -506,8 +538,10 @@ export default function TransactionDetailsScreen() {
                 leading={
                   <WorkspaceAvatar countryCode={workspace?.country_code} />
                 }
-                label="Workspace"
-                value={workspace?.name ?? "Unknown workspace"}
+                label={t("transactions.details.workspace")}
+                value={
+                  workspace?.name ?? t("transactions.details.unknownWorkspace")
+                }
                 muted={!workspace}
               />
 
@@ -519,8 +553,11 @@ export default function TransactionDetailsScreen() {
                     <AlignLeft size={18} color={colors.primary} />
                   </IconTile>
                 }
-                label="Description"
-                value={transaction.description || "No description"}
+                label={t("transactions.details.description")}
+                value={
+                  transaction.description ||
+                  t("transactions.details.noDescription")
+                }
                 muted={!transaction.description}
               />
             </View>
@@ -529,7 +566,11 @@ export default function TransactionDetailsScreen() {
           {/* Footer */}
           <View style={styles.footer}>
             <Text style={styles.footerText}>
-              Created on {new Date(transaction.createdAt).toLocaleDateString()}
+              {t("transactions.details.createdOn", {
+                date: new Date(transaction.createdAt).toLocaleDateString(
+                  i18n.language,
+                ),
+              })}
             </Text>
           </View>
         </ScrollView>
@@ -540,7 +581,9 @@ export default function TransactionDetailsScreen() {
             onPress={handleDelete}
             accessibilityRole="button"
             accessibilityLabel={
-              isTransfer ? "Delete transfer" : "Delete transaction"
+              isTransfer
+                ? t("transactions.details.deleteTransfer")
+                : t("transactions.details.deleteTransaction")
             }
             style={({ pressed }) => [
               styles.deleteAction,
@@ -550,7 +593,9 @@ export default function TransactionDetailsScreen() {
             <Trash2 size={18} color={colors.danger} />
 
             <Text style={styles.deleteActionText}>
-              {isTransfer ? "Delete transfer" : "Delete"}
+              {isTransfer
+                ? t("transactions.details.deleteTransfer")
+                : t("common.delete")}
             </Text>
           </Pressable>
 
@@ -563,7 +608,7 @@ export default function TransactionDetailsScreen() {
                 })
               }
               accessibilityRole="button"
-              accessibilityLabel="Edit transaction"
+              accessibilityLabel={t("transactions.details.editTransaction")}
               style={({ pressed }) => [
                 styles.editAction,
                 pressed && styles.editActionPressed,
@@ -571,7 +616,9 @@ export default function TransactionDetailsScreen() {
             >
               <Pencil size={18} color={colors.textOnPrimary} />
 
-              <Text style={styles.editActionText}>Edit transaction</Text>
+              <Text style={styles.editActionText}>
+                {t("transactions.details.editTransaction")}
+              </Text>
             </Pressable>
           )}
         </View>
@@ -591,7 +638,8 @@ const typeTones = {
 };
 
 // "2026-11-13" -> "Fri, 13 Nov 2026". Falls back to the raw value if it isn't a date.
-function formatDisplayDate(value: string): string {
+function formatDisplayDate(value: string, language: string): string {
+  const locale = language.startsWith("id") ? "id-ID" : "en-GB";
   const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
 
   if (!match) return value;
@@ -602,7 +650,7 @@ function formatDisplayDate(value: string): string {
     Number(match[3]),
   );
 
-  return date.toLocaleDateString("en-GB", {
+  return date.toLocaleDateString(locale, {
     weekday: "short",
     day: "numeric",
     month: "short",
@@ -689,6 +737,7 @@ function TransferLeg({
   account,
   accountFallback,
   workspace,
+  workspaceFallback,
   amount,
   amountColor,
 }: {
@@ -696,6 +745,7 @@ function TransferLeg({
   account?: { name: string; icon?: string | null; color?: string | null };
   accountFallback: string;
   workspace?: { name: string; country_code?: string | null };
+  workspaceFallback: string;
   amount: string;
   amountColor: string;
 }) {
@@ -725,7 +775,7 @@ function TransferLeg({
 
         <Text style={styles.legHint} numberOfLines={1}>
           {flag ? `${flag} ` : ""}
-          {workspace?.name ?? "Unknown workspace"}
+          {workspace?.name ?? workspaceFallback}
         </Text>
       </View>
 

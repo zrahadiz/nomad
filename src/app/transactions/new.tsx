@@ -13,6 +13,7 @@ import {
   type LucideIcon,
 } from "lucide-react-native";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   Alert,
@@ -24,9 +25,8 @@ import {
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
-import { getCurrencyDecimalDigits, toMinorUnits } from "@/lib/finance/currency";
-
 import { formatMoney } from "@/lib/finance/calculations";
+import { getCurrencyDecimalDigits, toMinorUnits } from "@/lib/finance/currency";
 import { isValidCurrencyAmountInput } from "@/lib/finance/currency-input";
 
 import { AccountIcon } from "@/components/accounts/account-icon";
@@ -46,12 +46,21 @@ type NewTransactionType = "expense" | "income" | "transfer";
 type TransferRateMode = "manual" | "actual";
 
 const transactionTypeOptions: {
-  label: string;
+  labelKey: string;
   value: NewTransactionType;
 }[] = [
-  { label: "Expense", value: "expense" },
-  { label: "Income", value: "income" },
-  { label: "Transfer", value: "transfer" },
+  {
+    labelKey: "transactions.add.type.expense",
+    value: "expense",
+  },
+  {
+    labelKey: "transactions.add.type.income",
+    value: "income",
+  },
+  {
+    labelKey: "transactions.add.type.transfer",
+    value: "transfer",
+  },
 ];
 
 function parseAmountToMinor(value: string, currency: string) {
@@ -142,6 +151,7 @@ function calculateEffectiveRate(
 
 export default function NewTransactionScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
 
   // Workspace store
   const workspaces = useWorkspaceStore((state) => state.workspaces);
@@ -205,7 +215,7 @@ export default function NewTransactionScreen() {
   const [toWorkspaceModalVisible, setToWorkspaceModalVisible] = useState(false);
 
   // Load accounts from all available workspaces.
-  // The finance store now preserves accounts from different workspaces.
+  // The finance store preserves accounts from different workspaces.
   useEffect(() => {
     workspaces.forEach((workspace) => {
       void fetchAccounts(workspace.id);
@@ -283,6 +293,15 @@ export default function NewTransactionScreen() {
   const toCurrency =
     selectedDestinationAccount?.currency ?? toWorkspace?.currency_code ?? "MYR";
 
+  // Translate account types using the existing Home translations.
+  const formatAccountType = (accountType: string) => {
+    const accountTypeKey = accountType === "e-wallet" ? "eWallet" : accountType;
+
+    return t(`home.accountTypes.${accountTypeKey}`, {
+      defaultValue: accountType,
+    });
+  };
+
   // Options for the selection sheets.
   const accountOptions: SheetOption[] = sourceAccounts.map((account) => ({
     id: account.id,
@@ -304,7 +323,9 @@ export default function NewTransactionScreen() {
     (category) => ({
       id: category.id,
       label: category.name,
-      description: category.isDefault ? "Default category" : "Custom category",
+      description: category.isDefault
+        ? t("transactions.add.defaultCategory")
+        : t("transactions.add.customCategory"),
       leading: <LetterAvatar text={category.name} />,
     }),
   );
@@ -376,6 +397,25 @@ export default function NewTransactionScreen() {
         )
       : null;
 
+  // Translated segmented control options.
+  const typeSegments: SegmentOption<NewTransactionType>[] =
+    transactionTypeOptions.map((option) => ({
+      label: t(option.labelKey),
+      value: option.value,
+      ...typeMeta[option.value],
+    }));
+
+  const rateModeSegments: SegmentOption<TransferRateMode>[] = [
+    {
+      label: t("transactions.add.rateMode.manual"),
+      value: "manual",
+    },
+    {
+      label: t("transactions.add.rateMode.actual"),
+      value: "actual",
+    },
+  ];
+
   const handleTypeChange = (nextType: NewTransactionType) => {
     setType(nextType);
 
@@ -405,30 +445,42 @@ export default function NewTransactionScreen() {
   const handleSave = async () => {
     if (type !== "transfer") {
       if (!activeWorkspaceId || !activeWorkspace) {
-        Alert.alert("No active workspace", "Please select a workspace first.");
+        Alert.alert(
+          t("transactions.add.alerts.noWorkspaceTitle"),
+          t("transactions.add.alerts.noWorkspaceMessage"),
+        );
         return;
       }
 
       if (!selectedAccount) {
-        Alert.alert("Account required", "Please select an account.");
+        Alert.alert(
+          t("transactions.add.alerts.accountRequiredTitle"),
+          t("transactions.add.alerts.accountRequiredMessage"),
+        );
         return;
       }
 
       if (!categoryId) {
-        Alert.alert("Category required", "Please select a category.");
+        Alert.alert(
+          t("transactions.add.alerts.categoryRequiredTitle"),
+          t("transactions.add.alerts.categoryRequiredMessage"),
+        );
         return;
       }
 
       if (parsedAmount === null) {
         Alert.alert(
-          "Invalid amount",
-          "Please enter an amount greater than zero.",
+          t("transactions.add.alerts.invalidAmountTitle"),
+          t("transactions.add.alerts.invalidAmountMessage"),
         );
         return;
       }
 
       if (!isValidDate(date)) {
-        Alert.alert("Invalid date", "Please enter a valid date.");
+        Alert.alert(
+          t("transactions.add.alerts.invalidDateTitle"),
+          t("transactions.add.alerts.invalidDateMessage"),
+        );
         return;
       }
 
@@ -445,20 +497,24 @@ export default function NewTransactionScreen() {
           date,
         });
 
-        Alert.alert("Transaction added", "Your transaction has been saved.", [
-          {
-            text: "OK",
-            onPress: () => router.back(),
-          },
-        ]);
+        Alert.alert(
+          t("transactions.add.alerts.transactionAddedTitle"),
+          t("transactions.add.alerts.transactionAddedMessage"),
+          [
+            {
+              text: t("transactions.add.alerts.ok"),
+              onPress: () => router.back(),
+            },
+          ],
+        );
       } catch (error) {
         console.error("Failed to create transaction:", error);
 
         Alert.alert(
-          "Unable to add transaction",
+          t("transactions.add.alerts.transactionFailedTitle"),
           error instanceof Error
             ? error.message
-            : "Something went wrong. Please try again.",
+            : t("transactions.add.alerts.genericError"),
         );
       } finally {
         setSaving(false);
@@ -470,32 +526,32 @@ export default function NewTransactionScreen() {
     // Transfer validation.
     if (!fromWorkspace || !toWorkspace) {
       Alert.alert(
-        "Workspace required",
-        "Please select both source and destination workspaces.",
+        t("transactions.add.alerts.workspaceRequiredTitle"),
+        t("transactions.add.alerts.workspaceRequiredMessage"),
       );
       return;
     }
 
     if (!selectedAccount) {
       Alert.alert(
-        "Source account required",
-        "Please select the account to transfer money from.",
+        t("transactions.add.alerts.sourceAccountRequiredTitle"),
+        t("transactions.add.alerts.sourceAccountRequiredMessage"),
       );
       return;
     }
 
     if (!selectedDestinationAccount) {
       Alert.alert(
-        "Destination account required",
-        "Please select the account to transfer money to.",
+        t("transactions.add.alerts.destinationAccountRequiredTitle"),
+        t("transactions.add.alerts.destinationAccountRequiredMessage"),
       );
       return;
     }
 
     if (selectedAccount.id === selectedDestinationAccount.id) {
       Alert.alert(
-        "Invalid transfer",
-        "The source and destination accounts must be different.",
+        t("transactions.add.alerts.invalidTransferTitle"),
+        t("transactions.add.alerts.invalidTransferMessage"),
       );
       return;
     }
@@ -505,40 +561,47 @@ export default function NewTransactionScreen() {
       selectedDestinationAccount.workspaceId !== toWorkspaceId
     ) {
       Alert.alert(
-        "Invalid account selection",
-        "Please select accounts belonging to the selected workspaces.",
+        t("transactions.add.alerts.invalidAccountTitle"),
+        t("transactions.add.alerts.invalidAccountMessage"),
       );
       return;
     }
 
     if (parsedAmountSent === null) {
       Alert.alert(
-        "Invalid amount",
-        `Please enter a valid amount in ${fromCurrency}.`,
+        t("transactions.add.alerts.invalidAmountTitle"),
+        t("transactions.add.alerts.invalidCurrencyAmountMessage", {
+          currency: fromCurrency,
+        }),
       );
       return;
     }
 
     if (finalAmountReceived === null || finalAmountReceived <= 0) {
       Alert.alert(
-        "Invalid received amount",
+        t("transactions.add.alerts.invalidReceivedAmountTitle"),
         rateMode === "manual"
-          ? "Please enter a valid exchange rate."
-          : `Please enter the amount received in ${toCurrency}.`,
+          ? t("transactions.add.alerts.invalidExchangeRateMessage")
+          : t("transactions.add.alerts.invalidReceivedAmountMessage", {
+              currency: toCurrency,
+            }),
       );
       return;
     }
 
     if (effectiveExchangeRate === null) {
       Alert.alert(
-        "Invalid exchange rate",
-        "Unable to calculate the effective exchange rate.",
+        t("transactions.add.alerts.invalidEffectiveRateTitle"),
+        t("transactions.add.alerts.invalidEffectiveRateMessage"),
       );
       return;
     }
 
     if (!isValidDate(date)) {
-      Alert.alert("Invalid date", "Please enter a valid date.");
+      Alert.alert(
+        t("transactions.add.alerts.invalidDateTitle"),
+        t("transactions.add.alerts.invalidDateMessage"),
+      );
       return;
     }
 
@@ -564,20 +627,24 @@ export default function NewTransactionScreen() {
         transferDate: date,
       });
 
-      Alert.alert("Transfer added", "Your transfer has been saved.", [
-        {
-          text: "OK",
-          onPress: () => router.back(),
-        },
-      ]);
+      Alert.alert(
+        t("transactions.add.alerts.transferAddedTitle"),
+        t("transactions.add.alerts.transferAddedMessage"),
+        [
+          {
+            text: t("transactions.add.alerts.ok"),
+            onPress: () => router.back(),
+          },
+        ],
+      );
     } catch (error) {
       console.error("Failed to create transfer:", error);
 
       Alert.alert(
-        "Unable to create transfer",
+        t("transactions.add.alerts.transferFailedTitle"),
         error instanceof Error
           ? error.message
-          : "Something went wrong. Please try again.",
+          : t("transactions.add.alerts.genericError"),
       );
     } finally {
       setSaving(false);
@@ -594,17 +661,19 @@ export default function NewTransactionScreen() {
 
   const saveLabel = saving
     ? isTransfer
-      ? "Saving transfer..."
-      : "Saving transaction..."
+      ? t("transactions.add.savingsTransfer")
+      : t("transactions.add.savingTransaction")
     : type === "transfer"
-      ? "Add transfer"
+      ? t("transactions.add.saveTransfer")
       : type === "income"
-        ? "Add income"
-        : "Add expense";
+        ? t("transactions.add.saveIncome")
+        : t("transactions.add.saveExpense");
 
   const showNoSourceAccounts = sourceAccounts.length === 0 && !accountsLoading;
+
   const showNoDestinationAccounts =
     destinationAccounts.length === 0 && !accountsLoading;
+
   const showNoCategories =
     availableCategories.length === 0 && !categoriesLoading;
 
@@ -617,7 +686,7 @@ export default function NewTransactionScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* 1. Transaction type ------------------------------------------------ */}
+          {/* Transaction type */}
           <SegmentedControl
             options={typeSegments}
             value={type}
@@ -626,21 +695,24 @@ export default function NewTransactionScreen() {
 
           {isTransfer ? (
             <>
-              {/* 2. From ------------------------------------------------------- */}
+              {/* From */}
               <View style={styles.group}>
                 <SectionHeader
-                  title="From"
+                  title={t("transactions.add.from")}
                   icon={<ArrowUpRight size={14} color={colors.danger} />}
                   iconBackground={colors.dangerLight}
                 />
 
                 <View style={styles.card}>
                   <SelectRow
-                    context="From"
-                    label="Workspace"
+                    context={t("transactions.add.from")}
+                    label={t("transactions.add.workspace")}
                     value={fromWorkspace?.name}
-                    placeholder="Select source workspace"
-                    hint={fromWorkspace?.currency_code ?? "Choose a workspace"}
+                    placeholder={t("transactions.add.sourceWorkspace")}
+                    hint={
+                      fromWorkspace?.currency_code ??
+                      t("transactions.add.chooseWorkspace")
+                    }
                     leading={
                       <WorkspaceAvatar
                         countryCode={fromWorkspace?.country_code}
@@ -652,14 +724,14 @@ export default function NewTransactionScreen() {
                   <View style={styles.divider} />
 
                   <SelectRow
-                    context="From"
-                    label="Account"
+                    context={t("transactions.add.from")}
+                    label={t("transactions.add.account")}
                     value={selectedAccount?.name}
-                    placeholder="Select an account"
+                    placeholder={t("transactions.add.selectAccount")}
                     hint={
                       selectedAccount
                         ? `${formatAccountType(selectedAccount.type)} · ${selectedAccount.currency}`
-                        : "Choose where the money comes from"
+                        : t("transactions.add.chooseSource")
                     }
                     leading={
                       selectedAccount ? (
@@ -675,25 +747,28 @@ export default function NewTransactionScreen() {
                 </View>
 
                 {showNoSourceAccounts && (
-                  <InlineNotice text="No accounts available in this workspace. Please create an account first." />
+                  <InlineNotice text={t("transactions.add.noSourceAccounts")} />
                 )}
               </View>
 
-              {/* 3. To --------------------------------------------------------- */}
+              {/* To */}
               <View style={styles.group}>
                 <SectionHeader
-                  title="To"
+                  title={t("transactions.add.to")}
                   icon={<ArrowDownLeft size={14} color={colors.success} />}
                   iconBackground={colors.successLight}
                 />
 
                 <View style={styles.card}>
                   <SelectRow
-                    context="To"
-                    label="Workspace"
+                    context={t("transactions.add.to")}
+                    label={t("transactions.add.workspace")}
                     value={toWorkspace?.name}
-                    placeholder="Select destination workspace"
-                    hint={toWorkspace?.currency_code ?? "Choose a workspace"}
+                    placeholder={t("transactions.add.destinationWorkspace")}
+                    hint={
+                      toWorkspace?.currency_code ??
+                      t("transactions.add.chooseWorkspace")
+                    }
                     leading={
                       <WorkspaceAvatar
                         countryCode={toWorkspace?.country_code}
@@ -705,14 +780,14 @@ export default function NewTransactionScreen() {
                   <View style={styles.divider} />
 
                   <SelectRow
-                    context="To"
-                    label="Account"
+                    context={t("transactions.add.to")}
+                    label={t("transactions.add.account")}
                     value={selectedDestinationAccount?.name}
-                    placeholder="Select destination account"
+                    placeholder={t("transactions.add.selectDestinationAccount")}
                     hint={
                       selectedDestinationAccount
                         ? `${formatAccountType(selectedDestinationAccount.type)} · ${selectedDestinationAccount.currency}`
-                        : "Choose where the money goes"
+                        : t("transactions.add.chooseDestination")
                     }
                     leading={
                       selectedDestinationAccount ? (
@@ -728,12 +803,17 @@ export default function NewTransactionScreen() {
                 </View>
 
                 {showNoDestinationAccounts && (
-                  <InlineNotice text="No destination accounts available in this workspace." />
+                  <InlineNotice
+                    text={t("transactions.add.noDestinationAccounts")}
+                  />
                 )}
               </View>
 
-              {/* 4. Amount sent ------------------------------------------------ */}
-              <FormCard title="Amount sent" currency={fromCurrency}>
+              {/* Amount sent */}
+              <FormCard
+                title={t("transactions.add.amountSent")}
+                currency={fromCurrency}
+              >
                 <AmountInput
                   value={amountSent}
                   currency={fromCurrency}
@@ -745,13 +825,17 @@ export default function NewTransactionScreen() {
 
                 <Text style={styles.helperText}>
                   {parsedAmountSent !== null
-                    ? `Preview: ${formatMoney(parsedAmountSent, fromCurrency)}`
-                    : `Enter the amount to send in ${fromCurrency}.`}
+                    ? t("transactions.add.amountPreview", {
+                        amount: formatMoney(parsedAmountSent, fromCurrency),
+                      })
+                    : t("transactions.add.enterAmountToSend", {
+                        currency: fromCurrency,
+                      })}
                 </Text>
               </FormCard>
 
-              {/* 5. Exchange rate ---------------------------------------------- */}
-              <FormCard title="Exchange rate">
+              {/* Exchange rate */}
+              <FormCard title={t("transactions.add.exchangeRate")}>
                 <SegmentedControl
                   options={rateModeSegments}
                   value={rateMode}
@@ -761,7 +845,10 @@ export default function NewTransactionScreen() {
                 {rateMode === "manual" ? (
                   <>
                     <Text style={styles.helperText}>
-                      {`Enter how much ${toCurrency} you receive for 1 ${fromCurrency}.`}
+                      {t("transactions.add.enterExchangeRate", {
+                        toCurrency,
+                        fromCurrency,
+                      })}
                     </Text>
 
                     <TextInput
@@ -771,7 +858,9 @@ export default function NewTransactionScreen() {
                           setExchangeRate(value);
                         }
                       }}
-                      placeholder="e.g. 3900"
+                      placeholder={t(
+                        "transactions.add.exchangeRatePlaceholder",
+                      )}
                       placeholderTextColor={colors.textSecondary}
                       style={[styles.input, styles.inputOnCard]}
                       keyboardType="decimal-pad"
@@ -788,15 +877,16 @@ export default function NewTransactionScreen() {
                   </>
                 ) : (
                   <Text style={styles.helperText}>
-                    Enter the exact amount that will arrive in the destination
-                    account. The effective exchange rate will be calculated
-                    automatically.
+                    {t("transactions.add.actualReceivedDescription")}
                   </Text>
                 )}
               </FormCard>
 
-              {/* 6. Amount received -------------------------------------------- */}
-              <FormCard title="Amount received" currency={toCurrency}>
+              {/* Amount received */}
+              <FormCard
+                title={t("transactions.add.amountReceived")}
+                currency={toCurrency}
+              >
                 {rateMode === "manual" ? (
                   <>
                     {calculatedReceivedMinor !== null ? (
@@ -805,12 +895,12 @@ export default function NewTransactionScreen() {
                       </Text>
                     ) : (
                       <Text style={styles.calculatedPlaceholder}>
-                        Enter an amount and exchange rate
+                        {t("transactions.add.enterAmountAndRate")}
                       </Text>
                     )}
 
                     <Text style={styles.helperText}>
-                      Calculated from your exchange rate.
+                      {t("transactions.add.calculatedFromRate")}
                     </Text>
                   </>
                 ) : (
@@ -826,18 +916,25 @@ export default function NewTransactionScreen() {
 
                     <Text style={styles.helperText}>
                       {parsedActualReceived !== null
-                        ? `Preview: ${formatMoney(parsedActualReceived, toCurrency)}`
-                        : `Enter the actual received amount in ${toCurrency}.`}
+                        ? t("transactions.add.amountPreview", {
+                            amount: formatMoney(
+                              parsedActualReceived,
+                              toCurrency,
+                            ),
+                          })
+                        : t("transactions.add.enterReceivedAmount", {
+                            currency: toCurrency,
+                          })}
                     </Text>
                   </>
                 )}
               </FormCard>
 
-              {/* 7. Effective rate --------------------------------------------- */}
+              {/* Effective rate */}
               {effectiveExchangeRate !== null && (
                 <View style={styles.rateBanner}>
                   <Text style={styles.rateBannerTitle}>
-                    Effective exchange rate
+                    {t("transactions.add.effectiveRate")}
                   </Text>
 
                   <Text style={styles.rateBannerValue}>
@@ -848,15 +945,18 @@ export default function NewTransactionScreen() {
                   </Text>
 
                   <Text style={styles.rateBannerHelper}>
-                    Based on the actual sent and received amounts.
+                    {t("transactions.add.effectiveRateDescription")}
                   </Text>
                 </View>
               )}
             </>
           ) : (
             <>
-              {/* 2. Amount first: the main thing the user came to enter --------- */}
-              <FormCard title="Amount" currency={currency}>
+              {/* Amount */}
+              <FormCard
+                title={t("transactions.add.amount")}
+                currency={currency}
+              >
                 <AmountInput
                   value={amount}
                   currency={currency}
@@ -868,8 +968,10 @@ export default function NewTransactionScreen() {
 
                 <Text style={styles.helperText}>
                   {parsedAmount !== null
-                    ? `Preview: ${formatMoney(parsedAmount, currency)}`
-                    : `Enter the amount in ${currency}.`}
+                    ? t("transactions.add.amountPreview", {
+                        amount: formatMoney(parsedAmount, currency),
+                      })
+                    : t("transactions.add.enterAmount", { currency })}
                 </Text>
 
                 <View style={styles.divider} />
@@ -877,24 +979,24 @@ export default function NewTransactionScreen() {
                 <View style={styles.noteRow}>
                   <Info size={14} color={colors.textSecondary} />
                   <Text style={styles.helperText}>
-                    This transaction uses your workspace currency.
+                    {t("transactions.add.workspaceCurrencyNote")}
                   </Text>
                 </View>
               </FormCard>
 
-              {/* 3. Details ---------------------------------------------------- */}
+              {/* Details */}
               <View style={styles.group}>
-                <SectionHeader title="Details" />
+                <SectionHeader title={t("transactions.add.details")} />
 
                 <View style={styles.card}>
                   <SelectRow
-                    label="Account"
+                    label={t("transactions.add.account")}
                     value={selectedAccount?.name}
-                    placeholder="Select an account"
+                    placeholder={t("transactions.add.selectAccount")}
                     hint={
                       selectedAccount
                         ? `${formatAccountType(selectedAccount.type)} · ${selectedAccount.currency}`
-                        : "Choose where the money comes from"
+                        : t("transactions.add.chooseSource")
                     }
                     leading={
                       selectedAccount ? (
@@ -911,15 +1013,19 @@ export default function NewTransactionScreen() {
                   <View style={styles.divider} />
 
                   <SelectRow
-                    label="Category"
+                    label={t("transactions.add.category")}
                     value={selectedCategory?.name}
-                    placeholder="Select a category"
+                    placeholder={t("transactions.add.selectCategory")}
                     hint={
                       selectedCategory
                         ? selectedCategory.isDefault
-                          ? "Default category"
-                          : "Custom category"
-                        : `Choose an ${type} category`
+                          ? t("transactions.add.defaultCategory")
+                          : t("transactions.add.customCategory")
+                        : t("transactions.add.chooseCategory", {
+                            type: t(
+                              `transactions.add.type.${type}`,
+                            ).toLowerCase(),
+                          })
                     }
                     leading={
                       selectedCategory ? (
@@ -935,30 +1041,34 @@ export default function NewTransactionScreen() {
                 </View>
 
                 {showNoSourceAccounts && (
-                  <InlineNotice text="No accounts available in this workspace. Please create an account first." />
+                  <InlineNotice text={t("transactions.add.noSourceAccounts")} />
                 )}
 
                 {showNoCategories && (
-                  <InlineNotice text="No categories available for this transaction type." />
+                  <InlineNotice text={t("transactions.add.noCategories")} />
                 )}
               </View>
             </>
           )}
 
-          {/* Date ------------------------------------------------------------- */}
-          <DatePickerField label="Date" value={date} onChange={setDate} />
+          {/* Date */}
+          <DatePickerField
+            label={t("transactions.add.date")}
+            value={date}
+            onChange={setDate}
+          />
 
-          {/* Description ------------------------------------------------------ */}
+          {/* Description */}
           <View style={styles.group}>
-            <SectionHeader title="Description" />
+            <SectionHeader title={t("transactions.add.description")} />
 
             <TextInput
               value={description}
               onChangeText={setDescription}
               placeholder={
                 isTransfer
-                  ? "e.g. Monthly savings transfer"
-                  : "e.g. Lunch with friends"
+                  ? t("transactions.add.descriptionTransferPlaceholder")
+                  : t("transactions.add.descriptionPlaceholder")
               }
               placeholderTextColor={colors.textSecondary}
               style={[styles.input, styles.descriptionInput]}
@@ -968,18 +1078,21 @@ export default function NewTransactionScreen() {
             />
 
             <Text style={styles.helperText}>
-              Optional, up to 150 characters.
+              {t("transactions.add.descriptionHint")}
             </Text>
           </View>
         </KeyboardAwareScrollView>
 
-        {/* Save: always visible, outside the scroll area -------------------------- */}
+        {/* Save button */}
         <View style={styles.footer}>
           <Pressable
             onPress={handleSave}
             disabled={saveDisabled}
             accessibilityRole="button"
-            accessibilityState={{ disabled: saveDisabled, busy: saving }}
+            accessibilityState={{
+              disabled: saveDisabled,
+              busy: saving,
+            }}
             style={({ pressed }) => [
               styles.saveButton,
               pressed && styles.saveButtonPressed,
@@ -997,15 +1110,16 @@ export default function NewTransactionScreen() {
         </View>
       </View>
 
-      {/* Selection sheets ------------------------------------------------------- */}
+      {/* Selection sheets */}
+
       <OptionSheet
         visible={fromWorkspaceModalVisible}
         onClose={() => setFromWorkspaceModalVisible(false)}
-        title="From workspace"
-        subtitle="Choose where the money comes from."
+        title={t("transactions.add.sheets.fromWorkspaceTitle")}
+        subtitle={t("transactions.add.sheets.fromWorkspaceSubtitle")}
         options={workspaceOptions}
         selectedId={fromWorkspaceId}
-        emptyText="No workspaces available."
+        emptyText={t("transactions.add.noWorkspaces")}
         onSelect={(id) => {
           setFromWorkspaceId(id);
           setAccountId("");
@@ -1016,14 +1130,18 @@ export default function NewTransactionScreen() {
       <OptionSheet
         visible={accountModalVisible}
         onClose={() => setAccountModalVisible(false)}
-        title={isTransfer ? "From account" : "Select account"}
-        subtitle="Choose the account for this transaction."
+        title={
+          isTransfer
+            ? t("transactions.add.sheets.fromAccountTitle")
+            : t("transactions.add.sheets.selectAccountTitle")
+        }
+        subtitle={t("transactions.add.sheets.accountSubtitle")}
         options={accountOptions}
         selectedId={accountId}
         emptyText={
           accountsLoading
-            ? "Loading accounts..."
-            : "No accounts available in this workspace."
+            ? t("transactions.add.loadingAccounts")
+            : t("transactions.add.noAccounts")
         }
         onSelect={(id) => {
           setAccountId(id);
@@ -1034,11 +1152,11 @@ export default function NewTransactionScreen() {
       <OptionSheet
         visible={toWorkspaceModalVisible}
         onClose={() => setToWorkspaceModalVisible(false)}
-        title="To workspace"
-        subtitle="Choose where the money goes."
+        title={t("transactions.add.sheets.toWorkspaceTitle")}
+        subtitle={t("transactions.add.sheets.toWorkspaceSubtitle")}
         options={workspaceOptions}
         selectedId={toWorkspaceId}
-        emptyText="No workspaces available."
+        emptyText={t("transactions.add.noWorkspaces")}
         onSelect={(id) => {
           setToWorkspaceId(id);
           setDestinationAccountId("");
@@ -1049,14 +1167,14 @@ export default function NewTransactionScreen() {
       <OptionSheet
         visible={destinationModalVisible}
         onClose={() => setDestinationModalVisible(false)}
-        title="To account"
-        subtitle="Choose the account to transfer money to."
+        title={t("transactions.add.sheets.toAccountTitle")}
+        subtitle={t("transactions.add.sheets.destinationAccountSubtitle")}
         options={destinationOptions}
         selectedId={destinationAccountId}
         emptyText={
           accountsLoading
-            ? "Loading accounts..."
-            : "No destination accounts available in this workspace."
+            ? t("transactions.add.loadingAccounts")
+            : t("transactions.add.noDestinationAccounts")
         }
         onSelect={(id) => {
           setDestinationAccountId(id);
@@ -1067,11 +1185,11 @@ export default function NewTransactionScreen() {
       <OptionSheet
         visible={categoryModalVisible}
         onClose={() => setCategoryModalVisible(false)}
-        title="Select category"
-        subtitle="Choose a category for this transaction."
+        title={t("transactions.add.sheets.categoryTitle")}
+        subtitle={t("transactions.add.sheets.categorySubtitle")}
         options={categoryOptions}
         selectedId={categoryId}
-        emptyText="No categories available for this transaction type."
+        emptyText={t("transactions.add.noCategories")}
         onSelect={(id) => {
           setCategoryId(id);
           setCategoryModalVisible(false);
@@ -1082,7 +1200,7 @@ export default function NewTransactionScreen() {
 }
 
 /* -------------------------------------------------------------------------- */
-/* Segment configuration                                                       */
+/* Segment configuration                                                     */
 /* -------------------------------------------------------------------------- */
 
 const typeMeta: Record<
@@ -1106,29 +1224,8 @@ const typeMeta: Record<
   },
 };
 
-const typeSegments: SegmentOption<NewTransactionType>[] =
-  transactionTypeOptions.map((option) => ({
-    ...option,
-    ...typeMeta[option.value],
-  }));
-
-const rateModeSegments: SegmentOption<TransferRateMode>[] = [
-  { label: "Manual rate", value: "manual" },
-  { label: "Actual received", value: "actual" },
-];
-
 /* -------------------------------------------------------------------------- */
-/* Helpers                                                                     */
-/* -------------------------------------------------------------------------- */
-
-function formatAccountType(type: string): string {
-  if (type === "e-wallet") return "E-wallet";
-  return type.charAt(0).toUpperCase() + type.slice(1);
-}
-
-/* -------------------------------------------------------------------------- */
-/* Presentational pieces                                                       */
-/* (move into /components/transactions/* when you're happy with the layout)    */
+/* Presentational pieces                                                      */
 /* -------------------------------------------------------------------------- */
 
 type SheetOption = {
@@ -1307,7 +1404,7 @@ function SelectRow({
   leading,
   onPress,
 }: {
-  context?: string; // read out by screen readers only ("From" + "Account")
+  context?: string;
   label: string;
   value?: string;
   placeholder: string;
@@ -1360,7 +1457,6 @@ function InlineNotice({ text }: { text: string }) {
   );
 }
 
-// One sheet for all five pickers (the old screen repeated this block five times).
 function OptionSheet({
   visible,
   onClose,
@@ -1429,7 +1525,7 @@ function OptionSheet({
 }
 
 /* -------------------------------------------------------------------------- */
-/* Styles                                                                      */
+/* Styles                                                                     */
 /* -------------------------------------------------------------------------- */
 
 const styles = StyleSheet.create({

@@ -10,7 +10,11 @@
     "seeAll": "Lihat semua",
     "done": "Selesai",
     "tryAgain": "Silakan coba lagi.",
-    "saving": "Menyimpan..."
+    "saving": "Menyimpan...",
+    "goBack": "Kembali",
+    "errors": {
+      "generic": "Terjadi kesalahan. Silakan coba lagi."
+    }
   },
   "navigation": {
     "home": "Beranda",
@@ -129,12 +133,335 @@
   },
   "transactions": {
     "title": "Transaksi",
-    "emptyTitle": "Belum ada transaksi",
-    "emptyDescription": "Transaksimu akan muncul di sini.",
-    "income": "Pemasukan",
-    "expense": "Pengeluaran",
-    "transfer": "Transfer",
-    "balanceAdjustment": "Penyesuaian saldo"
+    "subtitle": "Pantau keuanganmu di {{workspace}}.",
+    "summary": {
+      "title": "Ringkasan",
+      "allTime": "Sepanjang waktu",
+      "totalIncome": "Total pemasukan",
+      "totalExpenses": "Total pengeluaran",
+      "transferIn": "Transfer masuk",
+      "transferOut": "Transfer keluar"
+    },
+    "filters": {
+      "all": "Semua",
+      "expenses": "Pengeluaran",
+      "income": "Pemasukan",
+      "transfers": "Transfer",
+      "searchPlaceholder": "Cari transaksi...",
+      "open": "Buka filter transaksi",
+      "clear": "Hapus filter"
+    },
+    "filterModal": {
+      "title": "Filter",
+      "subtitle": "Sesuaikan transaksi yang ingin ditampilkan",
+      "close": "Tutup filter",
+      "period": "Periode",
+      "periods": {
+        "all": "Sepanjang waktu",
+        "thisMonth": "Bulan ini",
+        "lastMonth": "Bulan lalu",
+        "last3Months": "3 bulan terakhir",
+        "thisYear": "Tahun ini",
+        "custom": "Rentang khusus"
+      },
+      "date": {
+        "start": "Tanggal mulai",
+        "end": "Tanggal akhir",
+        "invalid": "Masukkan tanggal yang valid dengan format YYYY-MM-DD. Tanggal mulai tidak boleh setelah tanggal akhir."
+      },
+      "categories": {
+        "title": "Kategori",
+        "description": "Pilih satu atau beberapa kategori",
+        "empty": "Tidak ada kategori yang tersedia."
+      },
+      "accounts": {
+        "title": "Akun",
+        "description": "Filter berdasarkan akun yang digunakan",
+        "empty": "Tidak ada akun yang tersedia."
+      },
+      "amount": {
+        "title": "Rentang nominal",
+        "description": "Masukkan nominal dalam {{currency}}",
+        "minimum": "Minimum",
+        "maximum": "Maksimum",
+        "separator": "hingga",
+        "invalid": "Masukkan nominal yang valid. Nominal minimum tidak boleh melebihi maksimum."
+      },
+      "sorting": {
+        "title": "Urutkan berdasarkan",
+        "newest": "Terbaru",
+        "oldest": "Terlama",
+        "highest": "Nominal tertinggi",
+        "lowest": "Nominal terendah"
+      },
+      "actions": {
+        "clear": "Hapus semua",
+        "showTransactions": "Tampilkan {{count}} transaksi"
+      }
+    },
+    "appliedFilters": {
+      "customPeriod": "Periode khusus",
+      "categoryFallback": "Kategori",
+      "accountFallback": "Akun",
+      "minimum": "Min",
+      "maximum": "Maks",
+      "sortPrefix": "Urutkan:",
+      "removeAccessibility": "Hapus filter: {{label}}",
+      "clearAccessibility": "Hapus semua filter",
+      "clearAll": "Hapus semua"
+    },
+    "activity": {
+      "title": "Aktivitas",
+      "transaction": "transaksi",
+      "transactions": "transaksi"
+    },
+    "loading": "Memuat transaksi...",
+    "error": {
+      "title": "Gagal memuat transaksi",
+      "retry": "Coba lagi"
+    },
+    "empty": {
+      "noMatchesTitle": "Tidak ada transaksi yang cocok",
+      "noMatchesDescription": "Coba ubah pencarian atau sesuaikan filter.",
+      "noTransactionsTitle": "Belum ada transaksi",
+      "noTransactionsDescription": "Transaksimu akan muncul di sini."
+    },
+    "accessibility": {
+      "add": "Tambah transaksi"
+    },
+    "add": {
+      "type": {
+        "expense": "Pengeluaran",
+        "income": "Pemasukan",
+        "transfer": "Transfer"
+      },
+      "rateMode": {
+        "manual": "Kurs manual",
+        "actual": "Jumlah diterima"
+      },
+      "from": "Dari",
+      "to": "Ke",
+      "workspace": "Workspace",
+      "account": "Akun",
+      "category": "Kategori",
+      "sourceWorkspace": "Pilih workspace asal",
+      "destinationWorkspace": "Pilih workspace tujuan",
+      "selectAccount": "Pilih akun",
+      "selectDestinationAccount": "Pilih akun tujuan",
+      "selectCategory": "Pilih kategori",
+      "chooseWorkspace": "Pilih workspace",
+      "chooseSource": "Pilih sumber uang",
+      "chooseDestination": "Pilih tujuan uang",
+      "chooseCategory": "Pilih kategori {{type}}",
+      "defaultCategory": "Kategori bawaan",
+      "customCategory": "Kategori khusus",
+      "amount": "Nominal",
+      "amountSent": "Nominal dikirim",
+      "amountReceived": "Nominal diterima",
+      "exchangeRate": "Kurs",
+      "effectiveRate": "Kurs efektif",
+      "amountPreview": "Pratinjau: {{amount}}",
+      "enterAmount": "Masukkan nominal dalam {{currency}}.",
+      "enterAmountToSend": "Masukkan nominal yang akan dikirim dalam {{currency}}.",
+      "enterReceivedAmount": "Masukkan nominal yang benar-benar diterima dalam {{currency}}.",
+      "enterExchangeRate": "Masukkan jumlah {{toCurrency}} yang diterima untuk setiap 1 {{fromCurrency}}.",
+      "exchangeRatePlaceholder": "cth. 3900",
+      "calculatedFromRate": "Dihitung berdasarkan kurs yang kamu masukkan.",
+      "enterAmountAndRate": "Masukkan nominal dan kurs",
+      "effectiveRateDescription": "Berdasarkan nominal yang benar-benar dikirim dan diterima.",
+      "actualReceivedDescription": "Masukkan nominal pasti yang akan diterima di akun tujuan. Kurs efektif akan dihitung secara otomatis.",
+      "workspaceCurrencyNote": "Transaksi ini menggunakan mata uang workspace.",
+      "details": "Detail",
+      "date": "Tanggal",
+      "description": "Deskripsi",
+      "descriptionTransferPlaceholder": "cth. Transfer tabungan bulanan",
+      "descriptionPlaceholder": "cth. Makan siang bersama teman",
+      "descriptionHint": "Opsional, maksimal 150 karakter.",
+      "noSourceAccounts": "Tidak ada akun di workspace ini. Silakan buat akun terlebih dahulu.",
+      "noDestinationAccounts": "Tidak ada akun tujuan di workspace ini.",
+      "noWorkspaces": "Tidak ada workspace yang tersedia.",
+      "noAccounts": "Tidak ada akun di workspace ini.",
+      "noCategories": "Tidak ada kategori untuk jenis transaksi ini.",
+      "loadingAccounts": "Memuat akun...",
+      "savingsTransfer": "Menyimpan transfer...",
+      "savingTransaction": "Menyimpan transaksi...",
+      "saveTransfer": "Tambah transfer",
+      "saveIncome": "Tambah pemasukan",
+      "saveExpense": "Tambah pengeluaran",
+      "alerts": {
+        "noWorkspaceTitle": "Tidak ada workspace aktif",
+        "noWorkspaceMessage": "Silakan pilih workspace terlebih dahulu.",
+        "accountRequiredTitle": "Akun wajib dipilih",
+        "accountRequiredMessage": "Silakan pilih akun.",
+        "categoryRequiredTitle": "Kategori wajib dipilih",
+        "categoryRequiredMessage": "Silakan pilih kategori.",
+        "invalidAmountTitle": "Nominal tidak valid",
+        "invalidAmountMessage": "Masukkan nominal yang lebih besar dari nol.",
+        "invalidCurrencyAmountMessage": "Masukkan nominal yang valid dalam {{currency}}.",
+        "invalidDateTitle": "Tanggal tidak valid",
+        "invalidDateMessage": "Silakan masukkan tanggal yang valid.",
+        "transactionAddedTitle": "Transaksi ditambahkan",
+        "transactionAddedMessage": "Transaksimu berhasil disimpan.",
+        "transactionFailedTitle": "Gagal menambahkan transaksi",
+        "transferAddedTitle": "Transfer ditambahkan",
+        "transferAddedMessage": "Transfer berhasil disimpan.",
+        "transferFailedTitle": "Gagal membuat transfer",
+        "workspaceRequiredTitle": "Workspace wajib dipilih",
+        "workspaceRequiredMessage": "Silakan pilih workspace asal dan tujuan.",
+        "sourceAccountRequiredTitle": "Akun asal wajib dipilih",
+        "sourceAccountRequiredMessage": "Silakan pilih akun untuk mengirim uang.",
+        "destinationAccountRequiredTitle": "Akun tujuan wajib dipilih",
+        "destinationAccountRequiredMessage": "Silakan pilih akun untuk menerima uang.",
+        "invalidTransferTitle": "Transfer tidak valid",
+        "invalidTransferMessage": "Akun asal dan tujuan harus berbeda.",
+        "invalidAccountTitle": "Pemilihan akun tidak valid",
+        "invalidAccountMessage": "Pilih akun yang termasuk dalam workspace yang dipilih.",
+        "invalidReceivedAmountTitle": "Nominal diterima tidak valid",
+        "invalidExchangeRateMessage": "Masukkan kurs yang valid.",
+        "invalidReceivedAmountMessage": "Masukkan nominal yang diterima dalam {{currency}}.",
+        "invalidEffectiveRateTitle": "Kurs tidak valid",
+        "invalidEffectiveRateMessage": "Kurs efektif tidak dapat dihitung.",
+        "genericError": "Terjadi kesalahan. Silakan coba lagi.",
+        "ok": "OK"
+      },
+      "sheets": {
+        "fromWorkspaceTitle": "Workspace asal",
+        "fromWorkspaceSubtitle": "Pilih sumber uang.",
+        "toWorkspaceTitle": "Workspace tujuan",
+        "toWorkspaceSubtitle": "Pilih tujuan uang.",
+        "fromAccountTitle": "Akun asal",
+        "selectAccountTitle": "Pilih akun",
+        "accountSubtitle": "Pilih akun untuk transaksi ini.",
+        "toAccountTitle": "Akun tujuan",
+        "destinationAccountSubtitle": "Pilih akun untuk menerima transfer.",
+        "categoryTitle": "Pilih kategori",
+        "categorySubtitle": "Pilih kategori untuk transaksi ini."
+      },
+      "accessibility": {
+        "select": "{{context}} {{label}}: {{value}}"
+      }
+    },
+    "edit": {
+      "title": "Edit {{type}}",
+      "loading": "Memuat transaksi...",
+      "amountPreview": "Pratinjau: {{amount}}",
+      "amountPlaceholder": "Masukkan jumlah dalam {{currency}}.",
+      "originalAmount": "Jumlah sebelumnya {{amount}}",
+      "currencyNote": "Mata uang ditentukan oleh akun dan workspace Anda.",
+      "accountHint": "Pilih akun untuk transaksi ini",
+      "categoryHint": "Pilih kategori {{type}}",
+      "noAccounts": "Tidak ada akun yang tersedia di workspace ini.",
+      "noCategories": "Tidak ada kategori yang tersedia untuk jenis transaksi ini.",
+      "saving": "Menyimpan perubahan...",
+      "saveChanges": "Simpan perubahan",
+      "accountSheetSubtitle": "Pilih akun dalam workspace ini.",
+      "categorySheetSubtitle": "Pilih kategori untuk {{type}} ini.",
+      "loadingAccounts": "Memuat akun...",
+      "emptyAccounts": "Tidak ada akun yang tersedia.",
+      "loadingCategories": "Memuat kategori...",
+      "emptyCategories": "Tidak ada kategori yang tersedia.",
+      "categoryStatus": {
+        "archived": "Sedang digunakan · Diarsipkan",
+        "default": "Kategori bawaan",
+        "custom": "Kategori khusus"
+      },
+      "notFound": {
+        "title": "Transaksi tidak ditemukan",
+        "description": "Transaksi ini mungkin telah dihapus atau tidak lagi tersedia."
+      },
+      "transferNotEditable": {
+        "title": "Transfer tidak dapat diedit di sini",
+        "description": "Data transfer terhubung dengan transaksi lain dan harus dikelola secara bersamaan."
+      },
+      "validation": {
+        "accountRequired": {
+          "title": "Akun diperlukan",
+          "message": "Silakan pilih akun."
+        },
+        "invalidAccount": {
+          "title": "Akun tidak valid",
+          "message": "Silakan pilih akun dari workspace asal."
+        },
+        "categoryRequired": {
+          "title": "Kategori diperlukan",
+          "message": "Silakan pilih kategori."
+        },
+        "invalidCategory": {
+          "title": "Kategori tidak valid",
+          "message": "Silakan pilih kategori yang sesuai dengan jenis transaksi ini."
+        },
+        "archivedCategory": {
+          "title": "Kategori telah diarsipkan",
+          "message": "Silakan pilih kategori yang masih aktif."
+        },
+        "invalidAmount": {
+          "title": "Jumlah tidak valid",
+          "message": "Silakan masukkan jumlah yang lebih besar dari nol."
+        },
+        "invalidDate": {
+          "title": "Tanggal tidak valid",
+          "message": "Silakan masukkan tanggal yang valid."
+        }
+      },
+      "errors": {
+        "updateFailed": {
+          "title": "Transaksi tidak dapat diperbarui"
+        }
+      }
+    },
+    "types": {
+      "income": "Pemasukan",
+      "expense": "Pengeluaran",
+      "transfer": "Transfer"
+    },
+    "details": {
+      "title": "Detail transaksi",
+      "loading": "Memuat transaksi...",
+      "transferIn": "Transfer masuk",
+      "transferOut": "Transfer keluar",
+      "loadingTransfer": "Memuat detail transfer...",
+      "transferDetails": "Detail transfer",
+      "from": "Dari",
+      "to": "Ke",
+      "exchangeRate": "Nilai tukar",
+      "rateSource": "Sumber nilai tukar",
+      "rateSources": {
+        "automatic": "Otomatis",
+        "manual": "Manual",
+        "actualReceivedAmount": "Jumlah aktual yang diterima"
+      },
+      "transferDate": "Tanggal transfer",
+      "transferLoadError": "Tidak dapat memuat informasi transfer. Silakan coba lagi.",
+      "transferUnavailable": "Informasi transfer tidak tersedia.",
+      "information": "Informasi",
+      "account": "Akun",
+      "category": "Kategori",
+      "workspace": "Workspace",
+      "description": "Deskripsi",
+      "unknownAccount": "Akun tidak diketahui",
+      "unknownCategory": "Kategori tidak diketahui",
+      "unknownWorkspace": "Workspace tidak diketahui",
+      "noDescription": "Tidak ada deskripsi",
+      "createdOn": "Dibuat pada {{date}}",
+      "deleteTransfer": "Hapus transfer",
+      "deleteTransaction": "Hapus transaksi",
+      "editTransaction": "Edit transaksi",
+      "deleteTransferConfirm": {
+        "title": "Hapus transfer?",
+        "message": "Transfer ini dan kedua transaksi yang terhubung akan dihapus secara permanen, termasuk transaksi di workspace lain. Tindakan ini tidak dapat dibatalkan."
+      },
+      "deleteTransactionConfirm": {
+        "title": "Hapus transaksi?",
+        "message": "Apakah kamu yakin ingin menghapus transaksi ini secara permanen? Tindakan ini tidak dapat dibatalkan."
+      },
+      "notFound": {
+        "title": "Transaksi tidak ditemukan",
+        "description": "Transaksi ini mungkin telah dihapus atau tidak lagi tersedia."
+      },
+      "errors": {
+        "deleteFailed": "Transaksi tidak dapat dihapus"
+      }
+    }
   },
   "budget": {
     "title": "Anggaran",

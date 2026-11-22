@@ -10,7 +10,11 @@
     "seeAll": "See all",
     "done": "Done",
     "tryAgain": "Please try again.",
-    "saving": "Saving..."
+    "saving": "Saving...",
+    "errors": {
+      "generic": "Something went wrong. Please try again."
+    },
+    "goBack": "Go back"
   },
   "navigation": {
     "home": "Home",
@@ -129,12 +133,335 @@
   },
   "transactions": {
     "title": "Transactions",
-    "emptyTitle": "No transactions yet",
-    "emptyDescription": "Your transactions will appear here.",
-    "income": "Income",
-    "expense": "Expense",
-    "transfer": "Transfer",
-    "balanceAdjustment": "Balance adjustment"
+    "subtitle": "Track your money in {{workspace}}.",
+    "summary": {
+      "title": "Summary",
+      "allTime": "All time",
+      "totalIncome": "Total income",
+      "totalExpenses": "Total expenses",
+      "transferIn": "Transfer in",
+      "transferOut": "Transfer out"
+    },
+    "filters": {
+      "all": "All",
+      "expenses": "Expenses",
+      "income": "Income",
+      "transfers": "Transfers",
+      "searchPlaceholder": "Search transactions...",
+      "open": "Open transaction filters",
+      "clear": "Clear filters"
+    },
+    "filterModal": {
+      "title": "Filters",
+      "subtitle": "Refine your transactions",
+      "close": "Close filters",
+      "period": "Period",
+      "periods": {
+        "all": "All time",
+        "thisMonth": "This month",
+        "lastMonth": "Last month",
+        "last3Months": "Last 3 months",
+        "thisYear": "This year",
+        "custom": "Custom range"
+      },
+      "date": {
+        "start": "Start date",
+        "end": "End date",
+        "invalid": "Enter valid dates in YYYY-MM-DD format. Start date must not be after end date."
+      },
+      "categories": {
+        "title": "Categories",
+        "description": "Select one or more categories",
+        "empty": "No categories available."
+      },
+      "accounts": {
+        "title": "Accounts",
+        "description": "Filter by the account used",
+        "empty": "No accounts available."
+      },
+      "amount": {
+        "title": "Amount range",
+        "description": "Enter amounts in {{currency}}",
+        "minimum": "Minimum",
+        "maximum": "Maximum",
+        "separator": "to",
+        "invalid": "Enter valid amounts. Minimum cannot exceed maximum."
+      },
+      "sorting": {
+        "title": "Sort by",
+        "newest": "Newest first",
+        "oldest": "Oldest first",
+        "highest": "Highest amount",
+        "lowest": "Lowest amount"
+      },
+      "actions": {
+        "clear": "Clear all",
+        "showTransactions": "Show {{count}} transactions"
+      }
+    },
+    "appliedFilters": {
+      "customPeriod": "Custom period",
+      "categoryFallback": "Category",
+      "accountFallback": "Account",
+      "minimum": "Min",
+      "maximum": "Max",
+      "sortPrefix": "Sort:",
+      "removeAccessibility": "Remove filter: {{label}}",
+      "clearAccessibility": "Clear all filters",
+      "clearAll": "Clear all"
+    },
+    "activity": {
+      "title": "Activity",
+      "transaction": "transaction",
+      "transactions": "transactions"
+    },
+    "loading": "Loading transactions...",
+    "error": {
+      "title": "Unable to load transactions",
+      "retry": "Try again"
+    },
+    "empty": {
+      "noMatchesTitle": "No matching transactions",
+      "noMatchesDescription": "Try changing your search or adjusting your filters.",
+      "noTransactionsTitle": "No transactions yet",
+      "noTransactionsDescription": "Your transactions will appear here."
+    },
+    "accessibility": {
+      "add": "Add transaction"
+    },
+    "add": {
+      "type": {
+        "expense": "Expense",
+        "income": "Income",
+        "transfer": "Transfer"
+      },
+      "rateMode": {
+        "manual": "Manual rate",
+        "actual": "Actual received"
+      },
+      "from": "From",
+      "to": "To",
+      "workspace": "Workspace",
+      "account": "Account",
+      "category": "Category",
+      "sourceWorkspace": "Select source workspace",
+      "destinationWorkspace": "Select destination workspace",
+      "selectAccount": "Select an account",
+      "selectDestinationAccount": "Select destination account",
+      "selectCategory": "Select a category",
+      "chooseWorkspace": "Choose a workspace",
+      "chooseSource": "Choose where the money comes from",
+      "chooseDestination": "Choose where the money goes",
+      "chooseCategory": "Choose a {{type}} category",
+      "defaultCategory": "Default category",
+      "customCategory": "Custom category",
+      "amount": "Amount",
+      "amountSent": "Amount sent",
+      "amountReceived": "Amount received",
+      "exchangeRate": "Exchange rate",
+      "effectiveRate": "Effective exchange rate",
+      "amountPreview": "Preview: {{amount}}",
+      "enterAmount": "Enter the amount in {{currency}}.",
+      "enterAmountToSend": "Enter the amount to send in {{currency}}.",
+      "enterReceivedAmount": "Enter the actual received amount in {{currency}}.",
+      "enterExchangeRate": "Enter how much {{toCurrency}} you receive for 1 {{fromCurrency}}.",
+      "exchangeRatePlaceholder": "e.g. 3900",
+      "calculatedFromRate": "Calculated from your exchange rate.",
+      "enterAmountAndRate": "Enter an amount and exchange rate",
+      "effectiveRateDescription": "Based on the actual sent and received amounts.",
+      "actualReceivedDescription": "Enter the exact amount that will arrive in the destination account. The effective exchange rate will be calculated automatically.",
+      "workspaceCurrencyNote": "This transaction uses your workspace currency.",
+      "details": "Details",
+      "date": "Date",
+      "description": "Description",
+      "descriptionTransferPlaceholder": "e.g. Monthly savings transfer",
+      "descriptionPlaceholder": "e.g. Lunch with friends",
+      "descriptionHint": "Optional, up to 150 characters.",
+      "noSourceAccounts": "No accounts available in this workspace. Please create an account first.",
+      "noDestinationAccounts": "No destination accounts available in this workspace.",
+      "noWorkspaces": "No workspaces available.",
+      "noAccounts": "No accounts available in this workspace.",
+      "noCategories": "No categories available for this transaction type.",
+      "loadingAccounts": "Loading accounts...",
+      "savingsTransfer": "Saving transfer...",
+      "savingTransaction": "Saving transaction...",
+      "saveTransfer": "Add transfer",
+      "saveIncome": "Add income",
+      "saveExpense": "Add expense",
+      "alerts": {
+        "noWorkspaceTitle": "No active workspace",
+        "noWorkspaceMessage": "Please select a workspace first.",
+        "accountRequiredTitle": "Account required",
+        "accountRequiredMessage": "Please select an account.",
+        "categoryRequiredTitle": "Category required",
+        "categoryRequiredMessage": "Please select a category.",
+        "invalidAmountTitle": "Invalid amount",
+        "invalidAmountMessage": "Please enter an amount greater than zero.",
+        "invalidCurrencyAmountMessage": "Please enter a valid amount in {{currency}}.",
+        "invalidDateTitle": "Invalid date",
+        "invalidDateMessage": "Please enter a valid date.",
+        "transactionAddedTitle": "Transaction added",
+        "transactionAddedMessage": "Your transaction has been saved.",
+        "transactionFailedTitle": "Unable to add transaction",
+        "transferAddedTitle": "Transfer added",
+        "transferAddedMessage": "Your transfer has been saved.",
+        "transferFailedTitle": "Unable to create transfer",
+        "workspaceRequiredTitle": "Workspace required",
+        "workspaceRequiredMessage": "Please select both source and destination workspaces.",
+        "sourceAccountRequiredTitle": "Source account required",
+        "sourceAccountRequiredMessage": "Please select the account to transfer money from.",
+        "destinationAccountRequiredTitle": "Destination account required",
+        "destinationAccountRequiredMessage": "Please select an account to transfer money to.",
+        "invalidTransferTitle": "Invalid transfer",
+        "invalidTransferMessage": "The source and destination accounts must be different.",
+        "invalidAccountTitle": "Invalid account selection",
+        "invalidAccountMessage": "Please select accounts belonging to the selected workspaces.",
+        "invalidReceivedAmountTitle": "Invalid received amount",
+        "invalidExchangeRateMessage": "Please enter a valid exchange rate.",
+        "invalidReceivedAmountMessage": "Please enter the amount received in {{currency}}.",
+        "invalidEffectiveRateTitle": "Invalid exchange rate",
+        "invalidEffectiveRateMessage": "Unable to calculate the effective exchange rate.",
+        "genericError": "Something went wrong. Please try again.",
+        "ok": "OK"
+      },
+      "sheets": {
+        "fromWorkspaceTitle": "From workspace",
+        "fromWorkspaceSubtitle": "Choose where the money comes from.",
+        "toWorkspaceTitle": "To workspace",
+        "toWorkspaceSubtitle": "Choose where the money goes.",
+        "fromAccountTitle": "From account",
+        "selectAccountTitle": "Select account",
+        "accountSubtitle": "Choose the account for this transaction.",
+        "toAccountTitle": "To account",
+        "destinationAccountSubtitle": "Choose the account to transfer money to.",
+        "categoryTitle": "Select category",
+        "categorySubtitle": "Choose a category for this transaction."
+      },
+      "accessibility": {
+        "select": "{{context}} {{label}}: {{value}}"
+      }
+    },
+    "edit": {
+      "title": "Edit {{type}}",
+      "loading": "Loading transaction...",
+      "amountPreview": "Preview: {{amount}}",
+      "amountPlaceholder": "Enter the amount in {{currency}}.",
+      "originalAmount": "Originally {{amount}}",
+      "currencyNote": "The currency is determined by your account and workspace.",
+      "accountHint": "Choose an account for this transaction",
+      "categoryHint": "Choose a category for this {{type}}",
+      "noAccounts": "No accounts are available in this workspace.",
+      "noCategories": "No categories available for this transaction type.",
+      "saving": "Saving changes...",
+      "saveChanges": "Save changes",
+      "accountSheetSubtitle": "Choose an account in this workspace.",
+      "categorySheetSubtitle": "Choose a category for this {{type}}.",
+      "loadingAccounts": "Loading accounts...",
+      "emptyAccounts": "No accounts available.",
+      "loadingCategories": "Loading categories...",
+      "emptyCategories": "No categories available.",
+      "categoryStatus": {
+        "archived": "Currently assigned · Archived",
+        "default": "Default category",
+        "custom": "Custom category"
+      },
+      "notFound": {
+        "title": "Transaction not found",
+        "description": "This transaction may have been deleted or is no longer available."
+      },
+      "transferNotEditable": {
+        "title": "Transfer cannot be edited here",
+        "description": "Transfer records are linked to another transaction and must be managed together."
+      },
+      "validation": {
+        "accountRequired": {
+          "title": "Account required",
+          "message": "Please select an account."
+        },
+        "invalidAccount": {
+          "title": "Invalid account",
+          "message": "Please select an account from the original workspace."
+        },
+        "categoryRequired": {
+          "title": "Category required",
+          "message": "Please select a category."
+        },
+        "invalidCategory": {
+          "title": "Invalid category",
+          "message": "Please select a category matching this transaction type."
+        },
+        "archivedCategory": {
+          "title": "Archived category",
+          "message": "Please select an active category."
+        },
+        "invalidAmount": {
+          "title": "Invalid amount",
+          "message": "Please enter an amount greater than zero."
+        },
+        "invalidDate": {
+          "title": "Invalid date",
+          "message": "Please enter a valid date."
+        }
+      },
+      "errors": {
+        "updateFailed": {
+          "title": "Unable to update transaction"
+        }
+      }
+    },
+    "types": {
+      "income": "Income",
+      "expense": "Expense",
+      "transfer": "Transfer"
+    },
+    "details": {
+      "title": "Transaction details",
+      "loading": "Loading transaction...",
+      "transferIn": "Transfer in",
+      "transferOut": "Transfer out",
+      "loadingTransfer": "Loading transfer details...",
+      "transferDetails": "Transfer details",
+      "from": "From",
+      "to": "To",
+      "exchangeRate": "Exchange rate",
+      "rateSource": "Rate source",
+      "rateSources": {
+        "automatic": "Automatic",
+        "manual": "Manual",
+        "actualReceivedAmount": "Actual received amount"
+      },
+      "transferDate": "Transfer date",
+      "transferLoadError": "Unable to load transfer information. Please try again.",
+      "transferUnavailable": "Transfer information is not available.",
+      "information": "Information",
+      "account": "Account",
+      "category": "Category",
+      "workspace": "Workspace",
+      "description": "Description",
+      "unknownAccount": "Unknown account",
+      "unknownCategory": "Unknown category",
+      "unknownWorkspace": "Unknown workspace",
+      "noDescription": "No description",
+      "createdOn": "Created on {{date}}",
+      "deleteTransfer": "Delete transfer",
+      "deleteTransaction": "Delete transaction",
+      "editTransaction": "Edit transaction",
+      "deleteTransferConfirm": {
+        "title": "Delete transfer?",
+        "message": "This will permanently delete the transfer and both linked transactions, including the transaction in the other workspace. This action cannot be undone."
+      },
+      "deleteTransactionConfirm": {
+        "title": "Delete transaction?",
+        "message": "Are you sure you want to permanently delete this transaction? This action cannot be undone."
+      },
+      "notFound": {
+        "title": "Transaction not found",
+        "description": "This transaction may have been deleted or is no longer available."
+      },
+      "errors": {
+        "deleteFailed": "Unable to delete transaction"
+      }
+    }
   },
   "budget": {
     "title": "Budget",

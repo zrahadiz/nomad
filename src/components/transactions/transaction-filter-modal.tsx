@@ -11,6 +11,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Check, Wallet, X } from "lucide-react-native";
 
+import { useTranslation } from "react-i18next";
+
 import { colors, radius, spacing, typography } from "@/constants/theme";
 
 export type PeriodFilter =
@@ -36,20 +38,56 @@ export type FilterAccount = {
   type: string;
 };
 
-export const periods: { label: string; value: PeriodFilter }[] = [
-  { label: "All time", value: "all" },
-  { label: "This month", value: "this_month" },
-  { label: "Last month", value: "last_month" },
-  { label: "Last 3 months", value: "last_3_months" },
-  { label: "This year", value: "this_year" },
-  { label: "Custom range", value: "custom" },
+export const periods: {
+  labelKey: string;
+  value: PeriodFilter;
+}[] = [
+  {
+    labelKey: "transactions.filterModal.periods.all",
+    value: "all",
+  },
+  {
+    labelKey: "transactions.filterModal.periods.thisMonth",
+    value: "this_month",
+  },
+  {
+    labelKey: "transactions.filterModal.periods.lastMonth",
+    value: "last_month",
+  },
+  {
+    labelKey: "transactions.filterModal.periods.last3Months",
+    value: "last_3_months",
+  },
+  {
+    labelKey: "transactions.filterModal.periods.thisYear",
+    value: "this_year",
+  },
+  {
+    labelKey: "transactions.filterModal.periods.custom",
+    value: "custom",
+  },
 ];
 
-const sortingOptions: { label: string; value: SortFilter }[] = [
-  { label: "Newest first", value: "newest" },
-  { label: "Oldest first", value: "oldest" },
-  { label: "Highest amount", value: "highest" },
-  { label: "Lowest amount", value: "lowest" },
+const sortingOptions: {
+  labelKey: string;
+  value: SortFilter;
+}[] = [
+  {
+    labelKey: "transactions.filterModal.sorting.newest",
+    value: "newest",
+  },
+  {
+    labelKey: "transactions.filterModal.sorting.oldest",
+    value: "oldest",
+  },
+  {
+    labelKey: "transactions.filterModal.sorting.highest",
+    value: "highest",
+  },
+  {
+    labelKey: "transactions.filterModal.sorting.lowest",
+    value: "lowest",
+  },
 ];
 
 type TransactionFilterModalProps = {
@@ -120,6 +158,7 @@ export function TransactionFilterModal({
   amountIsInvalid,
 }: TransactionFilterModalProps) {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
 
   const toggleCategory = (categoryId: string) => {
     onCategoryChange(
@@ -161,15 +200,19 @@ export function TransactionFilterModal({
         >
           <View style={styles.sheetHeader}>
             <View style={styles.sheetTitleContainer}>
-              <Text style={styles.sheetTitle}>Filters</Text>
-              <Text style={styles.sheetSubtitle}>Refine your transactions</Text>
+              <Text style={styles.sheetTitle}>
+                {t("transactions.filterModal.title")}
+              </Text>
+              <Text style={styles.sheetSubtitle}>
+                {t("transactions.filterModal.subtitle")}
+              </Text>
             </View>
 
             <Pressable
               onPress={onClose}
               style={styles.closeButton}
               accessibilityRole="button"
-              accessibilityLabel="Close filters"
+              accessibilityLabel={t("transactions.filterModal.close")}
             >
               <X size={20} color={colors.text} />
             </Pressable>
@@ -182,8 +225,11 @@ export function TransactionFilterModal({
             keyboardDismissMode="on-drag"
           >
             {/* Period */}
+            {/* Period */}
             <View style={styles.filterSection}>
-              <Text style={styles.filterSectionTitle}>Period</Text>
+              <Text style={styles.filterSectionTitle}>
+                {t("transactions.filterModal.period")}
+              </Text>
 
               <View style={styles.optionGrid}>
                 {periods.map((period) => {
@@ -204,7 +250,7 @@ export function TransactionFilterModal({
                           selected && styles.optionTextSelected,
                         ]}
                       >
-                        {period.label}
+                        {t(period.labelKey)}
                       </Text>
 
                       {selected && <Check size={15} color={colors.primary} />}
@@ -216,7 +262,9 @@ export function TransactionFilterModal({
               {selectedPeriod === "custom" && (
                 <View style={styles.dateRangeContainer}>
                   <View style={styles.dateInputGroup}>
-                    <Text style={styles.inputLabel}>Start date</Text>
+                    <Text style={styles.inputLabel}>
+                      {t("transactions.filterModal.date.start")}
+                    </Text>
                     <TextInput
                       value={customStartDate}
                       onChangeText={onStartDateChange}
@@ -229,7 +277,9 @@ export function TransactionFilterModal({
                   </View>
 
                   <View style={styles.dateInputGroup}>
-                    <Text style={styles.inputLabel}>End date</Text>
+                    <Text style={styles.inputLabel}>
+                      {t("transactions.filterModal.date.end")}
+                    </Text>
                     <TextInput
                       value={customEndDate}
                       onChangeText={onEndDateChange}
@@ -243,8 +293,7 @@ export function TransactionFilterModal({
 
                   {customDateIsInvalid && (
                     <Text style={styles.validationText}>
-                      Enter valid dates in YYYY-MM-DD format. Start date must
-                      not be after end date.
+                      {t("transactions.filterModal.date.invalid")}
                     </Text>
                   )}
                 </View>
@@ -254,15 +303,19 @@ export function TransactionFilterModal({
             <View style={styles.sheetDivider} />
 
             {/* Categories */}
+            {/* Categories */}
             <View style={styles.filterSection}>
-              <Text style={styles.filterSectionTitle}>Categories</Text>
+              <Text style={styles.filterSectionTitle}>
+                {t("transactions.filterModal.categories.title")}
+              </Text>
+
               <Text style={styles.filterSectionDescription}>
-                Select one or more categories
+                {t("transactions.filterModal.categories.description")}
               </Text>
 
               {categories.length === 0 ? (
                 <Text style={styles.noOptionsText}>
-                  No categories available.
+                  {t("transactions.filterModal.categories.empty")}
                 </Text>
               ) : (
                 <View style={styles.selectionList}>
@@ -307,18 +360,27 @@ export function TransactionFilterModal({
             <View style={styles.sheetDivider} />
 
             {/* Accounts */}
+            {/* Accounts */}
             <View style={styles.filterSection}>
-              <Text style={styles.filterSectionTitle}>Accounts</Text>
+              <Text style={styles.filterSectionTitle}>
+                {t("transactions.filterModal.accounts.title")}
+              </Text>
+
               <Text style={styles.filterSectionDescription}>
-                Filter by the account used
+                {t("transactions.filterModal.accounts.description")}
               </Text>
 
               {accounts.length === 0 ? (
-                <Text style={styles.noOptionsText}>No accounts available.</Text>
+                <Text style={styles.noOptionsText}>
+                  {t("transactions.filterModal.accounts.empty")}
+                </Text>
               ) : (
                 <View style={styles.selectionList}>
                   {accounts.map((account) => {
                     const selected = selectedAccountIds.includes(account.id);
+
+                    const accountTypeKey =
+                      account.type === "e-wallet" ? "eWallet" : account.type;
 
                     return (
                       <Pressable
@@ -336,7 +398,7 @@ export function TransactionFilterModal({
                               {account.name}
                             </Text>
                             <Text style={styles.accountType}>
-                              {account.type}
+                              {t(`home.accountTypes.${accountTypeKey}`)}
                             </Text>
                           </View>
                         </View>
@@ -361,15 +423,23 @@ export function TransactionFilterModal({
             <View style={styles.sheetDivider} />
 
             {/* Amount range */}
+            {/* Amount range */}
             <View style={styles.filterSection}>
-              <Text style={styles.filterSectionTitle}>Amount range</Text>
+              <Text style={styles.filterSectionTitle}>
+                {t("transactions.filterModal.amount.title")}
+              </Text>
+
               <Text style={styles.filterSectionDescription}>
-                Enter amounts in {currency}
+                {t("transactions.filterModal.amount.description", {
+                  currency,
+                })}
               </Text>
 
               <View style={styles.amountRangeRow}>
                 <View style={styles.amountInputGroup}>
-                  <Text style={styles.inputLabel}>Minimum</Text>
+                  <Text style={styles.inputLabel}>
+                    {t("transactions.filterModal.amount.minimum")}
+                  </Text>
                   <TextInput
                     value={minimumAmount}
                     onChangeText={onMinimumAmountChange}
@@ -381,11 +451,15 @@ export function TransactionFilterModal({
                 </View>
 
                 <View style={styles.amountRangeSeparator}>
-                  <Text style={styles.amountRangeSeparatorText}>to</Text>
+                  <Text style={styles.amountRangeSeparatorText}>
+                    {t("transactions.filterModal.amount.separator")}
+                  </Text>
                 </View>
 
                 <View style={styles.amountInputGroup}>
-                  <Text style={styles.inputLabel}>Maximum</Text>
+                  <Text style={styles.inputLabel}>
+                    {t("transactions.filterModal.amount.maximum")}
+                  </Text>
                   <TextInput
                     value={maximumAmount}
                     onChangeText={onMaximumAmountChange}
@@ -399,7 +473,7 @@ export function TransactionFilterModal({
 
               {amountIsInvalid && (
                 <Text style={styles.validationText}>
-                  Enter valid amounts. Minimum cannot exceed maximum.
+                  {t("transactions.filterModal.amount.invalid")}
                 </Text>
               )}
             </View>
@@ -407,8 +481,11 @@ export function TransactionFilterModal({
             <View style={styles.sheetDivider} />
 
             {/* Sorting */}
+            {/* Sorting */}
             <View style={styles.filterSection}>
-              <Text style={styles.filterSectionTitle}>Sort by</Text>
+              <Text style={styles.filterSectionTitle}>
+                {t("transactions.filterModal.sorting.title")}
+              </Text>
 
               <View style={styles.optionGrid}>
                 {sortingOptions.map((option) => {
@@ -429,7 +506,7 @@ export function TransactionFilterModal({
                           selected && styles.optionTextSelected,
                         ]}
                       >
-                        {option.label}
+                        {t(option.labelKey)}
                       </Text>
 
                       {selected && <Check size={15} color={colors.primary} />}
@@ -442,7 +519,9 @@ export function TransactionFilterModal({
 
           <View style={styles.sheetFooter}>
             <Pressable onPress={onClear} style={styles.resetButton}>
-              <Text style={styles.resetButtonText}>Clear all</Text>
+              <Text style={styles.resetButtonText}>
+                {t("transactions.filterModal.actions.clear")}
+              </Text>
             </Pressable>
 
             <Pressable
@@ -454,7 +533,9 @@ export function TransactionFilterModal({
               ]}
             >
               <Text style={styles.applyButtonText}>
-                Show {transactionCount} transactions
+                {t("transactions.filterModal.actions.showTransactions", {
+                  count: transactionCount,
+                })}
               </Text>
             </Pressable>
           </View>

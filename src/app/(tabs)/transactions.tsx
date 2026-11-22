@@ -1,5 +1,6 @@
 import { useRouter } from "expo-router";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   Pressable,
@@ -49,11 +50,14 @@ import { useWorkspaceStore } from "@/stores/use-workspace-store";
 
 type transactionFilter = "all" | "expense" | "income" | "transfers";
 
-const filters: { label: string; value: transactionFilter }[] = [
-  { label: "All", value: "all" },
-  { label: "Expenses", value: "expense" },
-  { label: "Income", value: "income" },
-  { label: "Transfers", value: "transfers" },
+const filters: {
+  labelKey: string;
+  value: transactionFilter;
+}[] = [
+  { labelKey: "transactions.filters.all", value: "all" },
+  { labelKey: "transactions.filters.expenses", value: "expense" },
+  { labelKey: "transactions.filters.income", value: "income" },
+  { labelKey: "transactions.filters.transfers", value: "transfers" },
 ];
 
 function toISODate(date: Date) {
@@ -190,6 +194,7 @@ function FlowStat({
 
 export default function TransactionsScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
 
   const [activeFilter, setActiveFilter] = useState<transactionFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -491,21 +496,23 @@ export default function TransactionsScreen() {
       activeFilter !== "all"
     ) {
       return {
-        title: "No matching transactions",
-        description: "Try changing your search or adjusting your filters.",
+        title: t("transactions.empty.noMatchesTitle"),
+        description: t("transactions.empty.noMatchesDescription"),
       };
     }
 
     return {
-      title: "No transactions yet",
-      description: "Your transactions will appear here.",
+      title: t("transactions.empty.noTransactionsTitle"),
+      description: t("transactions.empty.noTransactionsDescription"),
     };
   };
 
   const count = filteredTransactions.length;
 
-  const selectedPeriodLabel =
-    periods.find((item) => item.value === selectedPeriod)?.label ?? "All time";
+  const selectedPeriodLabel = t(
+    periods.find((item) => item.value === selectedPeriod)?.labelKey ??
+      "transactions.filterModal.periods.all",
+  );
 
   const appliedFilters = buildAppliedFilters({
     selectedPeriod,
@@ -547,9 +554,11 @@ export default function TransactionsScreen() {
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.headerText}>
-              <Text style={styles.title}>Transactions</Text>
+              <Text style={styles.title}>{t("transactions.title")}</Text>
               <Text style={styles.subtitle}>
-                Track your money in {workspace?.name ?? "your workspace"}.
+                {t("transactions.subtitle", {
+                  workspace: workspace?.name ?? "your workspace",
+                })}
               </Text>
             </View>
 
@@ -562,13 +571,17 @@ export default function TransactionsScreen() {
           {/* Summary */}
           <View style={styles.summaryCard}>
             <View style={styles.summaryHeader}>
-              <Text style={styles.summaryTitle}>Summary</Text>
-              <Text style={styles.summaryCaption}>All time</Text>
+              <Text style={styles.summaryTitle}>
+                {t("transactions.summary.title")}
+              </Text>
+              <Text style={styles.summaryCaption}>
+                {t("transactions.summary.allTime")}
+              </Text>
             </View>
 
             <View style={styles.flowRow}>
               <FlowStat
-                label="Total income"
+                label={t("transactions.summary.totalIncome")}
                 direction="in"
                 tone="success"
                 amountColor={colors.success}
@@ -577,7 +590,7 @@ export default function TransactionsScreen() {
               />
 
               <FlowStat
-                label="Total expenses"
+                label={t("transactions.summary.totalExpenses")}
                 direction="out"
                 tone="danger"
                 amountColor={colors.danger}
@@ -590,7 +603,7 @@ export default function TransactionsScreen() {
 
             <View style={styles.flowRow}>
               <FlowStat
-                label="Transfer in"
+                label={t("transactions.summary.transferIn")}
                 direction="in"
                 tone="neutral"
                 amountColor={colors.text}
@@ -599,7 +612,7 @@ export default function TransactionsScreen() {
               />
 
               <FlowStat
-                label="Transfer out"
+                label={t("transactions.summary.transferOut")}
                 direction="out"
                 tone="neutral"
                 amountColor={colors.text}
@@ -618,14 +631,18 @@ export default function TransactionsScreen() {
                 <TextInput
                   value={searchQuery}
                   onChangeText={setSearchQuery}
-                  placeholder="Search transactions..."
+                  placeholder={t("transactions.filters.searchPlaceholder")}
                   placeholderTextColor={colors.textSecondary}
                   style={styles.searchInput}
                   returnKeyType="search"
                 />
 
                 {searchQuery.length > 0 && (
-                  <Pressable onPress={() => setSearchQuery("")}>
+                  <Pressable
+                    onPress={() => setSearchQuery("")}
+                    accessibilityRole="button"
+                    accessibilityLabel={t("common.clear")}
+                  >
                     <X size={17} color={colors.textSecondary} />
                   </Pressable>
                 )}
@@ -635,7 +652,7 @@ export default function TransactionsScreen() {
                 onPress={() => setIsFilterVisible(true)}
                 style={styles.filterIconButton}
                 accessibilityRole="button"
-                accessibilityLabel="Open transaction filters"
+                accessibilityLabel={t("transactions.filters.open")}
               >
                 <Filter size={19} color={colors.primary} />
 
@@ -676,7 +693,7 @@ export default function TransactionsScreen() {
                       ]}
                       numberOfLines={1}
                     >
-                      {filter.label}
+                      {t(filter.labelKey)}
                     </Text>
                   </Pressable>
                 );
@@ -686,9 +703,14 @@ export default function TransactionsScreen() {
 
           {/* List header */}
           <View style={styles.listHeader}>
-            <Text style={styles.sectionTitle}>Activity</Text>
+            <Text style={styles.sectionTitle}>
+              {t("transactions.activity.title")}
+            </Text>
             <Text style={styles.count}>
-              {count} {count === 1 ? "transaction" : "transactions"}
+              {count}{" "}
+              {count === 1
+                ? t("transactions.activity.transaction")
+                : t("transactions.activity.transactions")}
             </Text>
           </View>
 
@@ -697,13 +719,15 @@ export default function TransactionsScreen() {
             <View style={styles.emptyState}>
               <ActivityIndicator size="large" color={colors.primary} />
               <Text style={styles.emptyDescription}>
-                Loading transactions...
+                {t("transactions.loading")}
               </Text>
             </View>
           ) : transactionsError ? (
             <View style={styles.emptyState}>
               <Wallet size={32} color={colors.danger} />
-              <Text style={styles.emptyTitle}>Unable to load transactions</Text>
+              <Text style={styles.emptyTitle}>
+                {t("transactions.error.title")}
+              </Text>
               <Text style={styles.emptyDescription}>{transactionsError}</Text>
 
               <Pressable
@@ -712,7 +736,9 @@ export default function TransactionsScreen() {
                 accessibilityRole="button"
               >
                 <RefreshCw size={16} color={colors.textOnPrimary} />
-                <Text style={styles.retryButtonText}>Try again</Text>
+                <Text style={styles.retryButtonText}>
+                  {t("transactions.error.retry")}
+                </Text>
               </Pressable>
             </View>
           ) : filteredTransactions.length === 0 ? (
@@ -731,7 +757,9 @@ export default function TransactionsScreen() {
                 activeAdvancedFilterCount > 0 ||
                 activeFilter !== "all") && (
                 <Pressable onPress={clearAllFilters} style={styles.clearButton}>
-                  <Text style={styles.clearButtonText}>Clear filters</Text>
+                  <Text style={styles.clearButtonText}>
+                    {t("transactions.filters.clear")}
+                  </Text>
                 </Pressable>
               )}
             </View>
@@ -758,7 +786,7 @@ export default function TransactionsScreen() {
           onPress={() => router.push("/transactions/new")}
           style={({ pressed }) => [styles.fab, pressed && styles.fabPressed]}
           accessibilityRole="button"
-          accessibilityLabel="Add transaction"
+          accessibilityLabel={t("transactions.accessibility.add")}
         >
           <Plus size={26} color={colors.textOnPrimary} />
         </Pressable>

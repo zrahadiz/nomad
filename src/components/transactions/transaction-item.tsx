@@ -50,8 +50,6 @@ export function TransactionItem({
 
   const isPositive = isIncome || isTransferIn || isAdjustmentIncrease;
 
-  const isNegative = !isPositive;
-
   const Icon = isTransfer
     ? ArrowLeftRight
     : isAdjustmentIncrease
