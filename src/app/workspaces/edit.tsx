@@ -1,6 +1,7 @@
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { ArrowLeft, Check, Search } from "lucide-react-native";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   Pressable,
@@ -24,10 +25,10 @@ import { useWorkspaceStore } from "@/stores/use-workspace-store";
 export default function EditWorkspaceScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { t } = useTranslation();
 
   const workspaces = useWorkspaceStore((state) => state.workspaces);
   const editWorkspace = useWorkspaceStore((state) => state.editWorkspace);
-
   const workspace = workspaces.find((item) => item.id === id);
 
   const [name, setName] = useState("");
@@ -38,7 +39,6 @@ export default function EditWorkspaceScreen() {
 
   useEffect(() => {
     if (!workspace) return;
-
     setName(workspace.name);
     setSelectedCountry(getCountryByCode(workspace.country_code) ?? null);
   }, [workspace]);
@@ -54,55 +54,21 @@ export default function EditWorkspaceScreen() {
     );
   });
 
-  if (!workspace) {
-    return (
-      <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
-        <Stack.Screen options={{ headerShown: false }} />
-
-        <View style={styles.notFoundContainer}>
-          <View style={styles.notFoundIcon}>
-            <Text style={styles.illustrationEmoji}>🌏</Text>
-          </View>
-
-          <Text style={styles.notFoundTitle}>Workspace not found</Text>
-
-          <Text style={styles.notFoundDescription}>
-            This workspace may have been deleted or is no longer available.
-          </Text>
-
-          <Pressable
-            style={({ pressed }) => [
-              styles.createButton,
-              styles.notFoundButton,
-              pressed && styles.createButtonPressed,
-            ]}
-            onPress={() => router.back()}
-            accessibilityRole="button"
-          >
-            <Text style={styles.createButtonText}>Go back</Text>
-          </Pressable>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
   async function handleUpdateWorkspace() {
     if (isSubmitting || !workspace) return;
 
     const trimmedName = name.trim();
 
     if (!trimmedName) {
-      setError("Please enter a workspace name.");
+      setError(t("workspace.edit.validation.nameRequired"));
       return;
     }
-
     if (!selectedCountry) {
-      setError("Please select a country.");
+      setError(t("workspace.edit.validation.countryRequired"));
       return;
     }
-
     if (trimmedName.length > 40) {
-      setError("Workspace name cannot exceed 40 characters.");
+      setError(t("workspace.edit.validation.nameTooLong"));
       return;
     }
 
@@ -115,21 +81,19 @@ export default function EditWorkspaceScreen() {
         country_code: selectedCountry.code,
         currency_code: selectedCountry.currencyCode,
       });
-
       router.back();
     } catch (err) {
       const message =
         err instanceof Error
           ? err.message
-          : "Unable to update workspace. Please try again.";
-
+          : t("workspace.edit.errors.updateFailed");
       const errorCode = (err as { code?: string }).code;
 
       if (
         errorCode === "23505" ||
         message.includes("workspaces_user_name_unique")
       ) {
-        setError("You already have a workspace with this name.");
+        setError(t("workspace.edit.validation.duplicateName"));
       } else {
         setError(message);
       }
@@ -138,23 +102,52 @@ export default function EditWorkspaceScreen() {
     }
   }
 
+  if (!workspace) {
+    return (
+      <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <View style={styles.notFoundContainer}>
+          <View style={styles.notFoundIcon}>
+            <Text style={styles.illustrationEmoji}>🌏</Text>
+          </View>
+          <Text style={styles.notFoundTitle}>
+            {t("workspace.edit.notFound.title")}
+          </Text>
+          <Text style={styles.notFoundDescription}>
+            {t("workspace.edit.notFound.description")}
+          </Text>
+          <Pressable
+            style={({ pressed }) => [
+              styles.createButton,
+              styles.notFoundButton,
+              pressed && styles.createButtonPressed,
+            ]}
+            onPress={() => router.back()}
+            accessibilityRole="button"
+          >
+            <Text style={styles.createButtonText}>{t("common.goBack")}</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      {/* Header */}
       <View style={styles.header}>
         <Pressable
           style={styles.backButton}
           onPress={() => router.back()}
           accessibilityRole="button"
-          accessibilityLabel="Go back"
+          accessibilityLabel={t("common.goBack")}
           hitSlop={8}
         >
           <ArrowLeft size={22} color={colors.text} />
         </Pressable>
 
-        <Text style={styles.headerTitle}>Edit workspace</Text>
+        <Text style={styles.headerTitle}>{t("workspace.edit.title")}</Text>
 
         <View style={styles.headerSpacer} />
       </View>
@@ -165,25 +158,21 @@ export default function EditWorkspaceScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Introduction: compact, so the form starts higher on the screen */}
         <View style={styles.intro}>
           <View style={styles.illustration}>
             <Text style={styles.illustrationEmoji}>🌏</Text>
           </View>
 
           <View style={styles.introText}>
-            <Text style={styles.title}>Manage money across borders</Text>
-
+            <Text style={styles.title}>{t("workspace.edit.intro.title")}</Text>
             <Text style={styles.description}>
-              Update your workspace details and manage your finances with the
-              right country and currency settings.
+              {t("workspace.edit.intro.description")}
             </Text>
           </View>
         </View>
 
-        {/* 1. Workspace name */}
         <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Workspace name</Text>
+          <Text style={styles.label}>{t("workspace.edit.name.label")}</Text>
 
           <TextInput
             value={name}
@@ -191,35 +180,34 @@ export default function EditWorkspaceScreen() {
               setName(value);
               setError(null);
             }}
-            placeholder="e.g. Indonesia"
+            placeholder={t("workspace.edit.name.placeholder")}
             placeholderTextColor={colors.textSecondary}
             style={styles.input}
             maxLength={40}
             autoCapitalize="words"
             returnKeyType="done"
-            accessibilityLabel="Workspace name"
+            accessibilityLabel={t("workspace.edit.name.accessibilityLabel")}
           />
 
           <Text style={styles.helperText}>
-            Give your workspace a name you can recognize.
+            {t("workspace.edit.name.helper")}
           </Text>
         </View>
 
-        {/* 2. Country */}
         <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Country or region</Text>
+          <Text style={styles.label}>{t("workspace.edit.country.label")}</Text>
 
           <View style={styles.searchContainer}>
             <Search size={20} color={colors.textSecondary} />
-
             <TextInput
               value={countrySearch}
               onChangeText={setCountrySearch}
-              placeholder="Search country or currency..."
+              placeholder={t("workspace.edit.country.searchPlaceholder")}
               placeholderTextColor={colors.textSecondary}
               style={styles.searchInput}
               autoCapitalize="none"
               autoCorrect={false}
+              accessibilityLabel={t("workspace.edit.country.searchPlaceholder")}
             />
           </View>
 
@@ -248,39 +236,38 @@ export default function EditWorkspaceScreen() {
                     accessibilityState={{ selected: isSelected }}
                   >
                     <Text style={styles.countryFlag}>{country.flag}</Text>
-
                     <View style={styles.countryDetails}>
                       <Text style={styles.countryName}>{country.name}</Text>
-
                       <Text style={styles.countryCurrency}>
                         {country.currencyCode} · {country.currencyName}
                       </Text>
                     </View>
-
                     {isSelected && <Check size={20} color={colors.primary} />}
                   </Pressable>
                 );
               })
             ) : (
               <View style={styles.noResults}>
-                <Text style={styles.noResultsText}>No countries found.</Text>
+                <Text style={styles.noResultsText}>
+                  {t("workspace.edit.country.noResults")}
+                </Text>
               </View>
             )}
           </ScrollView>
 
           <Text style={styles.helperText}>
-            Select a country to automatically determine your default currency.
+            {t("workspace.edit.country.helper")}
           </Text>
 
-          {/* Confirmation of the choice, right under the list it belongs to */}
           {selectedCountry && (
             <View style={styles.currencyCard}>
               <View style={styles.currencyIcon}>
                 <Text style={styles.currencyFlag}>{selectedCountry.flag}</Text>
               </View>
-
               <View style={styles.currencyDetails}>
-                <Text style={styles.currencyLabel}>DEFAULT CURRENCY</Text>
+                <Text style={styles.currencyLabel}>
+                  {t("workspace.edit.currency.label")}
+                </Text>
                 <Text style={styles.currencyValue}>
                   {selectedCountry.currencyCode}
                 </Text>
@@ -288,27 +275,25 @@ export default function EditWorkspaceScreen() {
                   {selectedCountry.currencyName}
                 </Text>
               </View>
-
               <View style={styles.automaticBadge}>
-                <Text style={styles.automaticBadgeText}>Automatic</Text>
+                <Text style={styles.automaticBadgeText}>
+                  {t("workspace.edit.currency.automatic")}
+                </Text>
               </View>
             </View>
           )}
         </View>
 
-        {/* 3. Reassurance */}
         <View style={styles.infoCard}>
-          <Text style={styles.infoTitle}>Your workspace stays connected</Text>
-
+          <Text style={styles.infoTitle}>
+            {t("workspace.edit.reassurance.title")}
+          </Text>
           <Text style={styles.infoDescription}>
-            Updating your workspace details will not delete your existing
-            accounts, transactions, or budgets. Your financial records will
-            remain connected to this workspace.
+            {t("workspace.edit.reassurance.description")}
           </Text>
         </View>
       </KeyboardAwareScrollView>
 
-      {/* Actions: pinned, with the error right next to the button that caused it */}
       <View style={styles.footer}>
         {error && (
           <Text style={styles.errorText} accessibilityRole="alert">
@@ -327,7 +312,7 @@ export default function EditWorkspaceScreen() {
             disabled={isSubmitting}
             accessibilityRole="button"
           >
-            <Text style={styles.cancelButtonText}>Cancel</Text>
+            <Text style={styles.cancelButtonText}>{t("common.cancel")}</Text>
           </Pressable>
 
           <Pressable
@@ -344,9 +329,10 @@ export default function EditWorkspaceScreen() {
             {isSubmitting && (
               <ActivityIndicator size="small" color={colors.textOnPrimary} />
             )}
-
             <Text style={styles.createButtonText}>
-              {isSubmitting ? "Saving..." : "Save changes"}
+              {isSubmitting
+                ? t("workspace.edit.actions.saving")
+                : t("workspace.edit.actions.save")}
             </Text>
           </Pressable>
         </View>

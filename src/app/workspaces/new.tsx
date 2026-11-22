@@ -1,6 +1,7 @@
 import { Stack, useRouter } from "expo-router";
 import { ArrowLeft, Check, Search } from "lucide-react-native";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   Pressable,
@@ -19,6 +20,7 @@ import { useWorkspaceStore } from "@/stores/use-workspace-store";
 
 export default function NewWorkspaceScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
 
   const addWorkspace = useWorkspaceStore((state) => state.addWorkspace);
 
@@ -45,17 +47,17 @@ export default function NewWorkspaceScreen() {
     const trimmedName = name.trim();
 
     if (!trimmedName) {
-      setError("Please enter a workspace name.");
+      setError(t("workspace.create.validation.nameRequired"));
       return;
     }
 
     if (!selectedCountry) {
-      setError("Please select a country.");
+      setError(t("workspace.create.validation.countryRequired"));
       return;
     }
 
     if (trimmedName.length > 40) {
-      setError("Workspace name cannot exceed 40 characters.");
+      setError(t("workspace.create.validation.nameTooLong"));
       return;
     }
 
@@ -74,10 +76,10 @@ export default function NewWorkspaceScreen() {
       const message =
         err instanceof Error
           ? err.message
-          : "Unable to create workspace. Please try again.";
+          : t("workspace.create.errors.createFailed");
 
       if (message.includes("workspaces_user_name_unique")) {
-        setError("You already have a workspace with this name.");
+        setError(t("workspace.create.validation.duplicateName"));
       } else {
         setError(message);
       }
@@ -90,19 +92,18 @@ export default function NewWorkspaceScreen() {
     <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      {/* Header */}
       <View style={styles.header}>
         <Pressable
           style={styles.backButton}
           onPress={() => router.back()}
           accessibilityRole="button"
-          accessibilityLabel="Go back"
+          accessibilityLabel={t("common.goBack")}
           hitSlop={8}
         >
           <ArrowLeft size={22} color={colors.text} />
         </Pressable>
 
-        <Text style={styles.headerTitle}>New workspace</Text>
+        <Text style={styles.headerTitle}>{t("workspace.create.title")}</Text>
 
         <View style={styles.headerSpacer} />
       </View>
@@ -113,25 +114,23 @@ export default function NewWorkspaceScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Introduction: compact, so the form starts higher on the screen */}
         <View style={styles.intro}>
           <View style={styles.illustration}>
             <Text style={styles.illustrationEmoji}>🌏</Text>
           </View>
 
           <View style={styles.introText}>
-            <Text style={styles.title}>Manage money across borders</Text>
-
+            <Text style={styles.title}>
+              {t("workspace.create.intro.title")}
+            </Text>
             <Text style={styles.description}>
-              Create a separate financial space for each country where you live,
-              study, or travel.
+              {t("workspace.create.intro.description")}
             </Text>
           </View>
         </View>
 
-        {/* 1. Workspace name */}
         <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Workspace name</Text>
+          <Text style={styles.label}>{t("workspace.create.name.label")}</Text>
 
           <TextInput
             value={name}
@@ -139,35 +138,38 @@ export default function NewWorkspaceScreen() {
               setName(value);
               setError(null);
             }}
-            placeholder="e.g. Indonesia"
+            placeholder={t("workspace.create.name.placeholder")}
             placeholderTextColor={colors.textSecondary}
             style={styles.input}
             maxLength={40}
             autoCapitalize="words"
             returnKeyType="done"
-            accessibilityLabel="Workspace name"
+            accessibilityLabel={t("workspace.create.name.accessibilityLabel")}
           />
 
           <Text style={styles.helperText}>
-            Give your workspace a name you can recognize.
+            {t("workspace.create.name.helper")}
           </Text>
         </View>
 
-        {/* 2. Country */}
         <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Country or region</Text>
+          <Text style={styles.label}>
+            {t("workspace.create.country.label")}
+          </Text>
 
           <View style={styles.searchContainer}>
             <Search size={20} color={colors.textSecondary} />
-
             <TextInput
               value={countrySearch}
               onChangeText={setCountrySearch}
-              placeholder="Search country or currency..."
+              placeholder={t("workspace.create.country.searchPlaceholder")}
               placeholderTextColor={colors.textSecondary}
               style={styles.searchInput}
               autoCapitalize="none"
               autoCorrect={false}
+              accessibilityLabel={t(
+                "workspace.create.country.searchPlaceholder",
+              )}
             />
           </View>
 
@@ -196,39 +198,38 @@ export default function NewWorkspaceScreen() {
                     accessibilityState={{ selected: isSelected }}
                   >
                     <Text style={styles.countryFlag}>{country.flag}</Text>
-
                     <View style={styles.countryDetails}>
                       <Text style={styles.countryName}>{country.name}</Text>
-
                       <Text style={styles.countryCurrency}>
                         {country.currencyCode} · {country.currencyName}
                       </Text>
                     </View>
-
                     {isSelected && <Check size={20} color={colors.primary} />}
                   </Pressable>
                 );
               })
             ) : (
               <View style={styles.noResults}>
-                <Text style={styles.noResultsText}>No countries found.</Text>
+                <Text style={styles.noResultsText}>
+                  {t("workspace.create.country.noResults")}
+                </Text>
               </View>
             )}
           </ScrollView>
 
           <Text style={styles.helperText}>
-            Select a country to automatically determine your default currency.
+            {t("workspace.create.country.helper")}
           </Text>
 
-          {/* Confirmation of the choice, right under the list it belongs to */}
           {selectedCountry && (
             <View style={styles.currencyCard}>
               <View style={styles.currencyIcon}>
                 <Text style={styles.currencyFlag}>{selectedCountry.flag}</Text>
               </View>
-
               <View style={styles.currencyDetails}>
-                <Text style={styles.currencyLabel}>DEFAULT CURRENCY</Text>
+                <Text style={styles.currencyLabel}>
+                  {t("workspace.create.currency.label")}
+                </Text>
                 <Text style={styles.currencyValue}>
                   {selectedCountry.currencyCode}
                 </Text>
@@ -236,27 +237,25 @@ export default function NewWorkspaceScreen() {
                   {selectedCountry.currencyName}
                 </Text>
               </View>
-
               <View style={styles.automaticBadge}>
-                <Text style={styles.automaticBadgeText}>Automatic</Text>
+                <Text style={styles.automaticBadgeText}>
+                  {t("workspace.create.currency.automatic")}
+                </Text>
               </View>
             </View>
           )}
         </View>
 
-        {/* 3. What happens next */}
         <View style={styles.infoCard}>
-          <Text style={styles.infoTitle}>What happens next?</Text>
-
+          <Text style={styles.infoTitle}>
+            {t("workspace.create.next.title")}
+          </Text>
           <Text style={styles.infoDescription}>
-            Your new workspace starts with an empty balance. You can add your
-            bank accounts, cash, and e-wallets afterward. Your existing
-            workspaces will remain separate.
+            {t("workspace.create.next.description")}
           </Text>
         </View>
       </KeyboardAwareScrollView>
 
-      {/* Actions: pinned, with the error right next to the button that caused it */}
       <View style={styles.footer}>
         {error && (
           <Text style={styles.errorText} accessibilityRole="alert">
@@ -275,7 +274,7 @@ export default function NewWorkspaceScreen() {
             disabled={isSubmitting}
             accessibilityRole="button"
           >
-            <Text style={styles.cancelButtonText}>Cancel</Text>
+            <Text style={styles.cancelButtonText}>{t("common.cancel")}</Text>
           </Pressable>
 
           <Pressable
@@ -292,9 +291,10 @@ export default function NewWorkspaceScreen() {
             {isSubmitting && (
               <ActivityIndicator size="small" color={colors.textOnPrimary} />
             )}
-
             <Text style={styles.createButtonText}>
-              {isSubmitting ? "Creating..." : "Create workspace"}
+              {isSubmitting
+                ? t("workspace.create.actions.creating")
+                : t("workspace.create.actions.create")}
             </Text>
           </Pressable>
         </View>

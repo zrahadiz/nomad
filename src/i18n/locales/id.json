@@ -551,5 +551,91 @@
         "title": "Gagal menonaktifkan"
       }
     }
+  },
+  "workspace": {
+    "create": {
+      "title": "Workspace baru",
+      "intro": {
+        "title": "Kelola keuangan lintas negara",
+        "description": "Buat ruang keuangan terpisah untuk setiap negara tempat kamu tinggal, belajar, atau bepergian."
+      },
+      "name": {
+        "label": "Nama workspace",
+        "placeholder": "mis. Indonesia",
+        "helper": "Gunakan nama workspace yang mudah kamu kenali.",
+        "accessibilityLabel": "Nama workspace"
+      },
+      "country": {
+        "label": "Negara atau wilayah",
+        "searchPlaceholder": "Cari negara atau mata uang...",
+        "noResults": "Negara tidak ditemukan.",
+        "helper": "Pilih negara untuk menentukan mata uang default secara otomatis."
+      },
+      "currency": {
+        "label": "MATA UANG DEFAULT",
+        "automatic": "Otomatis"
+      },
+      "next": {
+        "title": "Apa selanjutnya?",
+        "description": "Workspace baru kamu akan dimulai dengan saldo kosong. Setelah itu, kamu bisa menambahkan rekening bank, uang tunai, dan e-wallet. Workspace yang sudah ada akan tetap terpisah."
+      },
+      "actions": {
+        "creating": "Membuat...",
+        "create": "Buat workspace"
+      },
+      "validation": {
+        "nameRequired": "Silakan masukkan nama workspace.",
+        "countryRequired": "Silakan pilih negara.",
+        "nameTooLong": "Nama workspace tidak boleh lebih dari 40 karakter.",
+        "duplicateName": "Kamu sudah memiliki workspace dengan nama ini."
+      },
+      "errors": {
+        "createFailed": "Workspace tidak dapat dibuat. Silakan coba lagi."
+      }
+    },
+    "edit": {
+      "title": "Edit workspace",
+      "intro": {
+        "title": "Kelola keuangan lintas negara",
+        "description": "Perbarui detail workspace dan kelola keuanganmu dengan pengaturan negara dan mata uang yang sesuai."
+      },
+      "name": {
+        "label": "Nama workspace",
+        "placeholder": "mis. Indonesia",
+        "accessibilityLabel": "Nama workspace",
+        "helper": "Beri nama workspace yang mudah kamu kenali."
+      },
+      "country": {
+        "label": "Negara atau wilayah",
+        "searchPlaceholder": "Cari negara atau mata uang...",
+        "noResults": "Negara tidak ditemukan.",
+        "helper": "Pilih negara untuk menentukan mata uang default secara otomatis."
+      },
+      "currency": {
+        "label": "MATA UANG DEFAULT",
+        "automatic": "Otomatis"
+      },
+      "reassurance": {
+        "title": "Workspace kamu tetap terhubung",
+        "description": "Memperbarui detail workspace tidak akan menghapus akun, transaksi, atau anggaran yang sudah ada. Catatan keuanganmu akan tetap terhubung dengan workspace ini."
+      },
+      "actions": {
+        "saving": "Menyimpan...",
+        "save": "Simpan perubahan"
+      },
+      "validation": {
+        "nameRequired": "Silakan masukkan nama workspace.",
+        "countryRequired": "Silakan pilih negara.",
+        "nameTooLong": "Nama workspace tidak boleh lebih dari 40 karakter.",
+        "duplicateName": "Kamu sudah memiliki workspace dengan nama ini."
+      },
+      "errors": {
+        "updateFailed": "Tidak dapat memperbarui workspace. Silakan coba lagi."
+      },
+      "notFound": {
+        "title": "Workspace tidak ditemukan",
+        "description": "Workspace ini mungkin telah dihapus atau sudah tidak tersedia."
+      }
+    }
   }
 }

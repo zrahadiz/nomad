@@ -551,5 +551,91 @@
         "title": "Unable to disable"
       }
     }
+  },
+  "workspace": {
+    "create": {
+      "title": "New workspace",
+      "intro": {
+        "title": "Manage money across borders",
+        "description": "Create a separate financial space for each country where you live, study, or travel."
+      },
+      "name": {
+        "label": "Workspace name",
+        "placeholder": "e.g. Indonesia",
+        "helper": "Give your workspace a name you can recognize.",
+        "accessibilityLabel": "Workspace name"
+      },
+      "country": {
+        "label": "Country or region",
+        "searchPlaceholder": "Search country or currency...",
+        "noResults": "No countries found.",
+        "helper": "Select a country to automatically determine your default currency."
+      },
+      "currency": {
+        "label": "DEFAULT CURRENCY",
+        "automatic": "Automatic"
+      },
+      "next": {
+        "title": "What happens next?",
+        "description": "Your new workspace starts with an empty balance. You can add your bank accounts, cash, and e-wallets afterward. Your existing workspaces will remain separate."
+      },
+      "actions": {
+        "creating": "Creating...",
+        "create": "Create workspace"
+      },
+      "validation": {
+        "nameRequired": "Please enter a workspace name.",
+        "countryRequired": "Please select a country.",
+        "nameTooLong": "Workspace name cannot exceed 40 characters.",
+        "duplicateName": "You already have a workspace with this name."
+      },
+      "errors": {
+        "createFailed": "Unable to create workspace. Please try again."
+      }
+    },
+    "edit": {
+      "title": "Edit workspace",
+      "intro": {
+        "title": "Manage money across borders",
+        "description": "Update your workspace details and manage your finances with the right country and currency settings."
+      },
+      "name": {
+        "label": "Workspace name",
+        "placeholder": "e.g. Indonesia",
+        "accessibilityLabel": "Workspace name",
+        "helper": "Give your workspace a name you can recognize."
+      },
+      "country": {
+        "label": "Country or region",
+        "searchPlaceholder": "Search country or currency...",
+        "noResults": "No countries found.",
+        "helper": "Select a country to automatically determine your default currency."
+      },
+      "currency": {
+        "label": "DEFAULT CURRENCY",
+        "automatic": "Automatic"
+      },
+      "reassurance": {
+        "title": "Your workspace stays connected",
+        "description": "Updating your workspace details will not delete your existing accounts, transactions, or budgets. Your financial records will remain connected to this workspace."
+      },
+      "actions": {
+        "saving": "Saving...",
+        "save": "Save changes"
+      },
+      "validation": {
+        "nameRequired": "Please enter a workspace name.",
+        "countryRequired": "Please select a country.",
+        "nameTooLong": "Workspace name cannot exceed 40 characters.",
+        "duplicateName": "You already have a workspace with this name."
+      },
+      "errors": {
+        "updateFailed": "Unable to update workspace. Please try again."
+      },
+      "notFound": {
+        "title": "Workspace not found",
+        "description": "This workspace may have been deleted or is no longer available."
+      }
+    }
   }
 }
