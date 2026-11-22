@@ -470,5 +470,86 @@
     "spent": "Terpakai",
     "emptyTitle": "Belum ada anggaran",
     "emptyDescription": "Buat anggaran bulanan untuk mulai melacak pengeluaranmu."
+  },
+  "currency": {
+    "title": "Konverter Mata Uang",
+    "activeWorkspace": "Workspace aktif",
+    "workspaceDescription": "Atur bagaimana jumlah dalam workspace ini ditampilkan dalam mata uang lain.",
+    "loading": "Memuat pengaturan konverter...",
+    "settings": {
+      "title": "Pengaturan mata uang"
+    },
+    "status": {
+      "enabled": "Aktif",
+      "disabled": "Belum aktif"
+    },
+    "primaryCurrency": "Mata uang utama",
+    "primaryCurrencyDescription": "Mata uang asli workspace",
+    "secondaryCurrency": "Mata uang sekunder",
+    "selectCurrency": "Pilih mata uang",
+    "exchangeRate": {
+      "title": "Nilai tukar",
+      "description": "Masukkan jumlah mata uang sekunder yang setara dengan satu unit mata uang utama.",
+      "selectTarget": "Pilih mata uang sekunder",
+      "manualTitle": "Nilai tukar manual",
+      "manualDescription": "Nilai tukar ini akan digunakan untuk menghitung tampilan mata uang sekunder di seluruh workspace ini. Pembaruan nilai tukar otomatis akan ditambahkan secara terpisah."
+    },
+    "lastUpdated": "Terakhir diperbarui",
+    "howItWorks": {
+      "title": "Cara kerjanya",
+      "points": {
+        "originalAmounts": "Jumlah asli selalu disimpan dalam mata uang utama.",
+        "secondaryAmounts": "Jumlah dalam mata uang sekunder dihitung saat ditampilkan.",
+        "rateUpdates": "Perubahan nilai tukar akan memperbarui tampilan hasil konversi di seluruh workspace ini.",
+        "workspaceConfig": "Setiap workspace memiliki konfigurasi konverternya sendiri."
+      }
+    },
+    "actions": {
+      "disable": "Nonaktifkan",
+      "disableConverter": "Nonaktifkan Konverter",
+      "saveChanges": "Simpan Perubahan",
+      "enableConverter": "Aktifkan Konverter"
+    },
+    "empty": {
+      "noWorkspace": {
+        "title": "Belum ada workspace yang dipilih",
+        "description": "Buat atau pilih workspace sebelum mengatur mata uang sekundernya."
+      }
+    },
+    "errors": {
+      "loadTitle": "Pengaturan konverter tidak dapat dimuat"
+    },
+    "alerts": {
+      "noWorkspace": {
+        "title": "Belum ada workspace",
+        "message": "Silakan pilih workspace terlebih dahulu."
+      },
+      "selectCurrency": {
+        "title": "Pilih mata uang",
+        "message": "Silakan pilih mata uang sekunder."
+      },
+      "invalidRate": {
+        "title": "Nilai tukar tidak valid",
+        "message": "Masukkan nilai tukar yang lebih besar dari nol."
+      },
+      "saveSuccess": {
+        "title": "Berhasil",
+        "message": "Pengaturan konverter mata uang berhasil disimpan."
+      },
+      "saveFailed": {
+        "title": "Gagal menyimpan"
+      },
+      "disableConfirm": {
+        "title": "Nonaktifkan konverter mata uang?",
+        "message": "Nilai dalam mata uang sekunder tidak akan lagi ditampilkan di workspace ini. Jumlah transaksi asli kamu akan tetap tidak berubah."
+      },
+      "disableSuccess": {
+        "title": "Berhasil",
+        "message": "Konverter mata uang berhasil dinonaktifkan."
+      },
+      "disableFailed": {
+        "title": "Gagal menonaktifkan"
+      }
+    }
   }
 }

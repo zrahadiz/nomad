@@ -8,6 +8,7 @@ import {
   RefreshCw,
 } from "lucide-react-native";
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   Alert,
@@ -28,13 +29,15 @@ import { useCurrencyConverterStore } from "@/stores/use-currency-converter-store
 import { useWorkspaceStore } from "@/stores/use-workspace-store";
 
 const HOW_IT_WORKS = [
-  "Original amounts are always stored in the primary currency.",
-  "Secondary amounts are calculated when displayed.",
-  "Changing the rate updates converted displays across this workspace.",
-  "Each workspace has its own converter configuration.",
+  "howItWorks.points.originalAmounts",
+  "howItWorks.points.secondaryAmounts",
+  "howItWorks.points.rateUpdates",
+  "howItWorks.points.workspaceConfig",
 ];
 
 export default function CurrencyConverterScreen() {
+  const { t, i18n } = useTranslation();
+
   const activeWorkspace = useWorkspaceStore((state) =>
     state.workspaces.find(
       (workspace) => workspace.id === state.activeWorkspaceId,
@@ -117,12 +120,18 @@ export default function CurrencyConverterScreen() {
 
   async function handleSave() {
     if (!activeWorkspace) {
-      Alert.alert("No workspace", "Please select a workspace first.");
+      Alert.alert(
+        t("currency.alerts.noWorkspace.title"),
+        t("currency.alerts.noWorkspace.message"),
+      );
       return;
     }
 
     if (!targetCurrencyCode) {
-      Alert.alert("Select currency", "Please choose a secondary currency.");
+      Alert.alert(
+        t("currency.alerts.selectCurrency.title"),
+        t("currency.alerts.selectCurrency.message"),
+      );
       return;
     }
 
@@ -130,8 +139,8 @@ export default function CurrencyConverterScreen() {
 
     if (!exchangeRate.trim() || !Number.isFinite(rate) || rate <= 0) {
       Alert.alert(
-        "Invalid exchange rate",
-        "Please enter an exchange rate greater than zero.",
+        t("currency.alerts.invalidRate.title"),
+        t("currency.alerts.invalidRate.message"),
       );
       return;
     }
@@ -144,11 +153,14 @@ export default function CurrencyConverterScreen() {
         rateSource: "manual",
       });
 
-      Alert.alert("Success", "Currency converter settings have been saved.");
+      Alert.alert(
+        t("currency.alerts.saveSuccess.title"),
+        t("currency.alerts.saveSuccess.message"),
+      );
     } catch (saveError) {
       Alert.alert(
-        "Unable to save",
-        saveError instanceof Error ? saveError.message : "Please try again.",
+        t("currency.alerts.saveFailed.title"),
+        saveError instanceof Error ? saveError.message : t("common.tryAgain"),
       );
     }
   }
@@ -157,25 +169,28 @@ export default function CurrencyConverterScreen() {
     if (!activeWorkspace || !activeConverter) return;
 
     Alert.alert(
-      "Disable currency converter?",
-      "Secondary currency values will no longer appear in this workspace. Your original transaction amounts will remain unchanged.",
+      t("currency.alerts.disableConfirm.title"),
+      t("currency.alerts.disableConfirm.message"),
       [
-        { text: "Cancel", style: "cancel" },
+        { text: t("common.cancel"), style: "cancel" },
         {
-          text: "Disable",
+          text: t("currency.actions.disable"),
           style: "destructive",
           onPress: async () => {
             try {
               await deleteConverter(activeWorkspace.id);
               setTargetCurrencyCode("");
               setExchangeRate("");
-              Alert.alert("Success", "Currency converter has been disabled.");
+              Alert.alert(
+                t("currency.alerts.disableSuccess.title"),
+                t("currency.alerts.disableSuccess.message"),
+              );
             } catch (deleteError) {
               Alert.alert(
-                "Unable to disable",
+                t("currency.alerts.disableFailed.title"),
                 deleteError instanceof Error
                   ? deleteError.message
-                  : "Please try again.",
+                  : t("common.tryAgain"),
               );
             }
           },
@@ -191,7 +206,7 @@ export default function CurrencyConverterScreen() {
   }
 
   const formatUpdatedAt = (value: string) => {
-    return new Date(value).toLocaleString(undefined, {
+    return new Date(value).toLocaleString(i18n.language, {
       dateStyle: "medium",
       timeStyle: "short",
     });
@@ -211,12 +226,12 @@ export default function CurrencyConverterScreen() {
             style={styles.backButton}
             hitSlop={8}
             accessibilityRole="button"
-            accessibilityLabel="Go back"
+            accessibilityLabel={t("common.goBack")}
           >
             <ArrowLeft color={colors.text} size={22} />
           </Pressable>
 
-          <Text style={styles.headerTitle}>Currency Converter</Text>
+          <Text style={styles.headerTitle}>{t("currency.title")}</Text>
 
           <View style={styles.headerPlaceholder} />
         </View>
@@ -229,21 +244,23 @@ export default function CurrencyConverterScreen() {
         >
           {!activeWorkspace ? (
             <View style={styles.stateCard}>
-              <Text style={styles.stateTitle}>No workspace selected</Text>
+              <Text style={styles.stateTitle}>
+                {t("currency.empty.noWorkspace.title")}
+              </Text>
               <Text style={styles.description}>
-                Create or select a workspace before configuring its secondary
-                currency.
+                {t("currency.empty.noWorkspace.description")}
               </Text>
             </View>
           ) : (
             <>
               {/* Context: which workspace this applies to */}
               <View style={styles.workspaceCard}>
-                <Text style={styles.sectionLabel}>ACTIVE WORKSPACE</Text>
+                <Text style={styles.sectionLabel}>
+                  {t("currency.activeWorkspace").toUpperCase()}
+                </Text>
                 <Text style={styles.workspaceName}>{activeWorkspace.name}</Text>
                 <Text style={styles.description}>
-                  Configure how amounts in this workspace are displayed in
-                  another currency.
+                  {t("currency.workspaceDescription")}
                 </Text>
               </View>
 
@@ -251,13 +268,13 @@ export default function CurrencyConverterScreen() {
                 <View style={[styles.stateCard, styles.stateCardCenter]}>
                   <ActivityIndicator color={colors.primary} />
                   <Text style={styles.description}>
-                    Loading converter settings...
+                    {t("currency.loading")}
                   </Text>
                 </View>
               ) : isErrorState ? (
                 <View style={styles.stateCard}>
                   <Text style={[styles.stateTitle, styles.errorTitle]}>
-                    Couldn't load converter settings
+                    {t("currency.errors.loadTitle")}
                   </Text>
                   <Text style={styles.description}>{error}</Text>
                   <Pressable
@@ -266,7 +283,7 @@ export default function CurrencyConverterScreen() {
                     style={styles.retryButton}
                   >
                     <RefreshCw size={16} color={colors.primary} />
-                    <Text style={styles.retryText}>Try again</Text>
+                    <Text style={styles.retryText}>{t("common.tryAgain")}</Text>
                   </Pressable>
                 </View>
               ) : (
@@ -274,7 +291,9 @@ export default function CurrencyConverterScreen() {
                   {/* 1. Currency pair */}
                   <View style={styles.card}>
                     <View style={styles.cardHeading}>
-                      <Text style={styles.cardTitle}>Currency settings</Text>
+                      <Text style={styles.cardTitle}>
+                        {t("currency.settings.title")}
+                      </Text>
 
                       <View
                         style={[
@@ -300,12 +319,16 @@ export default function CurrencyConverterScreen() {
                               : styles.disabledText,
                           ]}
                         >
-                          {activeConverter ? "Enabled" : "Not enabled"}
+                          {activeConverter
+                            ? t("currency.status.enabled")
+                            : t("currency.status.disabled")}
                         </Text>
                       </View>
                     </View>
 
-                    <Text style={styles.inputLabel}>Primary currency</Text>
+                    <Text style={styles.inputLabel}>
+                      {t("currency.primaryCurrency")}
+                    </Text>
                     <View style={styles.currencyField}>
                       <View style={styles.codeChip}>
                         <Text style={styles.codeChipText}>
@@ -313,7 +336,7 @@ export default function CurrencyConverterScreen() {
                         </Text>
                       </View>
                       <Text style={styles.fieldDescription}>
-                        Workspace's original currency
+                        {t("currency.primaryCurrencyDescription")}
                       </Text>
                     </View>
 
@@ -325,7 +348,9 @@ export default function CurrencyConverterScreen() {
                       <View style={styles.arrowLine} />
                     </View>
 
-                    <Text style={styles.inputLabel}>Secondary currency</Text>
+                    <Text style={styles.inputLabel}>
+                      {t("currency.secondaryCurrency")}
+                    </Text>
                     <Pressable
                       style={[
                         styles.currencySelector,
@@ -348,7 +373,7 @@ export default function CurrencyConverterScreen() {
                       >
                         {selectedCurrency
                           ? `${selectedCurrency.code} · ${selectedCurrency.name}`
-                          : "Select a currency"}
+                          : t("currency.selectCurrency")}
                       </Text>
                       <ChevronDown
                         size={20}
@@ -403,10 +428,11 @@ export default function CurrencyConverterScreen() {
 
                   {/* 2. Exchange rate */}
                   <View style={styles.card}>
-                    <Text style={styles.cardTitle}>Exchange rate</Text>
+                    <Text style={styles.cardTitle}>
+                      {t("currency.exchangeRate.title")}
+                    </Text>
                     <Text style={styles.rateDescription}>
-                      Enter how much secondary currency equals one unit of
-                      primary currency.
+                      {t("currency.exchangeRate.description")}
                     </Text>
 
                     <View style={styles.rateInputRow}>
@@ -433,7 +459,7 @@ export default function CurrencyConverterScreen() {
 
                     {!targetCurrencyCode && (
                       <Text style={styles.rateTarget}>
-                        Select secondary currency
+                        {t("currency.exchangeRate.selectTarget")}
                       </Text>
                     )}
 
@@ -442,19 +468,17 @@ export default function CurrencyConverterScreen() {
 
                       <View style={styles.manualNoticeBody}>
                         <Text style={styles.manualNoticeTitle}>
-                          Manual exchange rate
+                          {t("currency.exchangeRate.manualTitle")}
                         </Text>
                         <Text style={styles.manualNoticeText}>
-                          This rate will be used to calculate secondary currency
-                          displays throughout this workspace. Automatic rate
-                          updates will be added separately.
+                          {t("currency.exchangeRate.manualDescription")}
                         </Text>
                       </View>
                     </View>
 
                     {activeConverter && (
                       <Text style={styles.updatedAt}>
-                        Last updated:{" "}
+                        {t("currency.lastUpdated")}:{" "}
                         {formatUpdatedAt(activeConverter.lastUpdatedAt)}
                       </Text>
                     )}
@@ -462,13 +486,15 @@ export default function CurrencyConverterScreen() {
 
                   {/* 3. Explanation */}
                   <View style={styles.infoCard}>
-                    <Text style={styles.infoTitle}>How it works</Text>
+                    <Text style={styles.infoTitle}>
+                      {t("currency.howItWorks.title")}
+                    </Text>
 
                     {HOW_IT_WORKS.map((point) => (
-                      <View key={point} style={styles.infoRow}>
+                      <View key={t(`currency.${point}`)} style={styles.infoRow}>
                         <Text style={styles.infoText}>•</Text>
                         <Text style={[styles.infoText, styles.infoTextFlex]}>
-                          {point}
+                          {t(`currency.${point}`)}
                         </Text>
                       </View>
                     ))}
@@ -487,7 +513,7 @@ export default function CurrencyConverterScreen() {
                       accessibilityRole="button"
                     >
                       <Text style={styles.disableButtonText}>
-                        Disable Converter
+                        {t("currency.actions.disableConverter")}
                       </Text>
                     </Pressable>
                   )}
@@ -515,7 +541,9 @@ export default function CurrencyConverterScreen() {
                 <ActivityIndicator color={colors.textOnPrimary} />
               ) : (
                 <Text style={styles.saveButtonText}>
-                  {activeConverter ? "Save Changes" : "Enable Converter"}
+                  {activeConverter
+                    ? t("currency.actions.saveChanges")
+                    : t("currency.actions.enableConverter")}
                 </Text>
               )}
             </Pressable>

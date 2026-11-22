@@ -470,5 +470,86 @@
     "spent": "Spent",
     "emptyTitle": "No budget yet",
     "emptyDescription": "Set a monthly budget to start tracking your expenses."
+  },
+  "currency": {
+    "title": "Currency Converter",
+    "activeWorkspace": "Active workspace",
+    "workspaceDescription": "Configure how amounts in this workspace are displayed in another currency.",
+    "loading": "Loading converter settings...",
+    "settings": {
+      "title": "Currency settings"
+    },
+    "status": {
+      "enabled": "Enabled",
+      "disabled": "Not enabled"
+    },
+    "primaryCurrency": "Primary currency",
+    "primaryCurrencyDescription": "Workspace's original currency",
+    "secondaryCurrency": "Secondary currency",
+    "selectCurrency": "Select a currency",
+    "exchangeRate": {
+      "title": "Exchange rate",
+      "description": "Enter how much secondary currency equals one unit of primary currency.",
+      "selectTarget": "Select secondary currency",
+      "manualTitle": "Manual exchange rate",
+      "manualDescription": "This rate will be used to calculate secondary currency displays throughout this workspace. Automatic rate updates will be added separately."
+    },
+    "lastUpdated": "Last updated",
+    "howItWorks": {
+      "title": "How it works",
+      "points": {
+        "originalAmounts": "Original amounts are always stored in the primary currency.",
+        "secondaryAmounts": "Secondary amounts are calculated when displayed.",
+        "rateUpdates": "Changing the rate updates converted displays across this workspace.",
+        "workspaceConfig": "Each workspace has its own converter configuration."
+      }
+    },
+    "actions": {
+      "disable": "Disable",
+      "disableConverter": "Disable Converter",
+      "saveChanges": "Save Changes",
+      "enableConverter": "Enable Converter"
+    },
+    "empty": {
+      "noWorkspace": {
+        "title": "No workspace selected",
+        "description": "Create or select a workspace before configuring its secondary currency."
+      }
+    },
+    "errors": {
+      "loadTitle": "Couldn't load converter settings"
+    },
+    "alerts": {
+      "noWorkspace": {
+        "title": "No workspace",
+        "message": "Please select a workspace first."
+      },
+      "selectCurrency": {
+        "title": "Select currency",
+        "message": "Please choose a secondary currency."
+      },
+      "invalidRate": {
+        "title": "Invalid exchange rate",
+        "message": "Please enter an exchange rate greater than zero."
+      },
+      "saveSuccess": {
+        "title": "Success",
+        "message": "Currency converter settings have been saved."
+      },
+      "saveFailed": {
+        "title": "Unable to save"
+      },
+      "disableConfirm": {
+        "title": "Disable currency converter?",
+        "message": "Secondary currency values will no longer appear in this workspace. Your original transaction amounts will remain unchanged."
+      },
+      "disableSuccess": {
+        "title": "Success",
+        "message": "Currency converter has been disabled."
+      },
+      "disableFailed": {
+        "title": "Unable to disable"
+      }
+    }
   }
 }
