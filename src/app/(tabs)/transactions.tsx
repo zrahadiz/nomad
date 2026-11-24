@@ -854,13 +854,13 @@ const styles = StyleSheet.create({
 
   title: {
     color: colors.text,
-    fontSize: typography.size.xxl,
+    fontSize: typography.size.xl,
     fontWeight: typography.weight.bold,
   },
 
   subtitle: {
     color: colors.textSecondary,
-    fontSize: typography.size.sm,
+    fontSize: typography.size.caption,
     marginTop: spacing.xs,
   },
 

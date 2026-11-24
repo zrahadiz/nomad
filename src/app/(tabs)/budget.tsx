@@ -208,9 +208,11 @@ export default function BudgetScreen() {
           showsVerticalScrollIndicator={false}
           stickyHeaderIndices={[1]}
         >
-          <View>
-            <Text style={styles.title}>{t("budget.title")}</Text>
-            <Text style={styles.subtitle}>{t("budget.screen.subtitle")}</Text>
+          <View style={styles.header}>
+            <View style={styles.headerText}>
+              <Text style={styles.title}>{t("budget.title")}</Text>
+              <Text style={styles.subtitle}>{t("budget.screen.subtitle")}</Text>
+            </View>
           </View>
 
           <View style={styles.monthSelectorWrap}>
@@ -832,14 +834,24 @@ const styles = StyleSheet.create({
     gap: spacing.xl,
     flexGrow: 1,
   },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.md,
+  },
+
+  headerText: {
+    flex: 1,
+  },
   title: {
-    fontSize: typography.size.xxxl,
-    fontWeight: typography.weight.bold,
     color: colors.text,
+    fontSize: typography.size.xl,
+    fontWeight: typography.weight.bold,
   },
   subtitle: {
-    fontSize: typography.size.sm,
     color: colors.textSecondary,
+    fontSize: typography.size.caption,
     marginTop: spacing.xs,
   },
   /* Month selector (sticky) */
