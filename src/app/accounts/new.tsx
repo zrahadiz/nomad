@@ -1,6 +1,7 @@
 import { useRouter } from "expo-router";
 import { Info, Plus } from "lucide-react-native";
 import { useMemo, useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   Alert,
@@ -34,16 +35,6 @@ import { useWorkspaceStore } from "@/stores/use-workspace-store";
 
 import type { accountType } from "@/types/finances";
 
-const accountTypeOptions: {
-  label: string;
-  value: accountType;
-}[] = [
-  { label: "Cash", value: "cash" },
-  { label: "Bank", value: "bank" },
-  { label: "E-wallet", value: "e-wallet" },
-  { label: "Other", value: "other" },
-];
-
 function parseAmountToMinor(value: string, currency: string) {
   if (!isValidCurrencyAmountInput(value, currency)) {
     return null;
@@ -64,6 +55,7 @@ function parseAmountToMinor(value: string, currency: string) {
 
 export default function NewAccountScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
 
   const workspaces = useWorkspaceStore((state) => state.workspaces);
   const activeWorkspaceId = useWorkspaceStore(
@@ -80,6 +72,13 @@ export default function NewAccountScreen() {
   const [color, setColor] = useState<string>(accountColors[0]);
   const [openingBalance, setOpeningBalance] = useState("");
   const [saving, setSaving] = useState(false);
+
+  const accountTypeOptions: { label: string; value: accountType }[] = [
+    { label: t("accounts.list.typeCash"), value: "cash" },
+    { label: t("accounts.list.typeBank"), value: "bank" },
+    { label: t("accounts.list.typeEwallet"), value: "e-wallet" },
+    { label: t("accounts.list.typeOther"), value: "other" },
+  ];
 
   const currency = workspace?.currency_code ?? "MYR";
   const decimalDigits = getCurrencyDecimalDigits(currency);
@@ -106,19 +105,27 @@ export default function NewAccountScreen() {
     const trimmedName = name.trim();
 
     if (!workspace) {
-      Alert.alert("No active workspace", "Please select a workspace first.");
+      Alert.alert(
+        t("accounts.create.alerts.noWorkspaceTitle"),
+        t("accounts.create.alerts.noWorkspaceMessage"),
+      );
       return;
     }
 
     if (!trimmedName) {
-      Alert.alert("Account name required", "Please enter an account name.");
+      Alert.alert(
+        t("accounts.create.alerts.nameRequiredTitle"),
+        t("accounts.create.alerts.nameRequiredMessage"),
+      );
       return;
     }
 
     if (parsedBalance === null) {
       Alert.alert(
-        "Invalid opening balance",
-        `Please enter a valid amount with up to ${decimalDigits} decimal places.`,
+        t("accounts.create.alerts.invalidBalanceTitle"),
+        t("accounts.create.alerts.invalidBalanceMessage", {
+          decimalDigits,
+        }),
       );
       return;
     }
@@ -136,20 +143,24 @@ export default function NewAccountScreen() {
         color,
       });
 
-      Alert.alert("Account created", "Your account has been created.", [
-        {
-          text: "OK",
-          onPress: () => router.back(),
-        },
-      ]);
+      Alert.alert(
+        t("accounts.create.alerts.successTitle"),
+        t("accounts.create.alerts.successMessage"),
+        [
+          {
+            text: t("common.done"),
+            onPress: () => router.back(),
+          },
+        ],
+      );
     } catch (error) {
       console.error("Failed to create account:", error);
 
       Alert.alert(
-        "Unable to create account",
+        t("accounts.create.alerts.failureTitle"),
         error instanceof Error
           ? error.message
-          : "Something went wrong. Please try again.",
+          : t("accounts.create.alerts.failureMessage"),
       );
     } finally {
       setSaving(false);
@@ -173,12 +184,14 @@ export default function NewAccountScreen() {
         >
           {/* 2. Name */}
           <View style={styles.group}>
-            <Text style={styles.sectionTitle}>Account name</Text>
+            <Text style={styles.sectionTitle}>
+              {t("accounts.create.accountName")}
+            </Text>
 
             <TextInput
               value={name}
               onChangeText={setName}
-              placeholder="e.g. Maybank Savings"
+              placeholder={t("accounts.create.namePlaceholder")}
               placeholderTextColor={colors.textSecondary}
               style={styles.input}
               maxLength={40}
@@ -189,7 +202,9 @@ export default function NewAccountScreen() {
 
           {/* 3. Type */}
           <View style={styles.group}>
-            <Text style={styles.sectionTitle}>Account type</Text>
+            <Text style={styles.sectionTitle}>
+              {t("accounts.create.accountType")}
+            </Text>
 
             <SegmentedControl
               options={accountTypeOptions}
@@ -198,12 +213,16 @@ export default function NewAccountScreen() {
             />
           </View>
 
-          {/* 4. Appearance: icon and color together, since they style the same thing */}
+          {/* 4. Appearance */}
           <View style={styles.group}>
-            <Text style={styles.sectionTitle}>Appearance</Text>
+            <Text style={styles.sectionTitle}>
+              {t("accounts.create.appearance")}
+            </Text>
 
             <View style={[styles.card, styles.cardPadded]}>
-              <Text style={styles.cardLabel}>Choose an icon</Text>
+              <Text style={styles.cardLabel}>
+                {t("accounts.create.chooseIcon")}
+              </Text>
 
               <AccountIconPicker
                 value={icon}
@@ -213,14 +232,19 @@ export default function NewAccountScreen() {
 
               <View style={styles.divider} />
 
-              <Text style={styles.cardLabel}>Choose a color</Text>
+              <Text style={styles.cardLabel}>
+                {t("accounts.create.chooseColor")}
+              </Text>
 
               <AccountColorPicker value={color} onChange={setColor} />
             </View>
           </View>
 
           {/* 5. Opening balance */}
-          <FormCard title="Opening balance" currency={currency}>
+          <FormCard
+            title={t("accounts.create.openingBalance")}
+            currency={currency}
+          >
             <AmountInput
               value={openingBalance}
               onChangeText={handleOpeningBalanceChange}
@@ -231,11 +255,15 @@ export default function NewAccountScreen() {
               returnKeyType="done"
             />
 
-            <Text style={styles.helperText}>Preview: {previewBalance}</Text>
+            <Text style={styles.helperText}>
+              {t("accounts.create.preview", { amount: previewBalance })}
+            </Text>
 
             <Text style={styles.helperText}>
-              Enter the amount currently available in this account.
-              {` Maximum ${decimalDigits} decimal places for ${currency}.`}
+              {t("accounts.create.balanceHelper", {
+                decimalDigits,
+                currency,
+              })}
             </Text>
 
             <View style={styles.divider} />
@@ -244,13 +272,16 @@ export default function NewAccountScreen() {
               <Info size={14} color={colors.textSecondary} />
 
               <Text style={styles.helperText}>
-                {`Account currency: ${currency}. This account uses your workspace currency.`}
+                {t("accounts.create.currencyNote", { currency })}
               </Text>
             </View>
           </FormCard>
-          {/* 1. Live preview: updates as you type and pick, so it stays at the top */}
+
+          {/* 1. Live preview */}
           <View style={styles.group}>
-            <Text style={styles.sectionTitle}>Account Preview</Text>
+            <Text style={styles.sectionTitle}>
+              {t("accounts.create.accountPreview")}
+            </Text>
 
             <View style={styles.previewCard}>
               <AccountIcon name={icon} color={color} size={56} iconSize={26} />
@@ -263,16 +294,21 @@ export default function NewAccountScreen() {
                   ]}
                   numberOfLines={1}
                 >
-                  {trimmedName || "Account name"}
+                  {trimmedName || t("accounts.create.accountNameFallback")}
                 </Text>
 
                 <Text style={styles.previewType} numberOfLines={1}>
-                  {selectedIconLabel} · {typeLabel}
+                  {t("accounts.create.selectedIconAndType", {
+                    icon: selectedIconLabel,
+                    type: typeLabel,
+                  })}
                 </Text>
               </View>
 
               <View style={styles.previewBalanceContainer}>
-                <Text style={styles.previewBalanceLabel}>Opening balance</Text>
+                <Text style={styles.previewBalanceLabel}>
+                  {t("accounts.create.openingBalance")}
+                </Text>
 
                 <Text style={styles.previewBalance} numberOfLines={1}>
                   {previewBalance}
@@ -302,7 +338,9 @@ export default function NewAccountScreen() {
             )}
 
             <Text style={styles.saveButtonText}>
-              {saving ? "Creating account..." : "Create account"}
+              {saving
+                ? t("accounts.create.creatingAccount")
+                : t("accounts.create.createAccount")}
             </Text>
           </Pressable>
         </View>
@@ -313,7 +351,6 @@ export default function NewAccountScreen() {
 
 /* -------------------------------------------------------------------------- */
 /* Presentational pieces                                                       */
-/* Same family as the transaction screens: share them when you extract.        */
 /* -------------------------------------------------------------------------- */
 
 function SegmentedControl<T extends string>({

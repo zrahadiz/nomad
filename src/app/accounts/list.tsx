@@ -1,5 +1,6 @@
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Alert,
   Pressable,
@@ -32,14 +33,9 @@ import { useWorkspaceStore } from "@/stores/use-workspace-store";
 import type { accountIconName } from "@/constants/account-options";
 import type { financialAccount } from "@/types/finances";
 
-function getAccountTypeLabel(type: financialAccount["type"]): string {
-  if (type === "e-wallet") return "E-wallet";
-
-  return type.charAt(0).toUpperCase() + type.slice(1);
-}
-
 export default function AccountsScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
 
   // Which account's actions sheet is open. Stored as an id so the sheet closes
   // by itself if that account is deleted.
@@ -48,16 +44,13 @@ export default function AccountsScreen() {
   const activeWorkspaceId = useWorkspaceStore(
     (state) => state.activeWorkspaceId,
   );
-
   const workspaces = useWorkspaceStore((state) => state.workspaces);
 
   const accounts = useFinanceStore((state) => state.accounts);
   const removeAccount = useFinanceStore((state) => state.removeAccount);
-
   const transactions = useFinanceStore((state) => state.transactions);
 
   const workspace = workspaces.find((item) => item.id === activeWorkspaceId);
-
   const currency = workspace?.currency_code ?? "MYR";
   const flag = getCountryByCode(workspace?.country_code ?? "")?.flag ?? "🌍";
 
@@ -71,29 +64,38 @@ export default function AccountsScreen() {
     (account) => account.id === actionAccountId,
   );
 
+  const getAccountTypeLabel = (type: financialAccount["type"]): string => {
+    switch (type) {
+      case "e-wallet":
+        return t("accounts.list.typeEwallet");
+      case "cash":
+        return t("accounts.list.typeCash");
+      case "bank":
+        return t("accounts.list.typeBank");
+      default:
+        return type.charAt(0).toUpperCase() + type.slice(1);
+    }
+  };
+
   const handleDeleteAccount = (account: financialAccount) => {
     Alert.alert(
-      "Delete account?",
-      `Are you sure you want to delete "${account.name}"? This will also permanently delete all transactions associated with this account.`,
+      t("accounts.list.deleteConfirmTitle"),
+      t("accounts.list.deleteConfirmMessage", { name: account.name }),
       [
+        { text: t("accounts.list.cancel"), style: "cancel" },
         {
-          text: "Cancel",
-          style: "cancel",
-        },
-        {
-          text: "Delete",
+          text: t("accounts.list.delete"),
           style: "destructive",
           onPress: async () => {
             try {
               await removeAccount(account.id);
             } catch (error) {
-              console.error("Failed to delete account:", error);
-
+              console.error(t("accounts.list.deleteErrorLog"), error);
               Alert.alert(
-                "Unable to delete account",
+                t("accounts.list.deleteFailedTitle"),
                 error instanceof Error
                   ? error.message
-                  : "Something went wrong. Please try again.",
+                  : t("accounts.list.deleteFailedMessage"),
               );
             }
           },
@@ -104,7 +106,6 @@ export default function AccountsScreen() {
 
   const handleEditAccount = (account: financialAccount) => {
     setActionAccountId(null);
-
     router.push({
       pathname: "/accounts/[id]/edit",
       params: { id: account.id },
@@ -137,9 +138,10 @@ export default function AccountsScreen() {
               <View style={styles.balanceHeader}>
                 <View style={styles.balanceLabelRow}>
                   <Wallet size={18} color={colors.primaryLight} />
-                  <Text style={styles.balanceLabel}>TOTAL ACCOUNT BALANCE</Text>
+                  <Text style={styles.balanceLabel}>
+                    {t("accounts.list.title")}
+                  </Text>
                 </View>
-
                 <View style={styles.balanceBadge}>
                   <Text style={styles.balanceBadgeText}>{currency}</Text>
                 </View>
@@ -155,15 +157,19 @@ export default function AccountsScreen() {
 
               <View style={styles.balanceFooter}>
                 <Text style={styles.balanceCaption}>
-                  Across {workspaceAccounts.length}{" "}
-                  {workspaceAccounts.length === 1 ? "account" : "accounts"}
+                  {t("accounts.list.across", {
+                    count: workspaceAccounts.length,
+                    accountLabel:
+                      workspaceAccounts.length === 1
+                        ? t("accounts.list.account")
+                        : t("accounts.list.accounts"),
+                    workspace: workspace?.name,
+                  })}{" "}
                 </Text>
-
                 <View style={styles.workspacePill}>
                   <Text style={styles.workspaceFlag}>{flag}</Text>
-
                   <Text style={styles.workspaceName} numberOfLines={1}>
-                    {workspace?.name ?? "Workspace"}
+                    {workspace?.name ?? t("accounts.list.workspaceFallback")}
                   </Text>
                 </View>
               </View>
@@ -171,8 +177,9 @@ export default function AccountsScreen() {
 
             {/* Account list */}
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>All Accounts</Text>
-
+              <Text style={styles.sectionTitle}>
+                {t("accounts.list.allAccounts")}
+              </Text>
               <View style={styles.countBadge}>
                 <Text style={styles.countBadgeText}>
                   {workspaceAccounts.length}
@@ -185,13 +192,12 @@ export default function AccountsScreen() {
                 <View style={styles.emptyIcon}>
                   <Wallet size={28} color={colors.primary} />
                 </View>
-
-                <Text style={styles.emptyTitle}>No accounts yet</Text>
-
-                <Text style={styles.emptySubtitle}>
-                  Add your first account to start tracking your money.
+                <Text style={styles.emptyTitle}>
+                  {t("accounts.list.noAccounts")}
                 </Text>
-
+                <Text style={styles.emptySubtitle}>
+                  {t("accounts.list.emptyDescription")}
+                </Text>
                 <Pressable
                   style={({ pressed }) => [
                     styles.emptyButton,
@@ -202,7 +208,7 @@ export default function AccountsScreen() {
                 >
                   <Plus size={18} color={colors.textOnPrimary} />
                   <Text style={styles.emptyButtonText}>
-                    Add your first account
+                    {t("accounts.list.addFirst")}
                   </Text>
                 </Pressable>
               </View>
@@ -210,19 +216,14 @@ export default function AccountsScreen() {
               <View style={styles.accountList}>
                 {workspaceAccounts.map((account, index) => {
                   const balance = getAccountBalance(account, transactions);
-
                   return (
                     <View key={account.id}>
                       {index > 0 && <View style={styles.divider} />}
-
-                      {/* The whole row opens the account's actions */}
                       <Pressable
                         onPress={() => setActionAccountId(account.id)}
                         accessibilityRole="button"
-                        accessibilityLabel={`${account.name}, ${getAccountTypeLabel(
-                          account.type,
-                        )}, balance ${formatCurrency(balance)}`}
-                        accessibilityHint="Opens actions for this account"
+                        accessibilityLabel={`${account.name}, ${getAccountTypeLabel(account.type)}, ${t("accounts.list.balanceAccessibility", { amount: formatCurrency(balance) })}`}
+                        accessibilityHint={t("accounts.list.openActionsHint")}
                         style={({ pressed }) => [
                           styles.accountRow,
                           pressed && styles.accountRowPressed,
@@ -232,17 +233,14 @@ export default function AccountsScreen() {
                           name={(account.icon ?? "wallet") as accountIconName}
                           color={account.color ?? colors.primary}
                         />
-
                         <View style={styles.accountDetails}>
                           <Text style={styles.accountName} numberOfLines={1}>
                             {account.name}
                           </Text>
-
                           <Text style={styles.accountType}>
                             {getAccountTypeLabel(account.type)}
                           </Text>
                         </View>
-
                         <Text
                           style={[
                             styles.accountBalance,
@@ -252,7 +250,6 @@ export default function AccountsScreen() {
                         >
                           {formatCurrency(balance)}
                         </Text>
-
                         <EllipsisVertical
                           size={20}
                           color={colors.textSecondary}
@@ -274,7 +271,7 @@ export default function AccountsScreen() {
                 pressed && styles.fabPressed,
               ]}
               accessibilityRole="button"
-              accessibilityLabel="Add account"
+              accessibilityLabel={t("accounts.list.addAccount")}
             >
               <Plus size={26} color={colors.textOnPrimary} />
             </Pressable>
@@ -285,8 +282,8 @@ export default function AccountsScreen() {
         <BottomSheetModal
           visible={Boolean(actionAccount)}
           onClose={() => setActionAccountId(null)}
-          title={actionAccount?.name ?? "Account"}
-          subtitle="Manage this account"
+          title={actionAccount?.name ?? t("accounts.list.accountFallback")}
+          subtitle={t("accounts.list.manageAccount")}
         >
           {actionAccount && (
             <>
@@ -301,12 +298,12 @@ export default function AccountsScreen() {
                 <View style={styles.actionIcon}>
                   <Pencil size={20} color={colors.primary} />
                 </View>
-
                 <View style={styles.flex}>
-                  <Text style={styles.actionLabel}>Edit account</Text>
-
+                  <Text style={styles.actionLabel}>
+                    {t("accounts.list.editAccount")}
+                  </Text>
                   <Text style={styles.actionDescription}>
-                    Update this account's details
+                    {t("accounts.list.editDescription")}
                   </Text>
                 </View>
               </Pressable>
@@ -323,14 +320,12 @@ export default function AccountsScreen() {
                 <View style={[styles.actionIcon, styles.actionIconDanger]}>
                   <Trash2 size={20} color={colors.danger} />
                 </View>
-
                 <View style={styles.flex}>
                   <Text style={[styles.actionLabel, styles.actionLabelDanger]}>
-                    Delete account
+                    {t("accounts.list.deleteAccount")}
                   </Text>
-
                   <Text style={styles.actionDescription}>
-                    Also deletes all of its transactions
+                    {t("accounts.list.deleteDescription")}
                   </Text>
                 </View>
               </Pressable>
@@ -343,68 +338,52 @@ export default function AccountsScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-  },
-
-  flex: {
-    flex: 1,
-  },
-
+  screen: { flex: 1 },
+  flex: { flex: 1 },
   content: {
     padding: spacing.lg,
     paddingTop: spacing.lg,
-    // Room so the last row can scroll clear of the floating button.
     paddingBottom: 96,
     gap: spacing.lg,
   },
-
-  /* Balance card */
   balanceCard: {
     backgroundColor: colors.primary,
     borderRadius: radius.xl,
     padding: spacing.xl,
   },
-
   balanceHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
-
   balanceLabelRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.sm,
   },
-
   balanceLabel: {
     color: colors.primaryLight,
     fontSize: typography.size.xs,
     fontWeight: typography.weight.semibold,
     letterSpacing: 0.8,
   },
-
   balanceBadge: {
     backgroundColor: colors.onPrimarySubtle,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
     borderRadius: radius.full,
   },
-
   balanceBadgeText: {
     color: colors.textOnPrimary,
     fontSize: typography.size.xs,
     fontWeight: typography.weight.semibold,
   },
-
   balanceAmount: {
     color: colors.textOnPrimary,
     fontSize: typography.size.xxxl,
     fontWeight: typography.weight.bold,
     marginTop: spacing.lg,
   },
-
   balanceFooter: {
     flexDirection: "row",
     alignItems: "center",
@@ -412,12 +391,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     marginTop: spacing.sm,
   },
-
-  balanceCaption: {
-    color: colors.primaryLight,
-    fontSize: typography.size.sm,
-  },
-
+  balanceCaption: { color: colors.primaryLight, fontSize: typography.size.sm },
   workspacePill: {
     flexShrink: 1,
     flexDirection: "row",
@@ -428,46 +402,35 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
     paddingHorizontal: spacing.md,
   },
-
-  workspaceFlag: {
-    fontSize: 14,
-  },
-
+  workspaceFlag: { fontSize: 14 },
   workspaceName: {
     flexShrink: 1,
     color: colors.textOnPrimary,
     fontSize: typography.size.caption,
     fontWeight: typography.weight.medium,
   },
-
-  /* Section header */
   sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.sm,
     marginTop: spacing.sm,
   },
-
   sectionTitle: {
     color: colors.text,
     fontSize: typography.size.lg,
     fontWeight: typography.weight.bold,
   },
-
   countBadge: {
     backgroundColor: colors.primaryLight,
     borderRadius: radius.full,
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
   },
-
   countBadgeText: {
     color: colors.primary,
     fontSize: typography.size.xs,
     fontWeight: typography.weight.semibold,
   },
-
-  /* Account list */
   accountList: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
@@ -475,7 +438,6 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     overflow: "hidden",
   },
-
   accountRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -483,44 +445,25 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
   },
-
-  accountRowPressed: {
-    backgroundColor: colors.background,
-  },
-
-  accountDetails: {
-    flex: 1,
-    gap: 2,
-  },
-
+  accountRowPressed: { backgroundColor: colors.background },
+  accountDetails: { flex: 1, gap: 2 },
   accountName: {
     color: colors.text,
     fontSize: typography.size.md,
     fontWeight: typography.weight.semibold,
   },
-
   accountType: {
     color: colors.textSecondary,
     fontSize: typography.size.caption,
   },
-
   accountBalance: {
     flexShrink: 0,
     color: colors.text,
     fontSize: typography.size.sm,
     fontWeight: typography.weight.semibold,
   },
-
-  negativeBalance: {
-    color: colors.danger,
-  },
-
-  divider: {
-    height: 1,
-    backgroundColor: colors.border,
-  },
-
-  /* Empty state */
+  negativeBalance: { color: colors.danger },
+  divider: { height: 1, backgroundColor: colors.border },
   emptyCard: {
     alignItems: "center",
     backgroundColor: colors.surface,
@@ -530,7 +473,6 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
     gap: spacing.md,
   },
-
   emptyIcon: {
     width: 64,
     height: 64,
@@ -539,19 +481,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-
   emptyTitle: {
     color: colors.text,
     fontSize: typography.size.md,
     fontWeight: typography.weight.semibold,
   },
-
   emptySubtitle: {
     color: colors.textSecondary,
     fontSize: typography.size.sm,
     textAlign: "center",
   },
-
   emptyButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -563,18 +502,12 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     marginTop: spacing.sm,
   },
-
-  emptyButtonPressed: {
-    backgroundColor: colors.primaryDark,
-  },
-
+  emptyButtonPressed: { backgroundColor: colors.primaryDark },
   emptyButtonText: {
     color: colors.textOnPrimary,
     fontSize: typography.size.sm,
     fontWeight: typography.weight.semibold,
   },
-
-  /* Floating action button */
   fab: {
     position: "absolute",
     right: spacing.lg,
@@ -591,12 +524,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     elevation: 6,
   },
-
-  fabPressed: {
-    backgroundColor: colors.primaryDark,
-  },
-
-  /* Actions sheet */
+  fabPressed: { backgroundColor: colors.primaryDark },
   actionOption: {
     minHeight: 64,
     flexDirection: "row",
@@ -607,11 +535,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     marginBottom: spacing.xs,
   },
-
-  actionOptionPressed: {
-    backgroundColor: colors.background,
-  },
-
+  actionOptionPressed: { backgroundColor: colors.background },
   actionIcon: {
     width: 40,
     height: 40,
@@ -620,21 +544,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-
-  actionIconDanger: {
-    backgroundColor: colors.dangerLight,
-  },
-
+  actionIconDanger: { backgroundColor: colors.dangerLight },
   actionLabel: {
     color: colors.text,
     fontSize: typography.size.md,
     fontWeight: typography.weight.semibold,
   },
-
-  actionLabelDanger: {
-    color: colors.danger,
-  },
-
+  actionLabelDanger: { color: colors.danger },
   actionDescription: {
     color: colors.textSecondary,
     fontSize: typography.size.caption,

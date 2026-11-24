@@ -1,7 +1,7 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Check, Info, Wallet } from "lucide-react-native";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-
+import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   Alert,
@@ -34,27 +34,24 @@ import { useFinanceStore } from "@/stores/use-finance-store";
 
 import type { accountType, updateAccountInput } from "@/types/finances";
 
-const accountTypeOptions: {
-  label: string;
-  value: accountType;
-}[] = [
+const accountTypeOptions: { label: string; value: accountType }[] = [
   { label: "Cash", value: "cash" },
   { label: "Bank", value: "bank" },
   { label: "E-wallet", value: "e-wallet" },
   { label: "Other", value: "other" },
 ];
 
+const accountTypeTranslationKeys: Partial<Record<accountType, string>> = {
+  cash: "accounts.list.typeCash",
+  bank: "accounts.list.typeBank",
+  "e-wallet": "accounts.list.typeEwallet",
+  other: "accounts.list.typeOther",
+};
+
 function parseAmountToMinor(value: string, currency: string) {
-  if (!isValidCurrencyAmountInput(value, currency)) {
-    return null;
-  }
-
+  if (!isValidCurrencyAmountInput(value, currency)) return null;
   const amount = Number(value || 0);
-
-  if (!Number.isFinite(amount) || amount < 0) {
-    return null;
-  }
-
+  if (!Number.isFinite(amount) || amount < 0) return null;
   try {
     return toMinorUnits(amount, currency);
   } catch {
@@ -64,7 +61,7 @@ function parseAmountToMinor(value: string, currency: string) {
 
 export default function EditAccountScreen() {
   const router = useRouter();
-
+  const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const accounts = useFinanceStore((state) => state.accounts);
@@ -72,7 +69,6 @@ export default function EditAccountScreen() {
   const adjustAccountBalance = useFinanceStore(
     (state) => state.adjustAccountBalance,
   );
-
   const transactions = useFinanceStore((state) => state.transactions);
   const transactionsWorkspaceId = useFinanceStore(
     (state) => state.transactionsWorkspaceId,
@@ -84,7 +80,6 @@ export default function EditAccountScreen() {
   const fetchTransactions = useFinanceStore((state) => state.fetchTransactions);
 
   const account = accounts.find((item) => item.id === id);
-
   const currency = account?.currency ?? "MYR";
 
   const [name, setName] = useState("");
@@ -103,27 +98,25 @@ export default function EditAccountScreen() {
 
   const currentBalanceMinor = useMemo(() => {
     if (!account || !transactionsReady) return 0;
-
     return getAccountBalance(account, transactions);
   }, [account, transactions, transactionsReady]);
 
   const selectedIconLabel = useMemo(
-    () => accountIcons.find((item) => item.name === icon)?.label ?? "Account",
-    [icon],
+    () =>
+      accountIcons.find((item) => item.name === icon)?.label ??
+      t("accounts.create.accountNameFallback"),
+    [icon, t],
   );
 
   const parsedBalance = parseAmountToMinor(currentBalanceInput, currency);
-
   const previewBalance = formatMoney(parsedBalance ?? 0, currency);
   const actualCurrentBalance = formatMoney(currentBalanceMinor, currency);
 
   const handleCurrentBalanceChange = (value: string) => {
-    if (isValidCurrencyAmountInput(value, currency)) {
+    if (isValidCurrencyAmountInput(value, currency))
       setCurrentBalanceInput(value);
-    }
   };
 
-  // Load transactions if the account's workspace is not currently loaded.
   useEffect(() => {
     if (
       account &&
@@ -139,55 +132,50 @@ export default function EditAccountScreen() {
     fetchTransactions,
   ]);
 
-  // Initialize the form only after the account's transactions are available.
   useEffect(() => {
     if (!account || !transactionsReady || initialized) return;
-
     const decimals = getCurrencyDecimalDigits(currency);
-
     setName(account.name);
     setType(account.type);
     setIcon((account.icon ?? "wallet") as accountIconName);
     setColor(account.color ?? accountColors[0]);
-
     setCurrentBalanceInput(
       (currentBalanceMinor / 10 ** decimals).toFixed(decimals),
     );
-
     setInitialized(true);
   }, [account, currency, currentBalanceMinor, transactionsReady, initialized]);
 
   const handleSave = async () => {
     const trimmedName = name.trim();
-
     if (!account) {
-      Alert.alert("Account not found", "This account may have been deleted.");
+      Alert.alert(
+        t("accounts.edit.alerts.notFoundTitle"),
+        t("accounts.edit.alerts.notFoundMessage"),
+      );
       return;
     }
-
     if (!trimmedName) {
-      Alert.alert("Account name required", "Please enter an account name.");
+      Alert.alert(
+        t("accounts.edit.alerts.nameRequiredTitle"),
+        t("accounts.edit.alerts.nameRequiredMessage"),
+      );
       return;
     }
-
     if (!transactionsReady || !initialized) {
       Alert.alert(
-        "Transactions not ready",
-        "Please wait until your account transactions have loaded.",
+        t("accounts.edit.alerts.transactionsNotReadyTitle"),
+        t("accounts.edit.alerts.transactionsNotReadyMessage"),
       );
       return;
     }
-
     if (parsedBalance === null) {
       Alert.alert(
-        "Invalid current balance",
-        "Please enter a valid non-negative amount.",
+        t("accounts.edit.alerts.invalidBalanceTitle"),
+        t("accounts.edit.alerts.invalidBalanceMessage"),
       );
       return;
     }
 
-    // Only update account metadata.
-    // The opening balance must remain unchanged.
     const updates: updateAccountInput = {
       name: trimmedName,
       type,
@@ -197,26 +185,20 @@ export default function EditAccountScreen() {
 
     try {
       setSaving(true);
-
       await editAccount(account.id, updates);
-
-      // Record a balance adjustment only if the desired balance differs.
       await adjustAccountBalance(account.id, parsedBalance);
-
-      Alert.alert("Account updated", "Your account has been updated.", [
-        {
-          text: "OK",
-          onPress: () => router.back(),
-        },
-      ]);
+      Alert.alert(
+        t("accounts.edit.alerts.updatedTitle"),
+        t("accounts.edit.alerts.updatedMessage"),
+        [{ text: t("common.done"), onPress: () => router.back() }],
+      );
     } catch (error) {
       console.error("Failed to update account:", error);
-
       Alert.alert(
-        "Unable to update account",
+        t("accounts.edit.alerts.updateFailedTitle"),
         error instanceof Error
           ? error.message
-          : "Something went wrong. Please try again.",
+          : t("accounts.edit.alerts.genericError"),
       );
     } finally {
       setSaving(false);
@@ -227,9 +209,9 @@ export default function EditAccountScreen() {
     return (
       <StateScreen
         icon={<Wallet size={32} color={colors.textSecondary} />}
-        title="Account not found"
-        description="This account may have been deleted or is no longer available."
-        actionLabel="Go back"
+        title={t("accounts.edit.states.notFoundTitle")}
+        description={t("accounts.edit.states.notFoundDescription")}
+        actionLabel={t("common.goBack")}
         onAction={() => router.back()}
       />
     );
@@ -239,9 +221,9 @@ export default function EditAccountScreen() {
     return (
       <StateScreen
         icon={<Wallet size={32} color={colors.danger} />}
-        title="Unable to load account balance"
+        title={t("accounts.edit.states.balanceErrorTitle")}
         description={transactionsError}
-        actionLabel="Try again"
+        actionLabel={t("common.tryAgain")}
         onAction={() => fetchTransactions(account.workspaceId)}
       />
     );
@@ -252,23 +234,19 @@ export default function EditAccountScreen() {
       <SafeScreen backgroundColor={colors.background} edges={["bottom"]}>
         <View style={styles.centerState}>
           <ActivityIndicator size="large" color={colors.primary} />
-
           <Text style={styles.stateDescription}>
-            Loading account information...
+            {t("accounts.edit.states.loading")}
           </Text>
         </View>
       </SafeScreen>
     );
   }
 
-  const typeLabel =
-    accountTypeOptions.find((item) => item.value === type)?.label ?? "";
-
+  const typeLabel = t(
+    accountTypeTranslationKeys[type] ?? "accounts.list.typeOther",
+  );
   const trimmedName = name.trim();
-
   const saveDisabled = saving || !account || !initialized || !transactionsReady;
-
-  // What saving will record as a balance adjustment (new balance minus recorded balance).
   const adjustment =
     parsedBalance !== null ? parsedBalance - currentBalanceMinor : 0;
 
@@ -281,14 +259,14 @@ export default function EditAccountScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* 2. Name */}
           <View style={styles.group}>
-            <Text style={styles.sectionTitle}>Account name</Text>
-
+            <Text style={styles.sectionTitle}>
+              {t("accounts.create.accountName")}
+            </Text>
             <TextInput
               value={name}
               onChangeText={setName}
-              placeholder="e.g. Maybank Savings"
+              placeholder={t("accounts.create.namePlaceholder")}
               placeholderTextColor={colors.textSecondary}
               style={styles.input}
               maxLength={40}
@@ -297,48 +275,55 @@ export default function EditAccountScreen() {
             />
           </View>
 
-          {/* 3. Type */}
           <View style={styles.group}>
-            <Text style={styles.sectionTitle}>Account type</Text>
-
+            <Text style={styles.sectionTitle}>
+              {t("accounts.create.accountType")}
+            </Text>
             <SegmentedControl
-              options={accountTypeOptions}
+              options={accountTypeOptions.map((option) => ({
+                ...option,
+                label: t(
+                  accountTypeTranslationKeys[option.value] ??
+                    "accounts.list.typeOther",
+                ),
+              }))}
               value={type}
               onChange={setType}
             />
           </View>
 
-          {/* 4. Appearance: icon and color together, since they style the same thing */}
           <View style={styles.group}>
-            <Text style={styles.sectionTitle}>Appearance</Text>
-
+            <Text style={styles.sectionTitle}>
+              {t("accounts.create.appearance")}
+            </Text>
             <View style={[styles.card, styles.cardPadded]}>
-              <Text style={styles.cardLabel}>Choose an icon</Text>
-
+              <Text style={styles.cardLabel}>
+                {t("accounts.create.chooseIcon")}
+              </Text>
               <AccountIconPicker
                 value={icon}
                 color={color}
                 onChange={setIcon}
               />
-
               <View style={styles.divider} />
-
-              <Text style={styles.cardLabel}>Choose a color</Text>
-
+              <Text style={styles.cardLabel}>
+                {t("accounts.create.chooseColor")}
+              </Text>
               <AccountColorPicker value={color} onChange={setColor} />
             </View>
           </View>
 
-          {/* 5. Current balance */}
-          <FormCard title="Current balance" currency={currency}>
+          <FormCard
+            title={t("accounts.edit.currentBalance")}
+            currency={currency}
+          >
             <View style={styles.recordedRow}>
-              <Text style={styles.helperText}>Recorded balance</Text>
-
+              <Text style={styles.helperText}>
+                {t("accounts.edit.recordedBalance")}
+              </Text>
               <Text style={styles.recordedValue}>{actualCurrentBalance}</Text>
             </View>
-
             <View style={styles.divider} />
-
             <AmountInput
               value={currentBalanceInput}
               onChangeText={handleCurrentBalanceChange}
@@ -350,44 +335,38 @@ export default function EditAccountScreen() {
               style={styles.amountInput}
               returnKeyType="done"
             />
-
-            <Text style={styles.helperText}>New balance: {previewBalance}</Text>
-
+            <Text style={styles.helperText}>
+              {t("accounts.edit.newBalance", { amount: previewBalance })}
+            </Text>
             {adjustment !== 0 && (
               <View style={styles.adjustBanner}>
                 <Info size={16} color={colors.primary} />
-
                 <Text style={styles.adjustText}>
-                  {`Saving will record a balance adjustment of ${
-                    adjustment > 0 ? "+" : "−"
-                  }${formatMoney(Math.abs(adjustment), currency)}.`}
+                  {t("accounts.edit.adjustmentNotice", {
+                    sign: adjustment > 0 ? "+" : "−",
+                    amount: formatMoney(Math.abs(adjustment), currency),
+                  })}
                 </Text>
               </View>
             )}
-
             <Text style={styles.helperText}>
-              Enter the actual amount currently available in this account. Nomad
-              will record the difference as a balance adjustment without
-              changing your opening balance.
+              {t("accounts.edit.balanceHelper")}
             </Text>
-
             <View style={styles.divider} />
-
             <View style={styles.noteRow}>
               <Info size={14} color={colors.textSecondary} />
-
               <Text style={styles.helperText}>
-                {`Account currency: ${currency}. This account uses your workspace currency.`}
+                {t("accounts.create.currencyNote", { currency })}
               </Text>
             </View>
           </FormCard>
-          {/* 1. Live preview: updates as you type and pick, so it stays at the top */}
-          <View style={styles.group}>
-            <Text style={styles.sectionTitle}>Account Preview</Text>
 
+          <View style={styles.group}>
+            <Text style={styles.sectionTitle}>
+              {t("accounts.create.accountPreview")}
+            </Text>
             <View style={styles.previewCard}>
               <AccountIcon name={icon} color={color} size={56} iconSize={26} />
-
               <View style={styles.flex}>
                 <Text
                   style={[
@@ -396,17 +375,19 @@ export default function EditAccountScreen() {
                   ]}
                   numberOfLines={1}
                 >
-                  {trimmedName || "Account name"}
+                  {trimmedName || t("accounts.create.accountNameFallback")}
                 </Text>
-
                 <Text style={styles.previewType} numberOfLines={1}>
-                  {selectedIconLabel} · {typeLabel}
+                  {t("accounts.create.selectedIconAndType", {
+                    icon: selectedIconLabel,
+                    type: typeLabel,
+                  })}
                 </Text>
               </View>
-
               <View style={styles.previewBalanceContainer}>
-                <Text style={styles.previewBalanceLabel}>Current balance</Text>
-
+                <Text style={styles.previewBalanceLabel}>
+                  {t("accounts.edit.currentBalance")}
+                </Text>
                 <Text style={styles.previewBalance} numberOfLines={1}>
                   {previewBalance}
                 </Text>
@@ -415,7 +396,6 @@ export default function EditAccountScreen() {
           </View>
         </KeyboardAwareScrollView>
 
-        {/* Save: always visible, outside the scroll area */}
         <View style={styles.footer}>
           <Pressable
             onPress={handleSave}
@@ -433,9 +413,10 @@ export default function EditAccountScreen() {
             ) : (
               <Check size={20} color={colors.textOnPrimary} />
             )}
-
             <Text style={styles.saveButtonText}>
-              {saving ? "Saving changes..." : "Save changes"}
+              {saving
+                ? t("accounts.edit.savingChanges")
+                : t("accounts.edit.saveChanges")}
             </Text>
           </Pressable>
         </View>
@@ -443,11 +424,6 @@ export default function EditAccountScreen() {
     </SafeScreen>
   );
 }
-
-/* -------------------------------------------------------------------------- */
-/* Presentational pieces                                                       */
-/* Same family as the Add Account screen: move them into one shared file.      */
-/* -------------------------------------------------------------------------- */
 
 function StateScreen({
   icon,
@@ -466,11 +442,8 @@ function StateScreen({
     <SafeScreen backgroundColor={colors.background} edges={["bottom"]}>
       <View style={styles.centerState}>
         <View style={styles.stateIcon}>{icon}</View>
-
         <Text style={styles.stateTitle}>{title}</Text>
-
         <Text style={styles.stateDescription}>{description}</Text>
-
         <Pressable
           onPress={onAction}
           accessibilityRole="button"
@@ -499,7 +472,6 @@ function SegmentedControl<T extends string>({
     <View style={styles.segmented}>
       {options.map((option) => {
         const selected = option.value === value;
-
         return (
           <Pressable
             key={option.value}
@@ -537,49 +509,27 @@ function FormCard({
     <View style={[styles.card, styles.cardPadded]}>
       <View style={styles.formCardHeader}>
         <Text style={styles.cardLabel}>{title}</Text>
-
         {currency ? (
           <View style={styles.currencyChip}>
             <Text style={styles.currencyChipText}>{currency}</Text>
           </View>
         ) : null}
       </View>
-
       {children}
     </View>
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/* Styles                                                                      */
-/* -------------------------------------------------------------------------- */
-
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-  },
-
-  flex: {
-    flex: 1,
-  },
-
-  content: {
-    padding: spacing.lg,
-    paddingBottom: spacing.xl,
-    gap: spacing.xl,
-  },
-
-  group: {
-    gap: spacing.sm,
-  },
-
+  screen: { flex: 1 },
+  flex: { flex: 1 },
+  content: { padding: spacing.lg, paddingBottom: spacing.xl, gap: spacing.xl },
+  group: { gap: spacing.sm },
   sectionTitle: {
     color: colors.text,
     fontSize: typography.size.md,
     fontWeight: typography.weight.semibold,
   },
-
-  /* Preview */
   previewCard: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
@@ -590,43 +540,35 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing.md,
   },
-
   previewName: {
     color: colors.text,
     fontSize: typography.size.md,
     fontWeight: typography.weight.semibold,
   },
-
   previewNamePlaceholder: {
     color: colors.textSecondary,
     fontWeight: typography.weight.regular,
   },
-
   previewType: {
     color: colors.textSecondary,
     fontSize: typography.size.caption,
     marginTop: 2,
   },
-
   previewBalanceContainer: {
     flexShrink: 0,
     maxWidth: "40%",
     alignItems: "flex-end",
     gap: 2,
   },
-
   previewBalanceLabel: {
     color: colors.textSecondary,
     fontSize: typography.size.xs,
   },
-
   previewBalance: {
     color: colors.text,
     fontSize: typography.size.sm,
     fontWeight: typography.weight.semibold,
   },
-
-  /* Inputs */
   input: {
     minHeight: 50,
     backgroundColor: colors.surface,
@@ -637,8 +579,6 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: typography.size.md,
   },
-
-  /* Segmented control */
   segmented: {
     flexDirection: "row",
     gap: spacing.xs,
@@ -648,7 +588,6 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: radius.lg,
   },
-
   segment: {
     flex: 1,
     alignItems: "center",
@@ -657,23 +596,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xs,
     borderRadius: radius.md,
   },
-
-  segmentSelected: {
-    backgroundColor: colors.primaryLight,
-  },
-
+  segmentSelected: { backgroundColor: colors.primaryLight },
   segmentText: {
     color: colors.textSecondary,
     fontSize: typography.size.sm,
     fontWeight: typography.weight.medium,
   },
-
   segmentTextSelected: {
     color: colors.primary,
     fontWeight: typography.weight.semibold,
   },
-
-  /* Cards */
   card: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
@@ -681,56 +613,40 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     overflow: "hidden",
   },
-
-  cardPadded: {
-    padding: spacing.md,
-    gap: spacing.md,
-  },
-
+  cardPadded: { padding: spacing.md, gap: spacing.md },
   cardLabel: {
     color: colors.textSecondary,
     fontSize: typography.size.sm,
     fontWeight: typography.weight.medium,
   },
-
   formCardHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
-
   currencyChip: {
     backgroundColor: colors.primaryLight,
     borderRadius: radius.full,
     paddingHorizontal: spacing.sm,
     paddingVertical: 3,
   },
-
   currencyChipText: {
     color: colors.primary,
     fontSize: typography.size.xs,
     fontWeight: typography.weight.semibold,
   },
-
-  divider: {
-    height: 1,
-    backgroundColor: colors.border,
-  },
-
-  /* Balance */
+  divider: { height: 1, backgroundColor: colors.border },
   recordedRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     gap: spacing.md,
   },
-
   recordedValue: {
     color: colors.text,
     fontSize: typography.size.sm,
     fontWeight: typography.weight.semibold,
   },
-
   amountInput: {
     height: 56,
     paddingHorizontal: 0,
@@ -740,7 +656,6 @@ const styles = StyleSheet.create({
     fontSize: typography.size.xxxl,
     fontWeight: typography.weight.bold,
   },
-
   adjustBanner: {
     flexDirection: "row",
     alignItems: "flex-start",
@@ -749,28 +664,19 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primaryLight,
     borderRadius: radius.md,
   },
-
   adjustText: {
     flex: 1,
     color: colors.text,
     fontSize: typography.size.caption,
     lineHeight: 18,
   },
-
-  noteRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-  },
-
+  noteRow: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
   helperText: {
     flexShrink: 1,
     color: colors.textSecondary,
     fontSize: typography.size.caption,
     lineHeight: 18,
   },
-
-  /* Save bar */
   footer: {
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
@@ -778,7 +684,6 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
-
   saveButton: {
     minHeight: 54,
     flexDirection: "row",
@@ -788,22 +693,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     borderRadius: radius.md,
   },
-
-  saveButtonPressed: {
-    backgroundColor: colors.primaryDark,
-  },
-
-  disabledButton: {
-    opacity: 0.5,
-  },
-
+  saveButtonPressed: { backgroundColor: colors.primaryDark },
+  disabledButton: { opacity: 0.5 },
   saveButtonText: {
     color: colors.textOnPrimary,
     fontSize: typography.size.md,
     fontWeight: typography.weight.semibold,
   },
-
-  /* Loading / error / not found */
   centerState: {
     flex: 1,
     alignItems: "center",
@@ -811,7 +707,6 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
     gap: spacing.md,
   },
-
   stateIcon: {
     width: 64,
     height: 64,
@@ -822,20 +717,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-
   stateTitle: {
     color: colors.text,
     fontSize: typography.size.lg,
     fontWeight: typography.weight.semibold,
     textAlign: "center",
   },
-
   stateDescription: {
     color: colors.textSecondary,
     fontSize: typography.size.sm,
     textAlign: "center",
   },
-
   primaryButton: {
     backgroundColor: colors.primary,
     borderRadius: radius.md,
@@ -843,11 +735,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     marginTop: spacing.sm,
   },
-
-  primaryButtonPressed: {
-    backgroundColor: colors.primaryDark,
-  },
-
+  primaryButtonPressed: { backgroundColor: colors.primaryDark },
   primaryButtonText: {
     color: colors.textOnPrimary,
     fontSize: typography.size.sm,

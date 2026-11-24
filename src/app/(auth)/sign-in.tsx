@@ -5,6 +5,7 @@ import { signIn, signInWithGoogle } from "@/services/auth-service";
 import { Link } from "expo-router";
 import { Eye, EyeOff } from "lucide-react-native";
 import { useRef, useState, type ComponentRef } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   Alert,
@@ -17,13 +18,17 @@ import {
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
 export default function SignInScreen() {
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
   async function handleSignIn() {
     if (!email.trim() || !password) {
-      Alert.alert("Missing information", "Enter your email and password.");
+      Alert.alert(
+        t("auth.signIn.alerts.missingInformationTitle"),
+        t("auth.signIn.alerts.missingInformationMessage"),
+      );
       return;
     }
 
@@ -32,8 +37,10 @@ export default function SignInScreen() {
       await signIn(email, password);
     } catch (error) {
       Alert.alert(
-        "Sign in failed",
-        error instanceof Error ? error.message : "Please try again.",
+        t("auth.signIn.alerts.signInFailedTitle"),
+        error instanceof Error
+          ? error.message
+          : t("auth.signIn.alerts.tryAgain"),
       );
     } finally {
       setLoading(false);
@@ -43,12 +50,13 @@ export default function SignInScreen() {
   async function handleGoogleSignIn() {
     try {
       setLoading(true);
-
       await signInWithGoogle();
     } catch (error) {
       Alert.alert(
-        "Google sign in failed",
-        error instanceof Error ? error.message : "Please try again.",
+        t("auth.signIn.alerts.googleSignInFailedTitle"),
+        error instanceof Error
+          ? error.message
+          : t("auth.signIn.alerts.tryAgain"),
       );
     } finally {
       setLoading(false);
@@ -74,24 +82,22 @@ export default function SignInScreen() {
         </View>
 
         <Text style={styles.appName}>nomad.</Text>
-        <Text style={styles.tagline}>Your money, wherever life takes you.</Text>
+        <Text style={styles.tagline}>{t("auth.signIn.tagline")}</Text>
       </View>
 
       <View style={styles.form}>
         {/* Heading */}
         <View style={styles.headingGroup}>
-          <Text style={styles.heading}>Welcome back</Text>
-          <Text style={styles.subtitle}>
-            Sign in to continue managing your finances.
-          </Text>
+          <Text style={styles.heading}>{t("auth.signIn.welcomeBack")}</Text>
+          <Text style={styles.subtitle}>{t("auth.signIn.subtitle")}</Text>
         </View>
 
         {/* Fields */}
         <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Email address</Text>
+          <Text style={styles.label}>{t("auth.signIn.emailAddress")}</Text>
           <TextInput
             style={styles.input}
-            placeholder="you@example.com"
+            placeholder={t("auth.signIn.emailPlaceholder")}
             placeholderTextColor={colors.textSecondary}
             value={email}
             onChangeText={setEmail}
@@ -103,18 +109,18 @@ export default function SignInScreen() {
             returnKeyType="next"
             onSubmitEditing={() => passwordRef.current?.focus()}
             editable={!loading}
-            accessibilityLabel="Email address"
+            accessibilityLabel={t("auth.signIn.emailAddress")}
           />
         </View>
 
         <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Password</Text>
+          <Text style={styles.label}>{t("auth.signIn.password")}</Text>
 
           <View style={styles.passwordField}>
             <TextInput
               ref={passwordRef}
               style={styles.passwordInput}
-              placeholder="Enter your password"
+              placeholder={t("auth.signIn.passwordPlaceholder")}
               placeholderTextColor={colors.textSecondary}
               value={password}
               onChangeText={setPassword}
@@ -126,7 +132,7 @@ export default function SignInScreen() {
               returnKeyType="done"
               editable={!loading}
               onSubmitEditing={handleSignIn}
-              accessibilityLabel="Password"
+              accessibilityLabel={t("auth.signIn.password")}
             />
 
             <Pressable
@@ -135,7 +141,9 @@ export default function SignInScreen() {
               style={styles.eyeButton}
               accessibilityRole="button"
               accessibilityLabel={
-                showPassword ? "Hide password" : "Show password"
+                showPassword
+                  ? t("auth.signIn.hidePassword")
+                  : t("auth.signIn.showPassword")
               }
             >
               {showPassword ? (
@@ -162,13 +170,13 @@ export default function SignInScreen() {
           {loading ? (
             <ActivityIndicator color={colors.textOnPrimary} />
           ) : (
-            <Text style={styles.buttonText}>Sign in</Text>
+            <Text style={styles.buttonText}>{t("auth.signIn.signIn")}</Text>
           )}
         </Pressable>
 
         <View style={styles.divider}>
           <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>OR</Text>
+          <Text style={styles.dividerText}>{t("auth.signIn.or")}</Text>
           <View style={styles.dividerLine} />
         </View>
 
@@ -176,9 +184,9 @@ export default function SignInScreen() {
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text style={styles.footerText}>New to Nomad? </Text>
+          <Text style={styles.footerText}>{t("auth.signIn.newToNomad")} </Text>
           <Link href="/register" style={styles.link}>
-            Create an account
+            {t("auth.signIn.createAccount")}
           </Link>
         </View>
       </View>

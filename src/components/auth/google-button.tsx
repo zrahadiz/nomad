@@ -6,6 +6,7 @@ import {
   View,
 } from "react-native";
 
+import { GoogleIcon } from "@/components/icons/google-icon";
 import { colors, radius, spacing } from "@/constants/theme";
 
 type GoogleButtonProps = {
@@ -26,7 +27,7 @@ export function GoogleButton({ loading = false, onPress }: GoogleButtonProps) {
         <ActivityIndicator color={colors.text} />
       ) : (
         <View style={styles.content}>
-          <Text style={styles.googleIcon}>G</Text>
+          <GoogleIcon />
           <Text style={styles.buttonText}>Continue with Google</Text>
         </View>
       )}

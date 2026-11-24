@@ -1,6 +1,7 @@
 import { Link, router } from "expo-router";
 import { Eye, EyeOff } from "lucide-react-native";
 import { useRef, useState, type ComponentRef, type RefObject } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   Alert,
@@ -20,6 +21,7 @@ import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 type textInputRef = ComponentRef<typeof TextInput>;
 
 export default function RegisterScreen() {
+  const { t } = useTranslation();
   const [fullname, setFullname] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -28,20 +30,26 @@ export default function RegisterScreen() {
 
   async function handleRegister() {
     if (!fullname || !email.trim() || !password || !confirmPassword) {
-      Alert.alert("Missing information", "Please complete all fields.");
+      Alert.alert(
+        t("auth.register.alerts.missingInformationTitle"),
+        t("auth.register.alerts.missingInformationMessage"),
+      );
       return;
     }
 
     if (password.length < 8) {
       Alert.alert(
-        "Weak password",
-        "Your password must contain at least 8 characters.",
+        t("auth.register.alerts.weakPasswordTitle"),
+        t("auth.register.alerts.weakPasswordMessage"),
       );
       return;
     }
 
     if (password !== confirmPassword) {
-      Alert.alert("Password mismatch", "Your passwords do not match.");
+      Alert.alert(
+        t("auth.register.alerts.passwordMismatchTitle"),
+        t("auth.register.alerts.passwordMismatchMessage"),
+      );
       return;
     }
 
@@ -52,11 +60,11 @@ export default function RegisterScreen() {
 
       if (!session) {
         Alert.alert(
-          "Check your email",
-          "We sent you a confirmation link. Verify your email before signing in.",
+          t("auth.register.alerts.checkEmailTitle"),
+          t("auth.register.alerts.checkEmailMessage"),
           [
             {
-              text: "OK",
+              text: t("auth.register.alerts.ok"),
               onPress: () => router.replace("/sign-in"),
             },
           ],
@@ -66,8 +74,10 @@ export default function RegisterScreen() {
       // updates the protected navigator.
     } catch (error) {
       Alert.alert(
-        "Registration failed",
-        error instanceof Error ? error.message : "Please try again.",
+        t("auth.register.alerts.registrationFailedTitle"),
+        error instanceof Error
+          ? error.message
+          : t("auth.register.alerts.tryAgain"),
       );
     } finally {
       setLoading(false);
@@ -81,8 +91,10 @@ export default function RegisterScreen() {
       await signInWithGoogle();
     } catch (error) {
       Alert.alert(
-        "Google registration failed",
-        error instanceof Error ? error.message : "Please try again.",
+        t("auth.register.alerts.googleRegistrationFailedTitle"),
+        error instanceof Error
+          ? error.message
+          : t("auth.register.alerts.tryAgain"),
       );
     } finally {
       setLoading(false);
@@ -110,26 +122,22 @@ export default function RegisterScreen() {
         </View>
 
         <Text style={styles.appName}>nomad.</Text>
-        <Text style={styles.tagline}>
-          Start your journey to better money management.
-        </Text>
+        <Text style={styles.tagline}>{t("auth.register.tagline")}</Text>
       </View>
 
       <View style={styles.form}>
         {/* Heading */}
         <View style={styles.headingGroup}>
-          <Text style={styles.heading}>Create your account</Text>
-          <Text style={styles.subtitle}>
-            A clearer view of your finances starts here.
-          </Text>
+          <Text style={styles.heading}>{t("auth.register.heading")}</Text>
+          <Text style={styles.subtitle}>{t("auth.register.subtitle")}</Text>
         </View>
 
         {/* Fields */}
         <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Full name</Text>
+          <Text style={styles.label}>{t("auth.register.fullName")}</Text>
           <TextInput
             style={styles.input}
-            placeholder="John Doe"
+            placeholder={t("auth.register.fullNamePlaceholder")}
             placeholderTextColor={colors.textSecondary}
             value={fullname}
             onChangeText={setFullname}
@@ -139,16 +147,16 @@ export default function RegisterScreen() {
             returnKeyType="next"
             onSubmitEditing={() => emailRef.current?.focus()}
             editable={!loading}
-            accessibilityLabel="Full name"
+            accessibilityLabel={t("auth.register.fullName")}
           />
         </View>
 
         <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Email address</Text>
+          <Text style={styles.label}>{t("auth.register.emailAddress")}</Text>
           <TextInput
             ref={emailRef}
             style={styles.input}
-            placeholder="you@example.com"
+            placeholder={t("auth.register.emailPlaceholder")}
             placeholderTextColor={colors.textSecondary}
             value={email}
             onChangeText={setEmail}
@@ -160,15 +168,15 @@ export default function RegisterScreen() {
             returnKeyType="next"
             onSubmitEditing={() => passwordRef.current?.focus()}
             editable={!loading}
-            accessibilityLabel="Email address"
+            accessibilityLabel={t("auth.register.emailAddress")}
           />
         </View>
 
         <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Password</Text>
+          <Text style={styles.label}>{t("auth.register.password")}</Text>
           <PasswordField
             inputRef={passwordRef}
-            placeholder="At least 8 characters"
+            placeholder={t("auth.register.passwordPlaceholder")}
             value={password}
             onChangeText={setPassword}
             show={showPassword}
@@ -177,16 +185,20 @@ export default function RegisterScreen() {
             returnKeyType="next"
             onSubmitEditing={() => confirmPasswordRef.current?.focus()}
             editable={!loading}
-            accessibilityLabel="Password"
+            accessibilityLabel={t("auth.register.password")}
+            hidePasswordLabel={t("auth.register.hidePasswords")}
+            showPasswordLabel={t("auth.register.showPasswords")}
           />
-          <Text style={styles.helperText}>Use at least 8 characters.</Text>
+          <Text style={styles.helperText}>
+            {t("auth.register.passwordHelper")}
+          </Text>
         </View>
 
         <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Confirm password</Text>
+          <Text style={styles.label}>{t("auth.register.confirmPassword")}</Text>
           <PasswordField
             inputRef={confirmPasswordRef}
-            placeholder="Re-enter your password"
+            placeholder={t("auth.register.confirmPasswordPlaceholder")}
             value={confirmPassword}
             onChangeText={setConfirmPassword}
             show={showPassword}
@@ -194,7 +206,9 @@ export default function RegisterScreen() {
             returnKeyType="done"
             onSubmitEditing={handleRegister}
             editable={!loading}
-            accessibilityLabel="Confirm password"
+            accessibilityLabel={t("auth.register.confirmPassword")}
+            hidePasswordLabel={t("auth.register.hidePasswords")}
+            showPasswordLabel={t("auth.register.showPasswords")}
           />
         </View>
 
@@ -213,13 +227,15 @@ export default function RegisterScreen() {
           {loading ? (
             <ActivityIndicator color={colors.textOnPrimary} />
           ) : (
-            <Text style={styles.buttonText}>Create account</Text>
+            <Text style={styles.buttonText}>
+              {t("auth.register.createAccount")}
+            </Text>
           )}
         </Pressable>
 
         <View style={styles.divider}>
           <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>OR</Text>
+          <Text style={styles.dividerText}>{t("auth.register.or")}</Text>
           <View style={styles.dividerLine} />
         </View>
 
@@ -227,9 +243,11 @@ export default function RegisterScreen() {
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text style={styles.footerText}>Already have an account? </Text>
+          <Text style={styles.footerText}>
+            {t("auth.register.alreadyHaveAccount")}{" "}
+          </Text>
           <Link href="/sign-in" style={styles.link}>
-            Sign in
+            {t("auth.register.signIn")}
           </Link>
         </View>
       </View>
@@ -253,6 +271,8 @@ function PasswordField({
   onSubmitEditing,
   editable,
   accessibilityLabel,
+  hidePasswordLabel,
+  showPasswordLabel,
 }: {
   inputRef: RefObject<textInputRef | null>;
   placeholder: string;
@@ -265,6 +285,8 @@ function PasswordField({
   onSubmitEditing: () => void;
   editable: boolean;
   accessibilityLabel: string;
+  hidePasswordLabel: string;
+  showPasswordLabel: string;
 }) {
   return (
     <View style={styles.passwordField}>
@@ -291,7 +313,7 @@ function PasswordField({
         hitSlop={8}
         style={styles.eyeButton}
         accessibilityRole="button"
-        accessibilityLabel={show ? "Hide passwords" : "Show passwords"}
+        accessibilityLabel={show ? hidePasswordLabel : showPasswordLabel}
       >
         {show ? (
           <EyeOff size={20} color={colors.textSecondary} />
