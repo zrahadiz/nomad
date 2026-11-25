@@ -13,15 +13,11 @@ import {
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
 import {
-  ArrowDownLeft,
   ArrowLeftRight,
-  ArrowUpRight,
   Check,
   ChevronRight,
   Info,
   Save,
-  Tag,
-  Wallet,
 } from "lucide-react-native";
 
 import { AmountInput } from "@/components/forms/amount-input";
@@ -231,7 +227,15 @@ export default function EditTransactionScreen() {
     id: account.id,
     label: account.name,
     description: `${formatAccountType(account.type)} · ${account.currency}`,
-    leading: <AccountAvatar account={account} />,
+    leading: (
+      <AppIcon
+        name={account.icon ?? "wallet"}
+        color={account.color ?? colors.primary}
+        size={40}
+        iconSize={20}
+        background
+      />
+    ),
   }));
 
   const categoryOptions: SheetOption[] = availableCategories.map(
@@ -239,7 +243,16 @@ export default function EditTransactionScreen() {
       id: category.id,
       label: category.name,
       description: getCategoryDescription(category),
-      leading: <LetterAvatar text={category.name} />,
+      leading: (
+        <AppIcon
+          name={category.icon ?? "ellipsis"}
+          color={colors.primary}
+          size={40}
+          iconSize={20}
+          background
+          backgroundColor={category.color ?? colors.primaryLight}
+        />
+      ),
     }),
   );
 
@@ -405,7 +418,15 @@ export default function EditTransactionScreen() {
   if (!transaction) {
     return (
       <StateScreen
-        icon={<Wallet size={32} color={colors.textSecondary} />}
+        icon={
+          <AppIcon
+            name="wallet"
+            size={48}
+            iconSize={28}
+            color={colors.textSecondary}
+            background={false}
+          />
+        }
         title={t("transactions.edit.notFound.title", {
           defaultValue: "Transaction not found",
         })}
@@ -436,10 +457,6 @@ export default function EditTransactionScreen() {
       />
     );
   }
-
-  const isIncome = transaction.type === "income";
-  const TypeIcon = isIncome ? ArrowDownLeft : ArrowUpRight;
-  const tone = isIncome ? typeTones.income : typeTones.expense;
 
   const transactionTypeLabel = t(`transactions.types.${transaction.type}`, {
     defaultValue: transaction.type,
@@ -535,11 +552,21 @@ export default function EditTransactionScreen() {
                 }
                 leading={
                   selectedAccount ? (
-                    <AccountAvatar account={selectedAccount} />
+                    <AppIcon
+                      name={selectedAccount.icon ?? "wallet"}
+                      color={selectedAccount.color ?? colors.primary}
+                      size={40}
+                      iconSize={20}
+                      background
+                    />
                   ) : (
-                    <IconTile>
-                      <Wallet size={20} color={colors.primary} />
-                    </IconTile>
+                    <AppIcon
+                      name="wallet"
+                      size={40}
+                      iconSize={20}
+                      color={colors.primary}
+                      background
+                    />
                   )
                 }
                 onPress={() => setAccountModalVisible(true)}
@@ -565,11 +592,24 @@ export default function EditTransactionScreen() {
                 }
                 leading={
                   selectedCategory ? (
-                    <LetterAvatar text={selectedCategory.name} />
+                    <AppIcon
+                      name={selectedCategory.icon ?? "ellipsis"}
+                      color={colors.primary}
+                      size={40}
+                      iconSize={20}
+                      background
+                      backgroundColor={
+                        selectedCategory.color ?? colors.primaryLight
+                      }
+                    />
                   ) : (
-                    <IconTile>
-                      <Tag size={20} color={colors.primary} />
-                    </IconTile>
+                    <AppIcon
+                      name="ellipsis"
+                      size={40}
+                      iconSize={20}
+                      color={colors.primary}
+                      background
+                    />
                   )
                 }
                 onPress={() => setCategoryModalVisible(true)}
@@ -726,11 +766,6 @@ export default function EditTransactionScreen() {
 /* Presentational pieces                                                       */
 /* -------------------------------------------------------------------------- */
 
-const typeTones = {
-  expense: { color: colors.danger, background: colors.dangerLight },
-  income: { color: colors.success, background: colors.successLight },
-};
-
 type SheetOption = {
   id: string;
   label: string;
@@ -801,34 +836,6 @@ function FormCard({
 
       {children}
     </View>
-  );
-}
-
-function IconTile({ children }: { children: ReactNode }) {
-  return <View style={styles.iconTile}>{children}</View>;
-}
-
-function LetterAvatar({ text }: { text: string }) {
-  return (
-    <IconTile>
-      <Text style={styles.letter}>{text.charAt(0).toUpperCase()}</Text>
-    </IconTile>
-  );
-}
-
-function AccountAvatar({
-  account,
-}: {
-  account: { icon?: string | null; color?: string | null };
-}) {
-  return (
-    <AppIcon
-      name={account.icon ?? "wallet"}
-      color={account.color ?? colors.primary}
-      size={40}
-      iconSize={20}
-      background
-    />
   );
 }
 
@@ -1072,21 +1079,6 @@ const styles = StyleSheet.create({
 
   selectRowPressed: {
     backgroundColor: colors.background,
-  },
-
-  iconTile: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.md,
-    backgroundColor: colors.primaryLight,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  letter: {
-    color: colors.primary,
-    fontSize: typography.size.md,
-    fontWeight: typography.weight.bold,
   },
 
   eyebrow: {
