@@ -3,13 +3,11 @@ import {
   ArrowDownLeft,
   ArrowLeftRight,
   ArrowUpRight,
-  Check,
-  ChevronRight,
   Info,
   Plus,
   type LucideIcon,
 } from "lucide-react-native";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
@@ -28,11 +26,22 @@ import { isValidCurrencyAmountInput } from "@/lib/finance/currency-input";
 
 import { AmountInput } from "@/components/forms/amount-input";
 import { SafeScreen } from "@/components/layout/safe-screen";
+import {
+  TransactionFormCard,
+  TransactionInlineNotice,
+  TransactionOptionSheet,
+  TransactionSectionHeader,
+  TransactionSegmentedControl,
+  TransactionSelectRow,
+  TransactionWorkspaceAvatar,
+} from "@/components/transactions";
 import { AppIcon } from "@/components/ui/app-icon";
-import { BottomSheetModal } from "@/components/ui/bottom-modal";
 import { DatePickerField } from "@/components/ui/date-picker-field";
+import type {
+  TransactionSegmentOption,
+  TransactionSheetOption,
+} from "@/types/transaction";
 
-import { getCountryByCode } from "@/constants/countries";
 import { colors, radius, spacing, typography } from "@/constants/theme";
 import { useCategoryStore } from "@/stores/use-category-store";
 import { useFinanceStore } from "@/stores/use-finance-store";
@@ -45,34 +54,17 @@ const transactionTypeOptions: {
   labelKey: string;
   value: NewTransactionType;
 }[] = [
-  {
-    labelKey: "transactions.add.type.expense",
-    value: "expense",
-  },
-  {
-    labelKey: "transactions.add.type.income",
-    value: "income",
-  },
-  {
-    labelKey: "transactions.add.type.transfer",
-    value: "transfer",
-  },
+  { labelKey: "transactions.add.type.expense", value: "expense" },
+  { labelKey: "transactions.add.type.income", value: "income" },
+  { labelKey: "transactions.add.type.transfer", value: "transfer" },
 ];
 
 function parseAmountToMinor(value: string, currency: string) {
-  if (!isValidCurrencyAmountInput(value, currency)) {
-    return null;
-  }
-
+  if (!isValidCurrencyAmountInput(value, currency)) return null;
   const amount = Number(value || 0);
-
-  if (!Number.isFinite(amount) || amount <= 0) {
-    return null;
-  }
-
+  if (!Number.isFinite(amount) || amount <= 0) return null;
   try {
     const amountMinor = toMinorUnits(amount, currency);
-
     return amountMinor > 0 ? amountMinor : null;
   } catch {
     return null;
@@ -84,15 +76,12 @@ function getTodayDate() {
   const year = today.getFullYear();
   const month = String(today.getMonth() + 1).padStart(2, "0");
   const day = String(today.getDate()).padStart(2, "0");
-
   return `${year}-${month}-${day}`;
 }
 
 function isValidDate(value: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-
   const date = new Date(`${value}T00:00:00`);
-
   return (
     !Number.isNaN(date.getTime()) &&
     date.getFullYear() === Number(value.slice(0, 4)) &&
@@ -101,7 +90,6 @@ function isValidDate(value: string) {
   );
 }
 
-// Calculate the amount received from the amount sent and exchange rate.
 // Exchange rate means destination major currency per source major currency.
 function calculateReceivedMinor(
   amountSentMinor: number,
@@ -111,21 +99,16 @@ function calculateReceivedMinor(
 ) {
   const fromDecimals = getCurrencyDecimalDigits(fromCurrency);
   const toDecimals = getCurrencyDecimalDigits(toCurrency);
-
   const amountSentMajor = amountSentMinor / 10 ** fromDecimals;
-
   const amountReceivedMinor = Math.round(
     amountSentMajor * exchangeRate * 10 ** toDecimals,
   );
-
   if (!Number.isSafeInteger(amountReceivedMinor) || amountReceivedMinor <= 0) {
     return null;
   }
-
   return amountReceivedMinor;
 }
 
-// Calculate the effective rate using the actual sent and received amounts.
 function calculateEffectiveRate(
   amountSentMinor: number,
   amountReceivedMinor: number,
@@ -134,14 +117,10 @@ function calculateEffectiveRate(
 ) {
   const fromDecimals = getCurrencyDecimalDigits(fromCurrency);
   const toDecimals = getCurrencyDecimalDigits(toCurrency);
-
   const amountSentMajor = amountSentMinor / 10 ** fromDecimals;
   const amountReceivedMajor = amountReceivedMinor / 10 ** toDecimals;
-
   if (amountSentMajor <= 0) return null;
-
   const rate = amountReceivedMajor / amountSentMajor;
-
   return Number.isFinite(rate) && rate > 0 ? rate : null;
 }
 
@@ -149,20 +128,17 @@ export default function NewTransactionScreen() {
   const router = useRouter();
   const { t } = useTranslation();
 
-  // Workspace store
   const workspaces = useWorkspaceStore((state) => state.workspaces);
   const activeWorkspaceId = useWorkspaceStore(
     (state) => state.activeWorkspaceId,
   );
 
-  // Finance store
   const accounts = useFinanceStore((state) => state.accounts);
   const accountsLoading = useFinanceStore((state) => state.accountsLoading);
   const fetchAccounts = useFinanceStore((state) => state.fetchAccounts);
   const addTransaction = useFinanceStore((state) => state.addTransaction);
   const addTransfer = useFinanceStore((state) => state.addTransfer);
 
-  // Category store
   const categories = useCategoryStore((state) => state.categories);
   const categoriesLoading = useCategoryStore(
     (state) => state.categoriesLoading,
@@ -172,76 +148,58 @@ export default function NewTransactionScreen() {
   const activeWorkspace = workspaces.find(
     (item) => item.id === activeWorkspaceId,
   );
-
   const currency = activeWorkspace?.currency_code ?? "MYR";
 
-  // Transaction fields
   const [type, setType] = useState<NewTransactionType>("expense");
-
   const [accountId, setAccountId] = useState("");
   const [destinationAccountId, setDestinationAccountId] = useState("");
   const [categoryId, setCategoryId] = useState("");
-
   const [amount, setAmount] = useState("");
 
-  // Transfer workspace fields
   const [fromWorkspaceId, setFromWorkspaceId] = useState(
     activeWorkspaceId ?? "",
   );
   const [toWorkspaceId, setToWorkspaceId] = useState(activeWorkspaceId ?? "");
 
-  // Transfer amount and exchange rate fields
   const [amountSent, setAmountSent] = useState("");
   const [amountReceived, setAmountReceived] = useState("");
   const [exchangeRate, setExchangeRate] = useState("");
   const [rateMode, setRateMode] = useState<TransferRateMode>("manual");
 
-  // Common fields
   const [date, setDate] = useState(getTodayDate);
   const [description, setDescription] = useState("");
   const [saving, setSaving] = useState(false);
 
-  // Selection modal states
   const [accountModalVisible, setAccountModalVisible] = useState(false);
   const [destinationModalVisible, setDestinationModalVisible] = useState(false);
   const [categoryModalVisible, setCategoryModalVisible] = useState(false);
-
   const [fromWorkspaceModalVisible, setFromWorkspaceModalVisible] =
     useState(false);
   const [toWorkspaceModalVisible, setToWorkspaceModalVisible] = useState(false);
 
-  // Load accounts from all available workspaces.
-  // The finance store preserves accounts from different workspaces.
   useEffect(() => {
     workspaces.forEach((workspace) => {
       void fetchAccounts(workspace.id);
     });
   }, [workspaces, fetchAccounts]);
 
-  // Load categories.
   useEffect(() => {
     if (categories.length === 0 && !categoriesLoading) {
       void fetchCategories();
     }
   }, [categories.length, categoriesLoading, fetchCategories]);
 
-  // Initialize transfer workspaces from the active workspace.
   useEffect(() => {
     if (!activeWorkspaceId) return;
-
     setFromWorkspaceId((current) => current || activeWorkspaceId);
     setToWorkspaceId((current) => current || activeWorkspaceId);
   }, [activeWorkspaceId]);
 
-  // Selected workspaces.
   const fromWorkspace = workspaces.find((item) => item.id === fromWorkspaceId);
-
   const toWorkspace = workspaces.find((item) => item.id === toWorkspaceId);
 
-  // Available categories.
   const availableCategories = useMemo(() => {
     if (type === "transfer") return [];
-
     return categories.filter(
       (category) => category.type === type && !category.isArchived,
     );
@@ -251,9 +209,6 @@ export default function NewTransactionScreen() {
     (category) => category.id === categoryId,
   );
 
-  // Source accounts.
-  // Income and expenses use the active workspace.
-  // Transfers use the selected source workspace.
   const sourceAccounts = useMemo(
     () =>
       accounts.filter(
@@ -264,7 +219,6 @@ export default function NewTransactionScreen() {
     [accounts, type, fromWorkspaceId, activeWorkspaceId],
   );
 
-  // Destination accounts for transfers.
   const destinationAccounts = useMemo(
     () =>
       accounts.filter(
@@ -277,43 +231,21 @@ export default function NewTransactionScreen() {
   const selectedAccount = sourceAccounts.find(
     (account) => account.id === accountId,
   );
-
   const selectedDestinationAccount = destinationAccounts.find(
     (account) => account.id === destinationAccountId,
   );
 
-  // Currency for each side of a transfer.
   const fromCurrency =
     selectedAccount?.currency ?? fromWorkspace?.currency_code ?? "MYR";
-
   const toCurrency =
     selectedDestinationAccount?.currency ?? toWorkspace?.currency_code ?? "MYR";
 
-  // Translate account types using the existing Home translations.
   const formatAccountType = (accountType: string) => {
-    const accountTypeKey = accountType === "e-wallet" ? "eWallet" : accountType;
-
-    return t(`home.accountTypes.${accountTypeKey}`, {
-      defaultValue: accountType,
-    });
+    const key = accountType === "e-wallet" ? "eWallet" : accountType;
+    return t(`home.accountTypes.${key}`, { defaultValue: accountType });
   };
 
-  // Options for the selection sheets.
-  const accountOptions: SheetOption[] = sourceAccounts.map((account) => ({
-    id: account.id,
-    label: account.name,
-    description: `${formatAccountType(account.type)} · ${account.currency}`,
-    leading: (
-      <AppIcon
-        name={account.icon ?? "wallet"}
-        color={account.color ?? colors.primary}
-        size={40}
-        iconSize={20}
-      />
-    ),
-  }));
-
-  const destinationOptions: SheetOption[] = destinationAccounts.map(
+  const accountOptions: TransactionSheetOption[] = sourceAccounts.map(
     (account) => ({
       id: account.id,
       label: account.name,
@@ -329,7 +261,23 @@ export default function NewTransactionScreen() {
     }),
   );
 
-  const categoryOptions: SheetOption[] = availableCategories.map(
+  const destinationOptions: TransactionSheetOption[] = destinationAccounts.map(
+    (account) => ({
+      id: account.id,
+      label: account.name,
+      description: `${formatAccountType(account.type)} · ${account.currency}`,
+      leading: (
+        <AppIcon
+          name={account.icon ?? "wallet"}
+          color={account.color ?? colors.primary}
+          size={40}
+          iconSize={20}
+        />
+      ),
+    }),
+  );
+
+  const categoryOptions: TransactionSheetOption[] = availableCategories.map(
     ({ id, name, icon, isDefault }) => ({
       id,
       label: name,
@@ -350,26 +298,23 @@ export default function NewTransactionScreen() {
     }),
   );
 
-  const workspaceOptions: SheetOption[] = workspaces.map((workspace) => ({
-    id: workspace.id,
-    label: workspace.name,
-    description: `${workspace.country_code} · ${workspace.currency_code}`,
-    leading: <WorkspaceAvatar countryCode={workspace.country_code} />,
-  }));
+  const workspaceOptions: TransactionSheetOption[] = workspaces.map(
+    (workspace) => ({
+      id: workspace.id,
+      label: workspace.name,
+      description: `${workspace.country_code} · ${workspace.currency_code}`,
+      leading: (
+        <TransactionWorkspaceAvatar countryCode={workspace.country_code} />
+      ),
+    }),
+  );
 
-  // Normal transaction amount.
   const parsedAmount = parseAmountToMinor(amount, currency);
-
-  // Transfer amount sent.
   const parsedAmountSent = parseAmountToMinor(amountSent, fromCurrency);
-
-  // Manual exchange rate.
   const parsedExchangeRate = Number(exchangeRate);
-
   const isValidExchangeRate =
     Number.isFinite(parsedExchangeRate) && parsedExchangeRate > 0;
 
-  // Calculate the received amount when using a manual exchange rate.
   const calculatedReceivedMinor = useMemo(() => {
     if (
       !selectedAccount ||
@@ -379,7 +324,6 @@ export default function NewTransactionScreen() {
     ) {
       return null;
     }
-
     return calculateReceivedMinor(
       parsedAmountSent,
       fromCurrency,
@@ -396,17 +340,14 @@ export default function NewTransactionScreen() {
     toCurrency,
   ]);
 
-  // Actual received amount is entered by the user.
   const parsedActualReceived =
     selectedDestinationAccount && rateMode === "actual"
       ? parseAmountToMinor(amountReceived, toCurrency)
       : null;
 
-  // Final amount received, depending on the selected mode.
   const finalAmountReceived =
     rateMode === "manual" ? calculatedReceivedMinor : parsedActualReceived;
 
-  // Effective exchange rate based on the final amounts.
   const effectiveExchangeRate =
     parsedAmountSent !== null && finalAmountReceived !== null
       ? calculateEffectiveRate(
@@ -417,38 +358,27 @@ export default function NewTransactionScreen() {
         )
       : null;
 
-  // Translated segmented control options.
-  const typeSegments: SegmentOption<NewTransactionType>[] =
+  const typeSegments: TransactionSegmentOption<NewTransactionType>[] =
     transactionTypeOptions.map((option) => ({
       label: t(option.labelKey),
       value: option.value,
       ...typeMeta[option.value],
     }));
 
-  const rateModeSegments: SegmentOption<TransferRateMode>[] = [
-    {
-      label: t("transactions.add.rateMode.manual"),
-      value: "manual",
-    },
-    {
-      label: t("transactions.add.rateMode.actual"),
-      value: "actual",
-    },
+  const rateModeSegments: TransactionSegmentOption<TransferRateMode>[] = [
+    { label: t("transactions.add.rateMode.manual"), value: "manual" },
+    { label: t("transactions.add.rateMode.actual"), value: "actual" },
   ];
 
   const handleTypeChange = (nextType: NewTransactionType) => {
     setType(nextType);
-
-    // Reset fields that are specific to the previous transaction type.
     setCategoryId("");
     setAccountId("");
     setDestinationAccountId("");
-
     setAmount("");
     setAmountSent("");
     setAmountReceived("");
     setExchangeRate("");
-
     if (nextType === "transfer" && activeWorkspaceId) {
       setFromWorkspaceId(activeWorkspaceId);
       setToWorkspaceId(activeWorkspaceId);
@@ -457,7 +387,6 @@ export default function NewTransactionScreen() {
 
   const handleRateModeChange = (nextMode: TransferRateMode) => {
     setRateMode(nextMode);
-
     setAmountReceived("");
     setExchangeRate("");
   };
@@ -471,7 +400,6 @@ export default function NewTransactionScreen() {
         );
         return;
       }
-
       if (!selectedAccount) {
         Alert.alert(
           t("transactions.add.alerts.accountRequiredTitle"),
@@ -479,7 +407,6 @@ export default function NewTransactionScreen() {
         );
         return;
       }
-
       if (!categoryId) {
         Alert.alert(
           t("transactions.add.alerts.categoryRequiredTitle"),
@@ -487,7 +414,6 @@ export default function NewTransactionScreen() {
         );
         return;
       }
-
       if (parsedAmount === null) {
         Alert.alert(
           t("transactions.add.alerts.invalidAmountTitle"),
@@ -495,7 +421,6 @@ export default function NewTransactionScreen() {
         );
         return;
       }
-
       if (!isValidDate(date)) {
         Alert.alert(
           t("transactions.add.alerts.invalidDateTitle"),
@@ -506,7 +431,6 @@ export default function NewTransactionScreen() {
 
       try {
         setSaving(true);
-
         await addTransaction({
           workspaceId: activeWorkspaceId,
           accountId,
@@ -516,7 +440,6 @@ export default function NewTransactionScreen() {
           description: description.trim() || null,
           date,
         });
-
         Alert.alert(
           t("transactions.add.alerts.transactionAddedTitle"),
           t("transactions.add.alerts.transactionAddedMessage"),
@@ -529,7 +452,6 @@ export default function NewTransactionScreen() {
         );
       } catch (error) {
         console.error("Failed to create transaction:", error);
-
         Alert.alert(
           t("transactions.add.alerts.transactionFailedTitle"),
           error instanceof Error
@@ -539,11 +461,9 @@ export default function NewTransactionScreen() {
       } finally {
         setSaving(false);
       }
-
       return;
     }
 
-    // Transfer validation.
     if (!fromWorkspace || !toWorkspace) {
       Alert.alert(
         t("transactions.add.alerts.workspaceRequiredTitle"),
@@ -551,7 +471,6 @@ export default function NewTransactionScreen() {
       );
       return;
     }
-
     if (!selectedAccount) {
       Alert.alert(
         t("transactions.add.alerts.sourceAccountRequiredTitle"),
@@ -559,7 +478,6 @@ export default function NewTransactionScreen() {
       );
       return;
     }
-
     if (!selectedDestinationAccount) {
       Alert.alert(
         t("transactions.add.alerts.destinationAccountRequiredTitle"),
@@ -567,7 +485,6 @@ export default function NewTransactionScreen() {
       );
       return;
     }
-
     if (selectedAccount.id === selectedDestinationAccount.id) {
       Alert.alert(
         t("transactions.add.alerts.invalidTransferTitle"),
@@ -575,7 +492,6 @@ export default function NewTransactionScreen() {
       );
       return;
     }
-
     if (
       selectedAccount.workspaceId !== fromWorkspaceId ||
       selectedDestinationAccount.workspaceId !== toWorkspaceId
@@ -586,7 +502,6 @@ export default function NewTransactionScreen() {
       );
       return;
     }
-
     if (parsedAmountSent === null) {
       Alert.alert(
         t("transactions.add.alerts.invalidAmountTitle"),
@@ -596,7 +511,6 @@ export default function NewTransactionScreen() {
       );
       return;
     }
-
     if (finalAmountReceived === null || finalAmountReceived <= 0) {
       Alert.alert(
         t("transactions.add.alerts.invalidReceivedAmountTitle"),
@@ -608,7 +522,6 @@ export default function NewTransactionScreen() {
       );
       return;
     }
-
     if (effectiveExchangeRate === null) {
       Alert.alert(
         t("transactions.add.alerts.invalidEffectiveRateTitle"),
@@ -616,7 +529,6 @@ export default function NewTransactionScreen() {
       );
       return;
     }
-
     if (!isValidDate(date)) {
       Alert.alert(
         t("transactions.add.alerts.invalidDateTitle"),
@@ -627,26 +539,18 @@ export default function NewTransactionScreen() {
 
     try {
       setSaving(true);
-
       await addTransfer({
         fromWorkspaceId,
         fromAccountId: selectedAccount.id,
-
         toWorkspaceId,
         toAccountId: selectedDestinationAccount.id,
-
         amountSentMinor: parsedAmountSent,
         amountReceivedMinor: finalAmountReceived,
-
-        // Persist the effective rate based on the actual amounts.
         exchangeRate: effectiveExchangeRate,
-
         exchangeRateSource: rateMode,
-
         description: description.trim() || null,
         transferDate: date,
       });
-
       Alert.alert(
         t("transactions.add.alerts.transferAddedTitle"),
         t("transactions.add.alerts.transferAddedMessage"),
@@ -659,7 +563,6 @@ export default function NewTransactionScreen() {
       );
     } catch (error) {
       console.error("Failed to create transfer:", error);
-
       Alert.alert(
         t("transactions.add.alerts.transferFailedTitle"),
         error instanceof Error
@@ -675,7 +578,6 @@ export default function NewTransactionScreen() {
     type === "transfer"
       ? Boolean(fromWorkspace && toWorkspace)
       : Boolean(activeWorkspace);
-
   const isTransfer = type === "transfer";
   const saveDisabled = saving || !canSave;
 
@@ -690,10 +592,8 @@ export default function NewTransactionScreen() {
         : t("transactions.add.saveExpense");
 
   const showNoSourceAccounts = sourceAccounts.length === 0 && !accountsLoading;
-
   const showNoDestinationAccounts =
     destinationAccounts.length === 0 && !accountsLoading;
-
   const showNoCategories =
     availableCategories.length === 0 && !categoriesLoading;
 
@@ -706,8 +606,7 @@ export default function NewTransactionScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Transaction type */}
-          <SegmentedControl
+          <TransactionSegmentedControl
             options={typeSegments}
             value={type}
             onChange={handleTypeChange}
@@ -715,16 +614,14 @@ export default function NewTransactionScreen() {
 
           {isTransfer ? (
             <>
-              {/* From */}
               <View style={styles.group}>
-                <SectionHeader
+                <TransactionSectionHeader
                   title={t("transactions.add.from")}
                   icon={<ArrowUpRight size={14} color={colors.danger} />}
                   iconBackground={colors.dangerLight}
                 />
-
                 <View style={styles.card}>
-                  <SelectRow
+                  <TransactionSelectRow
                     context={t("transactions.add.from")}
                     label={t("transactions.add.workspace")}
                     value={fromWorkspace?.name}
@@ -734,16 +631,14 @@ export default function NewTransactionScreen() {
                       t("transactions.add.chooseWorkspace")
                     }
                     leading={
-                      <WorkspaceAvatar
+                      <TransactionWorkspaceAvatar
                         countryCode={fromWorkspace?.country_code}
                       />
                     }
                     onPress={() => setFromWorkspaceModalVisible(true)}
                   />
-
                   <View style={styles.divider} />
-
-                  <SelectRow
+                  <TransactionSelectRow
                     context={t("transactions.add.from")}
                     label={t("transactions.add.account")}
                     value={selectedAccount?.name}
@@ -754,36 +649,31 @@ export default function NewTransactionScreen() {
                         : t("transactions.add.chooseSource")
                     }
                     leading={
-                      selectedAccount ? (
-                        <AppIcon
-                          name={selectedAccount.icon ?? "wallet"}
-                          color={selectedAccount.color ?? colors.primary}
-                          size={40}
-                          iconSize={20}
-                        />
-                      ) : (
-                        <AppIcon name="wallet" size={40} iconSize={20} />
-                      )
+                      <AppIcon
+                        name={selectedAccount?.icon ?? "wallet"}
+                        color={selectedAccount?.color ?? colors.primary}
+                        size={40}
+                        iconSize={20}
+                      />
                     }
                     onPress={() => setAccountModalVisible(true)}
                   />
                 </View>
-
-                {showNoSourceAccounts && (
-                  <InlineNotice text={t("transactions.add.noSourceAccounts")} />
-                )}
+                {showNoSourceAccounts ? (
+                  <TransactionInlineNotice
+                    text={t("transactions.add.noSourceAccounts")}
+                  />
+                ) : null}
               </View>
 
-              {/* To */}
               <View style={styles.group}>
-                <SectionHeader
+                <TransactionSectionHeader
                   title={t("transactions.add.to")}
                   icon={<ArrowDownLeft size={14} color={colors.success} />}
                   iconBackground={colors.successLight}
                 />
-
                 <View style={styles.card}>
-                  <SelectRow
+                  <TransactionSelectRow
                     context={t("transactions.add.to")}
                     label={t("transactions.add.workspace")}
                     value={toWorkspace?.name}
@@ -793,16 +683,14 @@ export default function NewTransactionScreen() {
                       t("transactions.add.chooseWorkspace")
                     }
                     leading={
-                      <WorkspaceAvatar
+                      <TransactionWorkspaceAvatar
                         countryCode={toWorkspace?.country_code}
                       />
                     }
                     onPress={() => setToWorkspaceModalVisible(true)}
                   />
-
                   <View style={styles.divider} />
-
-                  <SelectRow
+                  <TransactionSelectRow
                     context={t("transactions.add.to")}
                     label={t("transactions.add.account")}
                     value={selectedDestinationAccount?.name}
@@ -813,32 +701,26 @@ export default function NewTransactionScreen() {
                         : t("transactions.add.chooseDestination")
                     }
                     leading={
-                      selectedDestinationAccount ? (
-                        <AppIcon
-                          name={selectedDestinationAccount.icon ?? "wallet"}
-                          color={
-                            selectedDestinationAccount.color ?? colors.primary
-                          }
-                          size={40}
-                          iconSize={20}
-                        />
-                      ) : (
-                        <AppIcon name="wallet" size={40} iconSize={20} />
-                      )
+                      <AppIcon
+                        name={selectedDestinationAccount?.icon ?? "wallet"}
+                        color={
+                          selectedDestinationAccount?.color ?? colors.primary
+                        }
+                        size={40}
+                        iconSize={20}
+                      />
                     }
                     onPress={() => setDestinationModalVisible(true)}
                   />
                 </View>
-
-                {showNoDestinationAccounts && (
-                  <InlineNotice
+                {showNoDestinationAccounts ? (
+                  <TransactionInlineNotice
                     text={t("transactions.add.noDestinationAccounts")}
                   />
-                )}
+                ) : null}
               </View>
 
-              {/* Amount sent */}
-              <FormCard
+              <TransactionFormCard
                 title={t("transactions.add.amountSent")}
                 currency={fromCurrency}
               >
@@ -850,7 +732,6 @@ export default function NewTransactionScreen() {
                   placeholderTextColor={colors.textSecondary}
                   style={styles.amountInput}
                 />
-
                 <Text style={styles.helperText}>
                   {parsedAmountSent !== null
                     ? t("transactions.add.amountPreview", {
@@ -860,16 +741,14 @@ export default function NewTransactionScreen() {
                         currency: fromCurrency,
                       })}
                 </Text>
-              </FormCard>
+              </TransactionFormCard>
 
-              {/* Exchange rate */}
-              <FormCard title={t("transactions.add.exchangeRate")}>
-                <SegmentedControl
+              <TransactionFormCard title={t("transactions.add.exchangeRate")}>
+                <TransactionSegmentedControl
                   options={rateModeSegments}
                   value={rateMode}
                   onChange={handleRateModeChange}
                 />
-
                 {rateMode === "manual" ? (
                   <>
                     <Text style={styles.helperText}>
@@ -878,7 +757,6 @@ export default function NewTransactionScreen() {
                         fromCurrency,
                       })}
                     </Text>
-
                     <TextInput
                       value={exchangeRate}
                       onChangeText={(value) => {
@@ -893,25 +771,23 @@ export default function NewTransactionScreen() {
                       style={[styles.input, styles.inputOnCard]}
                       keyboardType="decimal-pad"
                     />
-
-                    {isValidExchangeRate && (
+                    {isValidExchangeRate ? (
                       <Text style={styles.helperText}>
                         {`1 ${fromCurrency} = ${parsedExchangeRate.toLocaleString(
                           "en",
                           { maximumFractionDigits: 10 },
                         )} ${toCurrency}`}
                       </Text>
-                    )}
+                    ) : null}
                   </>
                 ) : (
                   <Text style={styles.helperText}>
                     {t("transactions.add.actualReceivedDescription")}
                   </Text>
                 )}
-              </FormCard>
+              </TransactionFormCard>
 
-              {/* Amount received */}
-              <FormCard
+              <TransactionFormCard
                 title={t("transactions.add.amountReceived")}
                 currency={toCurrency}
               >
@@ -926,7 +802,6 @@ export default function NewTransactionScreen() {
                         {t("transactions.add.enterAmountAndRate")}
                       </Text>
                     )}
-
                     <Text style={styles.helperText}>
                       {t("transactions.add.calculatedFromRate")}
                     </Text>
@@ -941,7 +816,6 @@ export default function NewTransactionScreen() {
                       placeholderTextColor={colors.textSecondary}
                       style={styles.amountInput}
                     />
-
                     <Text style={styles.helperText}>
                       {parsedActualReceived !== null
                         ? t("transactions.add.amountPreview", {
@@ -956,32 +830,28 @@ export default function NewTransactionScreen() {
                     </Text>
                   </>
                 )}
-              </FormCard>
+              </TransactionFormCard>
 
-              {/* Effective rate */}
-              {effectiveExchangeRate !== null && (
+              {effectiveExchangeRate !== null ? (
                 <View style={styles.rateBanner}>
                   <Text style={styles.rateBannerTitle}>
                     {t("transactions.add.effectiveRate")}
                   </Text>
-
                   <Text style={styles.rateBannerValue}>
                     {`1 ${fromCurrency} = ${effectiveExchangeRate.toLocaleString(
                       "en",
                       { maximumFractionDigits: 10 },
                     )} ${toCurrency}`}
                   </Text>
-
                   <Text style={styles.rateBannerHelper}>
                     {t("transactions.add.effectiveRateDescription")}
                   </Text>
                 </View>
-              )}
+              ) : null}
             </>
           ) : (
             <>
-              {/* Amount */}
-              <FormCard
+              <TransactionFormCard
                 title={t("transactions.add.amount")}
                 currency={currency}
               >
@@ -993,7 +863,6 @@ export default function NewTransactionScreen() {
                   placeholderTextColor={colors.textSecondary}
                   style={styles.amountInput}
                 />
-
                 <Text style={styles.helperText}>
                   {parsedAmount !== null
                     ? t("transactions.add.amountPreview", {
@@ -1001,23 +870,21 @@ export default function NewTransactionScreen() {
                       })
                     : t("transactions.add.enterAmount", { currency })}
                 </Text>
-
                 <View style={styles.divider} />
-
                 <View style={styles.noteRow}>
                   <Info size={14} color={colors.textSecondary} />
                   <Text style={styles.helperText}>
                     {t("transactions.add.workspaceCurrencyNote")}
                   </Text>
                 </View>
-              </FormCard>
+              </TransactionFormCard>
 
-              {/* Details */}
               <View style={styles.group}>
-                <SectionHeader title={t("transactions.add.details")} />
-
+                <TransactionSectionHeader
+                  title={t("transactions.add.details")}
+                />
                 <View style={styles.card}>
-                  <SelectRow
+                  <TransactionSelectRow
                     label={t("transactions.add.account")}
                     value={selectedAccount?.name}
                     placeholder={t("transactions.add.selectAccount")}
@@ -1027,23 +894,17 @@ export default function NewTransactionScreen() {
                         : t("transactions.add.chooseSource")
                     }
                     leading={
-                      selectedAccount ? (
-                        <AppIcon
-                          name={selectedAccount.icon ?? "wallet"}
-                          color={selectedAccount.color ?? colors.primary}
-                          size={40}
-                          iconSize={20}
-                        />
-                      ) : (
-                        <AppIcon name="wallet" size={40} iconSize={20} />
-                      )
+                      <AppIcon
+                        name={selectedAccount?.icon ?? "wallet"}
+                        color={selectedAccount?.color ?? colors.primary}
+                        size={40}
+                        iconSize={20}
+                      />
                     }
                     onPress={() => setAccountModalVisible(true)}
                   />
-
                   <View style={styles.divider} />
-
-                  <SelectRow
+                  <TransactionSelectRow
                     label={t("transactions.add.category")}
                     value={selectedCategory?.name}
                     placeholder={t("transactions.add.selectCategory")}
@@ -1059,49 +920,41 @@ export default function NewTransactionScreen() {
                           })
                     }
                     leading={
-                      selectedCategory ? (
-                        <AppIcon
-                          name={selectedCategory.icon ?? "ellipsis"}
-                          color={colors.primary}
-                          size={40}
-                          iconSize={20}
-                          shape="circle"
-                        />
-                      ) : (
-                        <AppIcon
-                          name="ellipsis"
-                          size={40}
-                          iconSize={20}
-                          shape="circle"
-                        />
-                      )
+                      <AppIcon
+                        name={selectedCategory?.icon ?? "ellipsis"}
+                        color={colors.primary}
+                        size={40}
+                        iconSize={20}
+                        shape="circle"
+                      />
                     }
                     onPress={() => setCategoryModalVisible(true)}
                   />
                 </View>
-
-                {showNoSourceAccounts && (
-                  <InlineNotice text={t("transactions.add.noSourceAccounts")} />
-                )}
-
-                {showNoCategories && (
-                  <InlineNotice text={t("transactions.add.noCategories")} />
-                )}
+                {showNoSourceAccounts ? (
+                  <TransactionInlineNotice
+                    text={t("transactions.add.noSourceAccounts")}
+                  />
+                ) : null}
+                {showNoCategories ? (
+                  <TransactionInlineNotice
+                    text={t("transactions.add.noCategories")}
+                  />
+                ) : null}
               </View>
             </>
           )}
 
-          {/* Date */}
           <DatePickerField
             label={t("transactions.add.date")}
             value={date}
             onChange={setDate}
           />
 
-          {/* Description */}
           <View style={styles.group}>
-            <SectionHeader title={t("transactions.add.description")} />
-
+            <TransactionSectionHeader
+              title={t("transactions.add.description")}
+            />
             <TextInput
               value={description}
               onChangeText={setDescription}
@@ -1116,23 +969,18 @@ export default function NewTransactionScreen() {
               multiline
               textAlignVertical="top"
             />
-
             <Text style={styles.helperText}>
               {t("transactions.add.descriptionHint")}
             </Text>
           </View>
         </KeyboardAwareScrollView>
 
-        {/* Save button */}
         <View style={styles.footer}>
           <Pressable
             onPress={handleSave}
             disabled={saveDisabled}
             accessibilityRole="button"
-            accessibilityState={{
-              disabled: saveDisabled,
-              busy: saving,
-            }}
+            accessibilityState={{ disabled: saveDisabled, busy: saving }}
             style={({ pressed }) => [
               styles.saveButton,
               pressed && styles.saveButtonPressed,
@@ -1144,15 +992,12 @@ export default function NewTransactionScreen() {
             ) : (
               <Plus size={20} color={colors.textOnPrimary} />
             )}
-
             <Text style={styles.saveButtonText}>{saveLabel}</Text>
           </Pressable>
         </View>
       </View>
 
-      {/* Selection sheets */}
-
-      <OptionSheet
+      <TransactionOptionSheet
         visible={fromWorkspaceModalVisible}
         onClose={() => setFromWorkspaceModalVisible(false)}
         title={t("transactions.add.sheets.fromWorkspaceTitle")}
@@ -1166,8 +1011,7 @@ export default function NewTransactionScreen() {
           setFromWorkspaceModalVisible(false);
         }}
       />
-
-      <OptionSheet
+      <TransactionOptionSheet
         visible={accountModalVisible}
         onClose={() => setAccountModalVisible(false)}
         title={
@@ -1188,8 +1032,7 @@ export default function NewTransactionScreen() {
           setAccountModalVisible(false);
         }}
       />
-
-      <OptionSheet
+      <TransactionOptionSheet
         visible={toWorkspaceModalVisible}
         onClose={() => setToWorkspaceModalVisible(false)}
         title={t("transactions.add.sheets.toWorkspaceTitle")}
@@ -1203,8 +1046,7 @@ export default function NewTransactionScreen() {
           setToWorkspaceModalVisible(false);
         }}
       />
-
-      <OptionSheet
+      <TransactionOptionSheet
         visible={destinationModalVisible}
         onClose={() => setDestinationModalVisible(false)}
         title={t("transactions.add.sheets.toAccountTitle")}
@@ -1221,8 +1063,7 @@ export default function NewTransactionScreen() {
           setDestinationModalVisible(false);
         }}
       />
-
-      <OptionSheet
+      <TransactionOptionSheet
         visible={categoryModalVisible}
         onClose={() => setCategoryModalVisible(false)}
         title={t("transactions.add.sheets.categoryTitle")}
@@ -1238,10 +1079,6 @@ export default function NewTransactionScreen() {
     </SafeScreen>
   );
 }
-
-/* -------------------------------------------------------------------------- */
-/* Segment configuration                                                     */
-/* -------------------------------------------------------------------------- */
 
 const typeMeta: Record<
   NewTransactionType,
@@ -1264,347 +1101,15 @@ const typeMeta: Record<
   },
 };
 
-/* -------------------------------------------------------------------------- */
-/* Presentational pieces                                                      */
-/* -------------------------------------------------------------------------- */
-
-type SheetOption = {
-  id: string;
-  label: string;
-  description?: string;
-  leading?: ReactNode;
-};
-
-type SegmentOption<T extends string> = {
-  label: string;
-  value: T;
-  icon?: LucideIcon;
-  color?: string;
-  background?: string;
-};
-
-function SegmentedControl<T extends string>({
-  options,
-  value,
-  onChange,
-}: {
-  options: SegmentOption<T>[];
-  value: T;
-  onChange: (value: T) => void;
-}) {
-  return (
-    <View style={styles.segmented}>
-      {options.map((option) => {
-        const selected = option.value === value;
-        const color = selected
-          ? (option.color ?? colors.primary)
-          : colors.textSecondary;
-        const Icon = option.icon;
-
-        return (
-          <Pressable
-            key={option.value}
-            onPress={() => onChange(option.value)}
-            accessibilityRole="button"
-            accessibilityState={{ selected }}
-            style={[
-              styles.segment,
-              selected && {
-                backgroundColor: option.background ?? colors.primaryLight,
-              },
-            ]}
-          >
-            {Icon ? <Icon size={16} color={color} /> : null}
-
-            <Text
-              style={[
-                styles.segmentText,
-                selected && styles.segmentTextSelected,
-                { color },
-              ]}
-              numberOfLines={1}
-            >
-              {option.label}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </View>
-  );
-}
-
-function SectionHeader({
-  title,
-  icon,
-  iconBackground,
-}: {
-  title: string;
-  icon?: ReactNode;
-  iconBackground?: string;
-}) {
-  return (
-    <View style={styles.sectionHeader}>
-      {icon ? (
-        <View style={[styles.sectionIcon, { backgroundColor: iconBackground }]}>
-          {icon}
-        </View>
-      ) : null}
-
-      <Text style={styles.sectionTitle}>{title}</Text>
-    </View>
-  );
-}
-
-function CurrencyChip({ code }: { code: string }) {
-  return (
-    <View style={styles.currencyChip}>
-      <Text style={styles.currencyChipText}>{code}</Text>
-    </View>
-  );
-}
-
-function FormCard({
-  title,
-  currency,
-  children,
-}: {
-  title: string;
-  currency?: string;
-  children: ReactNode;
-}) {
-  return (
-    <View style={[styles.card, styles.formCard]}>
-      <View style={styles.formCardHeader}>
-        <Text style={styles.formCardTitle}>{title}</Text>
-        {currency ? <CurrencyChip code={currency} /> : null}
-      </View>
-
-      {children}
-    </View>
-  );
-}
-
-function WorkspaceAvatar({ countryCode }: { countryCode?: string | null }) {
-  const flag = countryCode ? getCountryByCode(countryCode)?.flag : undefined;
-
-  return flag ? (
-    <View style={[styles.iconTile, { backgroundColor: colors.background }]}>
-      <Text style={styles.flag}>{flag}</Text>
-    </View>
-  ) : (
-    <AppIcon
-      name="globe"
-      color={colors.primary}
-      size={40}
-      iconSize={20}
-      backgroundColor={colors.background}
-    />
-  );
-}
-
-function SelectRow({
-  context,
-  label,
-  value,
-  placeholder,
-  hint,
-  leading,
-  onPress,
-}: {
-  context?: string;
-  label: string;
-  value?: string;
-  placeholder: string;
-  hint?: string;
-  leading: ReactNode;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={`${context ? `${context} ` : ""}${label}: ${
-        value ?? placeholder
-      }`}
-      style={({ pressed }) => [
-        styles.selectRow,
-        pressed && styles.selectRowPressed,
-      ]}
-    >
-      {leading}
-
-      <View style={styles.flex}>
-        <Text style={styles.eyebrow}>{label}</Text>
-
-        <Text
-          style={[styles.selectValue, !value && styles.selectPlaceholder]}
-          numberOfLines={1}
-        >
-          {value ?? placeholder}
-        </Text>
-
-        {hint ? (
-          <Text style={styles.selectHint} numberOfLines={1}>
-            {hint}
-          </Text>
-        ) : null}
-      </View>
-
-      <ChevronRight size={20} color={colors.textSecondary} />
-    </Pressable>
-  );
-}
-
-function InlineNotice({ text }: { text: string }) {
-  return (
-    <View style={styles.notice}>
-      <Info size={16} color={colors.warning} />
-      <Text style={styles.noticeText}>{text}</Text>
-    </View>
-  );
-}
-
-function OptionSheet({
-  visible,
-  onClose,
-  title,
-  subtitle,
-  options,
-  selectedId,
-  emptyText,
-  onSelect,
-}: {
-  visible: boolean;
-  onClose: () => void;
-  title: string;
-  subtitle: string;
-  options: SheetOption[];
-  selectedId: string;
-  emptyText: string;
-  onSelect: (id: string) => void;
-}) {
-  return (
-    <BottomSheetModal
-      visible={visible}
-      onClose={onClose}
-      title={title}
-      subtitle={subtitle}
-    >
-      {options.length === 0 ? (
-        <Text style={styles.emptyOptions}>{emptyText}</Text>
-      ) : (
-        options.map((option) => {
-          const selected = option.id === selectedId;
-          return (
-            <Pressable
-              key={option.id}
-              onPress={() => onSelect(option.id)}
-              accessibilityRole="button"
-              accessibilityState={{ selected }}
-              style={({ pressed }) => [
-                styles.sheetOption,
-                selected && styles.sheetOptionSelected,
-                pressed && !selected && styles.selectRowPressed,
-              ]}
-            >
-              {option.leading}
-
-              <View style={styles.flex}>
-                <Text style={styles.sheetOptionLabel} numberOfLines={1}>
-                  {option.label}
-                </Text>
-
-                {option.description ? (
-                  <Text style={styles.sheetOptionDescription}>
-                    {option.description}
-                  </Text>
-                ) : null}
-              </View>
-
-              {selected && <Check size={20} color={colors.primary} />}
-            </Pressable>
-          );
-        })
-      )}
-    </BottomSheetModal>
-  );
-}
-
-/* -------------------------------------------------------------------------- */
-/* Styles                                                                     */
-/* -------------------------------------------------------------------------- */
-
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-  },
-
-  flex: {
-    flex: 1,
-  },
-
+  screen: { flex: 1 },
+  flex: { flex: 1 },
   content: {
     padding: spacing.lg,
     paddingBottom: spacing.xl,
     gap: spacing.xl,
   },
-
-  group: {
-    gap: spacing.sm,
-  },
-
-  /* Section header */
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-  },
-
-  sectionIcon: {
-    width: 24,
-    height: 24,
-    borderRadius: radius.full,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  sectionTitle: {
-    color: colors.text,
-    fontSize: typography.size.md,
-    fontWeight: typography.weight.semibold,
-  },
-
-  /* Segmented control */
-  segmented: {
-    flexDirection: "row",
-    gap: spacing.xs,
-    padding: spacing.xs,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-  },
-
-  segment: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: spacing.xs,
-    paddingVertical: spacing.md,
-    borderRadius: radius.md,
-  },
-
-  segmentText: {
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.medium,
-  },
-
-  segmentTextSelected: {
-    fontWeight: typography.weight.semibold,
-  },
-
-  /* Cards */
+  group: { gap: spacing.sm },
   card: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
@@ -1612,43 +1117,10 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     overflow: "hidden",
   },
-
-  formCard: {
-    padding: spacing.lg,
-    gap: spacing.md,
-  },
-
-  formCardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-
-  formCardTitle: {
-    color: colors.textSecondary,
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.medium,
-  },
-
-  currencyChip: {
-    backgroundColor: colors.primaryLight,
-    borderRadius: radius.full,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 3,
-  },
-
-  currencyChipText: {
-    color: colors.primary,
-    fontSize: typography.size.xs,
-    fontWeight: typography.weight.semibold,
-  },
-
   divider: {
     height: 1,
     backgroundColor: colors.border,
   },
-
-  /* Amount */
   amountInput: {
     height: 56,
     paddingHorizontal: 0,
@@ -1658,32 +1130,17 @@ const styles = StyleSheet.create({
     fontSize: typography.size.xxxl,
     fontWeight: typography.weight.bold,
   },
-
-  calculatedAmount: {
-    color: colors.text,
-    fontSize: typography.size.xl,
-    fontWeight: typography.weight.bold,
-  },
-
-  calculatedPlaceholder: {
-    color: colors.textSecondary,
-    fontSize: typography.size.sm,
-  },
-
-  noteRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-  },
-
   helperText: {
     flexShrink: 1,
     color: colors.textSecondary,
     fontSize: typography.size.caption,
     lineHeight: 18,
   },
-
-  /* Inputs */
+  noteRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+  },
   input: {
     minHeight: 50,
     backgroundColor: colors.surface,
@@ -1694,111 +1151,41 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: typography.size.md,
   },
-
-  inputOnCard: {
-    backgroundColor: colors.background,
-  },
-
+  inputOnCard: { backgroundColor: colors.background },
   descriptionInput: {
     minHeight: 96,
     paddingTop: spacing.md,
   },
-
-  /* Selection rows */
-  selectRow: {
-    minHeight: 72,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-    padding: spacing.md,
-  },
-
-  selectRowPressed: {
-    backgroundColor: colors.background,
-  },
-
-  iconTile: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.md,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  flag: {
-    fontSize: 20,
-  },
-
-  eyebrow: {
-    color: colors.textSecondary,
-    fontSize: typography.size.xs,
-    fontWeight: typography.weight.medium,
-    letterSpacing: 0.6,
-    textTransform: "uppercase",
-  },
-
-  selectValue: {
+  calculatedAmount: {
     color: colors.text,
-    fontSize: typography.size.md,
-    fontWeight: typography.weight.semibold,
-    marginTop: 2,
+    fontSize: typography.size.xl,
+    fontWeight: typography.weight.bold,
   },
-
-  selectPlaceholder: {
+  calculatedPlaceholder: {
     color: colors.textSecondary,
-    fontWeight: typography.weight.regular,
+    fontSize: typography.size.sm,
   },
-
-  selectHint: {
-    color: colors.textSecondary,
-    fontSize: typography.size.caption,
-    marginTop: 2,
-  },
-
-  /* Notice */
-  notice: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: spacing.sm,
-    padding: spacing.md,
-    backgroundColor: colors.warningLight,
-    borderRadius: radius.md,
-  },
-
-  noticeText: {
-    flex: 1,
-    color: colors.text,
-    fontSize: typography.size.caption,
-    lineHeight: 18,
-  },
-
-  /* Effective rate banner */
   rateBanner: {
     backgroundColor: colors.primaryLight,
     borderRadius: radius.lg,
     padding: spacing.lg,
     gap: spacing.xs,
   },
-
   rateBannerTitle: {
     color: colors.primary,
     fontSize: typography.size.caption,
     fontWeight: typography.weight.semibold,
   },
-
   rateBannerValue: {
     color: colors.primary,
     fontSize: typography.size.lg,
     fontWeight: typography.weight.bold,
   },
-
   rateBannerHelper: {
     color: colors.primary,
     fontSize: typography.size.caption,
     opacity: 0.8,
   },
-
-  /* Save bar */
   footer: {
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
@@ -1806,7 +1193,6 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
-
   saveButton: {
     minHeight: 54,
     flexDirection: "row",
@@ -1816,53 +1202,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     borderRadius: radius.md,
   },
-
-  saveButtonPressed: {
-    backgroundColor: colors.primaryDark,
-  },
-
-  disabledButton: {
-    opacity: 0.5,
-  },
-
+  saveButtonPressed: { backgroundColor: colors.primaryDark },
+  disabledButton: { opacity: 0.5 },
   saveButtonText: {
     color: colors.textOnPrimary,
     fontSize: typography.size.md,
     fontWeight: typography.weight.semibold,
-  },
-
-  /* Sheets */
-  sheetOption: {
-    minHeight: 64,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.md,
-    marginBottom: spacing.xs,
-  },
-
-  sheetOptionSelected: {
-    backgroundColor: colors.primaryLight,
-  },
-
-  sheetOptionLabel: {
-    color: colors.text,
-    fontSize: typography.size.md,
-    fontWeight: typography.weight.semibold,
-  },
-
-  sheetOptionDescription: {
-    color: colors.textSecondary,
-    fontSize: typography.size.caption,
-    marginTop: 2,
-  },
-
-  emptyOptions: {
-    paddingVertical: spacing.xl,
-    textAlign: "center",
-    color: colors.textSecondary,
-    fontSize: typography.size.sm,
   },
 });

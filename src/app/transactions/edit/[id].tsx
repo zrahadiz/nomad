@@ -1,4 +1,5 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { ArrowLeftRight, Info, Save } from "lucide-react-native";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -12,27 +13,23 @@ import {
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
-import {
-  ArrowLeftRight,
-  Check,
-  ChevronRight,
-  Info,
-  Save,
-} from "lucide-react-native";
-
 import { AmountInput } from "@/components/forms/amount-input";
 import { SafeScreen } from "@/components/layout/safe-screen";
+import {
+  TransactionFormCard,
+  TransactionInlineNotice,
+  TransactionOptionSheet,
+  TransactionSectionHeader,
+  TransactionSelectRow,
+} from "@/components/transactions";
 import { AppIcon } from "@/components/ui/app-icon";
-import { BottomSheetModal } from "@/components/ui/bottom-modal";
 import { DatePickerField } from "@/components/ui/date-picker-field";
+import type { TransactionSheetOption } from "@/types/transaction";
+
 import { colors, radius, spacing, typography } from "@/constants/theme";
 import { isValidCurrencyAmountInput } from "@/lib/finance/currency-input";
 import { useCategoryStore } from "@/stores/use-category-store";
 import { useFinanceStore } from "@/stores/use-finance-store";
-
-/* -------------------------------------------------------------------------- */
-/* Helpers                                                                     */
-/* -------------------------------------------------------------------------- */
 
 function getCurrencyDecimals(currency: string) {
   return (
@@ -45,7 +42,6 @@ function getCurrencyDecimals(currency: string) {
 
 function formatCurrency(amountMinor: number, currency: string) {
   const decimals = getCurrencyDecimals(currency);
-
   return new Intl.NumberFormat("en", {
     style: "currency",
     currency,
@@ -60,25 +56,18 @@ function formatMinorToInput(amountMinor: number, currency: string) {
 }
 
 function parseAmountToMinor(value: string, currency: string) {
+  if (!isValidCurrencyAmountInput(value, currency)) return null;
   const decimals = getCurrencyDecimals(currency);
   const amount = Number(value || 0);
-
   if (!Number.isFinite(amount) || amount <= 0) return null;
-
   const minorAmount = Math.round(amount * 10 ** decimals);
-
-  if (!Number.isSafeInteger(minorAmount) || minorAmount <= 0) {
-    return null;
-  }
-
+  if (!Number.isSafeInteger(minorAmount) || minorAmount <= 0) return null;
   return minorAmount;
 }
 
 function isValidDate(value: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-
   const date = new Date(`${value}T00:00:00`);
-
   return (
     !Number.isNaN(date.getTime()) &&
     date.getFullYear() === Number(value.slice(0, 4)) &&
@@ -87,16 +76,11 @@ function isValidDate(value: string) {
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/* Screen                                                                      */
-/* -------------------------------------------------------------------------- */
-
 export default function EditTransactionScreen() {
   const router = useRouter();
   const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
 
-  // Finance store
   const transactions = useFinanceStore((state) => state.transactions);
   const accounts = useFinanceStore((state) => state.accounts);
   const accountsLoading = useFinanceStore((state) => state.accountsLoading);
@@ -106,7 +90,6 @@ export default function EditTransactionScreen() {
     (state) => state.transactionsLoading,
   );
 
-  // Category store
   const categories = useCategoryStore((state) => state.categories);
   const categoriesLoading = useCategoryStore(
     (state) => state.categoriesLoading,
@@ -117,28 +100,22 @@ export default function EditTransactionScreen() {
     () => transactions.find((item) => item.id === id),
     [transactions, id],
   );
-
   const isEditable =
     transaction?.type === "income" || transaction?.type === "expense";
-
   const currency = transaction?.currency ?? "MYR";
 
-  // Form fields
   const [accountId, setAccountId] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState("");
   const [description, setDescription] = useState("");
-
   const [initialized, setInitialized] = useState(false);
   const [saving, setSaving] = useState(false);
   const [accountModalVisible, setAccountModalVisible] = useState(false);
   const [categoryModalVisible, setCategoryModalVisible] = useState(false);
 
-  // Initialize the form from the selected transaction.
   useEffect(() => {
     if (!transaction || initialized) return;
-
     setAccountId(transaction.accountId);
     setCategoryId(transaction.categoryId ?? "");
     setAmount(
@@ -146,25 +123,20 @@ export default function EditTransactionScreen() {
     );
     setDate(transaction.date);
     setDescription(transaction.description ?? "");
-
     setInitialized(true);
   }, [transaction, initialized]);
 
-  // Load accounts for the transaction's workspace.
   useEffect(() => {
     if (!transaction) return;
-
     void fetchAccounts(transaction.workspaceId);
   }, [transaction?.workspaceId, fetchAccounts]);
 
-  // Load categories.
   useEffect(() => {
     if (categories.length === 0 && !categoriesLoading) {
       void fetchCategories();
     }
   }, [categories.length, categoriesLoading, fetchCategories]);
 
-  // Only show accounts from the original workspace.
   const availableAccounts = useMemo(
     () =>
       accounts.filter(
@@ -173,11 +145,8 @@ export default function EditTransactionScreen() {
     [accounts, transaction?.workspaceId],
   );
 
-  // Show active categories of the correct type.
-  // Keep the currently assigned category available if it has been archived.
   const availableCategories = useMemo(() => {
     if (!transaction) return [];
-
     return categories.filter(
       (category) =>
         category.type === transaction.type &&
@@ -188,14 +157,12 @@ export default function EditTransactionScreen() {
   const selectedAccount = availableAccounts.find(
     (account) => account.id === accountId,
   );
-
   const selectedCategory = categories.find(
     (category) => category.id === categoryId,
   );
 
   const formatAccountType = (type: string) => {
     const key = type === "e-wallet" ? "eWallet" : type;
-
     return t(`home.accountTypes.${key}`, {
       defaultValue:
         type === "e-wallet"
@@ -210,35 +177,34 @@ export default function EditTransactionScreen() {
         defaultValue: "Currently assigned · Archived",
       });
     }
-
     if (category.isDefault) {
       return t("transactions.edit.categoryStatus.default", {
         defaultValue: "Default category",
       });
     }
-
     return t("transactions.edit.categoryStatus.custom", {
       defaultValue: "Custom category",
     });
   };
 
-  // Options for the selection sheets.
-  const accountOptions: SheetOption[] = availableAccounts.map((account) => ({
-    id: account.id,
-    label: account.name,
-    description: `${formatAccountType(account.type)} · ${account.currency}`,
-    leading: (
-      <AppIcon
-        name={account.icon ?? "wallet"}
-        color={account.color ?? colors.primary}
-        size={40}
-        iconSize={20}
-        background
-      />
-    ),
-  }));
+  const accountOptions: TransactionSheetOption[] = availableAccounts.map(
+    (account) => ({
+      id: account.id,
+      label: account.name,
+      description: `${formatAccountType(account.type)} · ${account.currency}`,
+      leading: (
+        <AppIcon
+          name={account.icon ?? "wallet"}
+          color={account.color ?? colors.primary}
+          size={40}
+          iconSize={20}
+          background
+        />
+      ),
+    }),
+  );
 
-  const categoryOptions: SheetOption[] = availableCategories.map(
+  const categoryOptions: TransactionSheetOption[] = availableCategories.map(
     (category) => ({
       id: category.id,
       label: category.name,
@@ -257,7 +223,6 @@ export default function EditTransactionScreen() {
   );
 
   const parsedAmount = parseAmountToMinor(amount, currency);
-
   const canSave =
     Boolean(transaction) &&
     isEditable &&
@@ -269,9 +234,7 @@ export default function EditTransactionScreen() {
     !saving;
 
   const handleAmountChange = (value: string) => {
-    if (isValidCurrencyAmountInput(value, currency)) {
-      setAmount(value);
-    }
+    if (isValidCurrencyAmountInput(value, currency)) setAmount(value);
   };
 
   const handleSave = async () => {
@@ -288,7 +251,6 @@ export default function EditTransactionScreen() {
       );
       return;
     }
-
     if (selectedAccount.workspaceId !== transaction.workspaceId) {
       Alert.alert(
         t("transactions.edit.validation.invalidAccount.title", {
@@ -300,7 +262,6 @@ export default function EditTransactionScreen() {
       );
       return;
     }
-
     if (!selectedCategory) {
       Alert.alert(
         t("transactions.edit.validation.categoryRequired.title", {
@@ -312,7 +273,6 @@ export default function EditTransactionScreen() {
       );
       return;
     }
-
     if (selectedCategory.type !== transaction.type) {
       Alert.alert(
         t("transactions.edit.validation.invalidCategory.title", {
@@ -325,7 +285,6 @@ export default function EditTransactionScreen() {
       );
       return;
     }
-
     if (
       selectedCategory.isArchived &&
       selectedCategory.id !== transaction.categoryId
@@ -340,7 +299,6 @@ export default function EditTransactionScreen() {
       );
       return;
     }
-
     if (parsedAmount === null) {
       Alert.alert(
         t("transactions.edit.validation.invalidAmount.title", {
@@ -352,7 +310,6 @@ export default function EditTransactionScreen() {
       );
       return;
     }
-
     if (!isValidDate(date)) {
       Alert.alert(
         t("transactions.edit.validation.invalidDate.title", {
@@ -367,7 +324,6 @@ export default function EditTransactionScreen() {
 
     try {
       setSaving(true);
-
       await editTransaction(transaction.id, {
         accountId: selectedAccount.id,
         categoryId: selectedCategory.id,
@@ -375,14 +331,9 @@ export default function EditTransactionScreen() {
         description: description.trim() || null,
         date,
       });
-
-      router.replace({
-        pathname: "/transactions/[id]",
-        params: { id: transaction.id },
-      });
+      router.back();
     } catch (error) {
       console.error("Failed to update transaction:", error);
-
       Alert.alert(
         t("transactions.edit.errors.updateFailed.title", {
           defaultValue: "Unable to update transaction",
@@ -398,7 +349,6 @@ export default function EditTransactionScreen() {
     }
   };
 
-  // Loading transaction
   if (!transaction && transactionsLoading) {
     return (
       <SafeScreen backgroundColor={colors.background}>
@@ -414,7 +364,6 @@ export default function EditTransactionScreen() {
     );
   }
 
-  // Transaction not found
   if (!transaction) {
     return (
       <StateScreen
@@ -440,7 +389,6 @@ export default function EditTransactionScreen() {
     );
   }
 
-  // Transfers cannot be edited individually.
   if (!isEditable) {
     return (
       <StateScreen
@@ -461,8 +409,6 @@ export default function EditTransactionScreen() {
   const transactionTypeLabel = t(`transactions.types.${transaction.type}`, {
     defaultValue: transaction.type,
   });
-
-  // Shown only when the amount differs from what was saved.
   const amountChanged =
     parsedAmount !== null && parsedAmount !== transaction.amountMinor;
 
@@ -475,8 +421,7 @@ export default function EditTransactionScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Amount */}
-          <FormCard
+          <TransactionFormCard
             title={t("transactions.add.amount", {
               defaultValue: "Amount",
             })}
@@ -490,7 +435,6 @@ export default function EditTransactionScreen() {
               placeholderTextColor={colors.textSecondary}
               style={styles.amountInput}
             />
-
             <Text style={styles.helperText}>
               {parsedAmount !== null
                 ? t("transactions.edit.amountPreview", {
@@ -502,21 +446,17 @@ export default function EditTransactionScreen() {
                     defaultValue: `Enter the amount in ${currency}.`,
                   })}
             </Text>
-
-            {amountChanged && (
+            {amountChanged ? (
               <Text style={styles.helperText}>
                 {t("transactions.edit.originalAmount", {
                   amount: formatCurrency(transaction.amountMinor, currency),
                   defaultValue: `Originally ${formatCurrency(transaction.amountMinor, currency)}`,
                 })}
               </Text>
-            )}
-
+            ) : null}
             <View style={styles.divider} />
-
             <View style={styles.noteRow}>
               <Info size={14} color={colors.textSecondary} />
-
               <Text style={styles.helperText}>
                 {t("transactions.edit.currencyNote", {
                   defaultValue:
@@ -524,18 +464,16 @@ export default function EditTransactionScreen() {
                 })}
               </Text>
             </View>
-          </FormCard>
+          </TransactionFormCard>
 
-          {/* Details */}
           <View style={styles.group}>
-            <Text style={styles.sectionTitle}>
-              {t("transactions.add.details", {
+            <TransactionSectionHeader
+              title={t("transactions.add.details", {
                 defaultValue: "Details",
               })}
-            </Text>
-
+            />
             <View style={styles.card}>
-              <SelectRow
+              <TransactionSelectRow
                 label={t("transactions.add.account", {
                   defaultValue: "Account",
                 })}
@@ -551,30 +489,18 @@ export default function EditTransactionScreen() {
                       })
                 }
                 leading={
-                  selectedAccount ? (
-                    <AppIcon
-                      name={selectedAccount.icon ?? "wallet"}
-                      color={selectedAccount.color ?? colors.primary}
-                      size={40}
-                      iconSize={20}
-                      background
-                    />
-                  ) : (
-                    <AppIcon
-                      name="wallet"
-                      size={40}
-                      iconSize={20}
-                      color={colors.primary}
-                      background
-                    />
-                  )
+                  <AppIcon
+                    name={selectedAccount?.icon ?? "wallet"}
+                    color={selectedAccount?.color ?? colors.primary}
+                    size={40}
+                    iconSize={20}
+                    background
+                  />
                 }
                 onPress={() => setAccountModalVisible(true)}
               />
-
               <View style={styles.divider} />
-
-              <SelectRow
+              <TransactionSelectRow
                 label={t("transactions.add.category", {
                   defaultValue: "Category",
                 })}
@@ -591,66 +517,49 @@ export default function EditTransactionScreen() {
                       })
                 }
                 leading={
-                  selectedCategory ? (
-                    <AppIcon
-                      name={selectedCategory.icon ?? "ellipsis"}
-                      color={colors.primary}
-                      size={40}
-                      iconSize={20}
-                      background
-                      backgroundColor={
-                        selectedCategory.color ?? colors.primaryLight
-                      }
-                    />
-                  ) : (
-                    <AppIcon
-                      name="ellipsis"
-                      size={40}
-                      iconSize={20}
-                      color={colors.primary}
-                      background
-                    />
-                  )
+                  <AppIcon
+                    name={selectedCategory?.icon ?? "ellipsis"}
+                    color={colors.primary}
+                    size={40}
+                    iconSize={20}
+                    background
+                    backgroundColor={
+                      selectedCategory?.color ?? colors.primaryLight
+                    }
+                  />
                 }
                 onPress={() => setCategoryModalVisible(true)}
               />
             </View>
-
-            {availableAccounts.length === 0 && !accountsLoading && (
-              <InlineNotice
+            {availableAccounts.length === 0 && !accountsLoading ? (
+              <TransactionInlineNotice
                 text={t("transactions.edit.noAccounts", {
                   defaultValue: "No accounts are available in this workspace.",
                 })}
               />
-            )}
-
-            {availableCategories.length === 0 && !categoriesLoading && (
-              <InlineNotice
+            ) : null}
+            {availableCategories.length === 0 && !categoriesLoading ? (
+              <TransactionInlineNotice
                 text={t("transactions.edit.noCategories", {
                   defaultValue:
                     "No categories available for this transaction type.",
                 })}
               />
-            )}
+            ) : null}
           </View>
 
-          {/* Date */}
           <DatePickerField
-            label={t("transactions.add.date", {
-              defaultValue: "Date",
-            })}
+            label={t("transactions.add.date", { defaultValue: "Date" })}
             value={date}
             onChange={setDate}
           />
 
-          {/* Description */}
           <View style={styles.group}>
-            <Text style={styles.sectionTitle}>
-              {t("transactions.add.description", {
+            <TransactionSectionHeader
+              title={t("transactions.add.description", {
                 defaultValue: "Description",
               })}
-            </Text>
-
+            />
             <TextInput
               value={description}
               onChangeText={setDescription}
@@ -663,7 +572,6 @@ export default function EditTransactionScreen() {
               multiline
               textAlignVertical="top"
             />
-
             <Text style={styles.helperText}>
               {t("transactions.add.descriptionHint", {
                 defaultValue: "Optional, up to 150 characters.",
@@ -672,7 +580,6 @@ export default function EditTransactionScreen() {
           </View>
         </KeyboardAwareScrollView>
 
-        {/* Save */}
         <View style={styles.footer}>
           <Pressable
             onPress={handleSave}
@@ -690,7 +597,6 @@ export default function EditTransactionScreen() {
             ) : (
               <Save size={20} color={colors.textOnPrimary} />
             )}
-
             <Text style={styles.saveButtonText}>
               {saving
                 ? t("transactions.edit.saving", {
@@ -704,8 +610,7 @@ export default function EditTransactionScreen() {
         </View>
       </View>
 
-      {/* Account selection sheet */}
-      <OptionSheet
+      <TransactionOptionSheet
         visible={accountModalVisible}
         onClose={() => setAccountModalVisible(false)}
         title={t("transactions.add.selectAccount", {
@@ -730,9 +635,7 @@ export default function EditTransactionScreen() {
           setAccountModalVisible(false);
         }}
       />
-
-      {/* Category selection sheet */}
-      <OptionSheet
+      <TransactionOptionSheet
         visible={categoryModalVisible}
         onClose={() => setCategoryModalVisible(false)}
         title={t("transactions.add.selectCategory", {
@@ -762,17 +665,6 @@ export default function EditTransactionScreen() {
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/* Presentational pieces                                                       */
-/* -------------------------------------------------------------------------- */
-
-type SheetOption = {
-  id: string;
-  label: string;
-  description?: string;
-  leading?: ReactNode;
-};
-
 function StateScreen({
   icon,
   title,
@@ -790,11 +682,8 @@ function StateScreen({
     <SafeScreen backgroundColor={colors.background}>
       <View style={styles.centerState}>
         <View style={styles.stateIcon}>{icon}</View>
-
         <Text style={styles.stateTitle}>{title}</Text>
-
         <Text style={styles.stateDescription}>{description}</Text>
-
         <Pressable
           onPress={onBack}
           accessibilityRole="button"
@@ -810,183 +699,16 @@ function StateScreen({
   );
 }
 
-function CurrencyChip({ code }: { code: string }) {
-  return (
-    <View style={styles.currencyChip}>
-      <Text style={styles.currencyChipText}>{code}</Text>
-    </View>
-  );
-}
-
-function FormCard({
-  title,
-  currency,
-  children,
-}: {
-  title: string;
-  currency?: string;
-  children: ReactNode;
-}) {
-  return (
-    <View style={[styles.card, styles.formCard]}>
-      <View style={styles.formCardHeader}>
-        <Text style={styles.formCardTitle}>{title}</Text>
-        {currency ? <CurrencyChip code={currency} /> : null}
-      </View>
-
-      {children}
-    </View>
-  );
-}
-
-function SelectRow({
-  label,
-  value,
-  placeholder,
-  hint,
-  leading,
-  onPress,
-}: {
-  label: string;
-  value?: string;
-  placeholder: string;
-  hint?: string;
-  leading: ReactNode;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={`${label}: ${value ?? placeholder}`}
-      style={({ pressed }) => [
-        styles.selectRow,
-        pressed && styles.selectRowPressed,
-      ]}
-    >
-      {leading}
-
-      <View style={styles.flex}>
-        <Text style={styles.eyebrow}>{label}</Text>
-
-        <Text
-          style={[styles.selectValue, !value && styles.selectPlaceholder]}
-          numberOfLines={1}
-        >
-          {value ?? placeholder}
-        </Text>
-
-        {hint ? (
-          <Text style={styles.selectHint} numberOfLines={1}>
-            {hint}
-          </Text>
-        ) : null}
-      </View>
-
-      <ChevronRight size={20} color={colors.textSecondary} />
-    </Pressable>
-  );
-}
-
-function InlineNotice({ text }: { text: string }) {
-  return (
-    <View style={styles.notice}>
-      <Info size={16} color={colors.warning} />
-      <Text style={styles.noticeText}>{text}</Text>
-    </View>
-  );
-}
-
-function OptionSheet({
-  visible,
-  onClose,
-  title,
-  subtitle,
-  options,
-  selectedId,
-  emptyText,
-  onSelect,
-}: {
-  visible: boolean;
-  onClose: () => void;
-  title: string;
-  subtitle: string;
-  options: SheetOption[];
-  selectedId: string;
-  emptyText: string;
-  onSelect: (id: string) => void;
-}) {
-  return (
-    <BottomSheetModal
-      visible={visible}
-      onClose={onClose}
-      title={title}
-      subtitle={subtitle}
-    >
-      {options.length === 0 ? (
-        <Text style={styles.emptyOptions}>{emptyText}</Text>
-      ) : (
-        options.map((option) => {
-          const selected = option.id === selectedId;
-
-          return (
-            <Pressable
-              key={option.id}
-              onPress={() => onSelect(option.id)}
-              accessibilityRole="button"
-              accessibilityState={{ selected }}
-              style={({ pressed }) => [
-                styles.sheetOption,
-                selected && styles.sheetOptionSelected,
-                pressed && !selected && styles.selectRowPressed,
-              ]}
-            >
-              {option.leading}
-
-              <View style={styles.flex}>
-                <Text style={styles.sheetOptionLabel} numberOfLines={1}>
-                  {option.label}
-                </Text>
-
-                {option.description ? (
-                  <Text style={styles.sheetOptionDescription}>
-                    {option.description}
-                  </Text>
-                ) : null}
-              </View>
-
-              {selected && <Check size={20} color={colors.primary} />}
-            </Pressable>
-          );
-        })
-      )}
-    </BottomSheetModal>
-  );
-}
-
-/* -------------------------------------------------------------------------- */
-/* Styles                                                                      */
-/* -------------------------------------------------------------------------- */
-
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   flex: { flex: 1 },
-
   content: {
     padding: spacing.lg,
     paddingTop: spacing.md,
     paddingBottom: spacing.xl,
     gap: spacing.xl,
   },
-
   group: { gap: spacing.sm },
-
-  sectionTitle: {
-    color: colors.text,
-    fontSize: typography.size.md,
-    fontWeight: typography.weight.semibold,
-  },
-
   card: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
@@ -994,42 +716,10 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     overflow: "hidden",
   },
-
-  formCard: {
-    padding: spacing.lg,
-    gap: spacing.md,
-  },
-
-  formCardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-
-  formCardTitle: {
-    color: colors.textSecondary,
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.medium,
-  },
-
-  currencyChip: {
-    backgroundColor: colors.primaryLight,
-    borderRadius: radius.full,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 3,
-  },
-
-  currencyChipText: {
-    color: colors.primary,
-    fontSize: typography.size.xs,
-    fontWeight: typography.weight.semibold,
-  },
-
   divider: {
     height: 1,
     backgroundColor: colors.border,
   },
-
   amountInput: {
     height: 56,
     paddingHorizontal: 0,
@@ -1039,20 +729,17 @@ const styles = StyleSheet.create({
     fontSize: typography.size.xxxl,
     fontWeight: typography.weight.bold,
   },
-
   noteRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.xs,
   },
-
   helperText: {
     flexShrink: 1,
     color: colors.textSecondary,
     fontSize: typography.size.caption,
     lineHeight: 18,
   },
-
   input: {
     minHeight: 50,
     backgroundColor: colors.surface,
@@ -1063,66 +750,10 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: typography.size.md,
   },
-
   descriptionInput: {
     minHeight: 96,
     paddingTop: spacing.md,
   },
-
-  selectRow: {
-    minHeight: 72,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-    padding: spacing.md,
-  },
-
-  selectRowPressed: {
-    backgroundColor: colors.background,
-  },
-
-  eyebrow: {
-    color: colors.textSecondary,
-    fontSize: typography.size.xs,
-    fontWeight: typography.weight.medium,
-    letterSpacing: 0.6,
-    textTransform: "uppercase",
-  },
-
-  selectValue: {
-    color: colors.text,
-    fontSize: typography.size.md,
-    fontWeight: typography.weight.semibold,
-    marginTop: 2,
-  },
-
-  selectPlaceholder: {
-    color: colors.textSecondary,
-    fontWeight: typography.weight.regular,
-  },
-
-  selectHint: {
-    color: colors.textSecondary,
-    fontSize: typography.size.caption,
-    marginTop: 2,
-  },
-
-  notice: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: spacing.sm,
-    padding: spacing.md,
-    backgroundColor: colors.warningLight,
-    borderRadius: radius.md,
-  },
-
-  noticeText: {
-    flex: 1,
-    color: colors.text,
-    fontSize: typography.size.caption,
-    lineHeight: 18,
-  },
-
   footer: {
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
@@ -1130,7 +761,6 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
-
   saveButton: {
     minHeight: 54,
     flexDirection: "row",
@@ -1140,53 +770,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     borderRadius: radius.md,
   },
-
-  saveButtonPressed: {
-    backgroundColor: colors.primaryDark,
-  },
-
+  saveButtonPressed: { backgroundColor: colors.primaryDark },
   disabledButton: { opacity: 0.5 },
-
   saveButtonText: {
     color: colors.textOnPrimary,
     fontSize: typography.size.md,
     fontWeight: typography.weight.semibold,
   },
-
-  sheetOption: {
-    minHeight: 64,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.md,
-    marginBottom: spacing.xs,
-  },
-
-  sheetOptionSelected: {
-    backgroundColor: colors.primaryLight,
-  },
-
-  sheetOptionLabel: {
-    color: colors.text,
-    fontSize: typography.size.md,
-    fontWeight: typography.weight.semibold,
-  },
-
-  sheetOptionDescription: {
-    color: colors.textSecondary,
-    fontSize: typography.size.caption,
-    marginTop: 2,
-  },
-
-  emptyOptions: {
-    paddingVertical: spacing.xl,
-    textAlign: "center",
-    color: colors.textSecondary,
-    fontSize: typography.size.sm,
-  },
-
   centerState: {
     flex: 1,
     alignItems: "center",
@@ -1194,7 +784,6 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
     gap: spacing.md,
   },
-
   stateIcon: {
     width: 64,
     height: 64,
@@ -1205,20 +794,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-
   stateTitle: {
     color: colors.text,
     fontSize: typography.size.lg,
     fontWeight: typography.weight.semibold,
     textAlign: "center",
   },
-
   stateDescription: {
     color: colors.textSecondary,
     fontSize: typography.size.sm,
     textAlign: "center",
   },
-
   primaryButton: {
     backgroundColor: colors.primary,
     borderRadius: radius.md,
@@ -1226,11 +812,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     marginTop: spacing.sm,
   },
-
-  primaryButtonPressed: {
-    backgroundColor: colors.primaryDark,
-  },
-
+  primaryButtonPressed: { backgroundColor: colors.primaryDark },
   primaryButtonText: {
     color: colors.textOnPrimary,
     fontSize: typography.size.sm,
