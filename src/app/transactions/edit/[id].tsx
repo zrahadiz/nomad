@@ -14,7 +14,6 @@ import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
 import {
   ArrowDownLeft,
-  ArrowLeft,
   ArrowLeftRight,
   ArrowUpRight,
   Check,
@@ -452,7 +451,7 @@ export default function EditTransactionScreen() {
     parsedAmount !== null && parsedAmount !== transaction.amountMinor;
 
   return (
-    <SafeScreen backgroundColor={colors.background} edges={["top", "bottom"]}>
+    <SafeScreen backgroundColor={colors.background} edges={["bottom"]}>
       <View style={styles.screen}>
         <KeyboardAwareScrollView
           style={styles.flex}
@@ -460,41 +459,6 @@ export default function EditTransactionScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Header */}
-          <View style={styles.header}>
-            <Pressable
-              onPress={() => router.back()}
-              accessibilityRole="button"
-              accessibilityLabel={t("common.goBack", {
-                defaultValue: "Go back",
-              })}
-              style={styles.backButton}
-              hitSlop={8}
-            >
-              <ArrowLeft size={22} color={colors.text} />
-            </Pressable>
-
-            <View style={styles.headerTitleRow}>
-              <View
-                style={[
-                  styles.headerIcon,
-                  { backgroundColor: tone.background },
-                ]}
-              >
-                <TypeIcon size={16} color={tone.color} />
-              </View>
-
-              <Text style={styles.headerTitle}>
-                {t("transactions.edit.title", {
-                  type: transactionTypeLabel,
-                  defaultValue: `Edit ${transactionTypeLabel}`,
-                })}
-              </Text>
-            </View>
-
-            <View style={styles.headerSpacer} />
-          </View>
-
           {/* Amount */}
           <FormCard
             title={t("transactions.add.amount", {
@@ -1007,46 +971,6 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xl,
     gap: spacing.xl,
   },
-
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.md,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  headerTitleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-  },
-
-  headerIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: radius.full,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  headerTitle: {
-    color: colors.text,
-    fontSize: typography.size.lg,
-    fontWeight: typography.weight.semibold,
-    textTransform: "capitalize",
-  },
-
-  headerSpacer: { width: 40 },
 
   group: { gap: spacing.sm },
 

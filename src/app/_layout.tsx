@@ -1,5 +1,6 @@
 import { Stack } from "expo-router";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, View } from "react-native";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -10,6 +11,7 @@ import { i18nReady } from "@/i18n";
 import { useAuthStore } from "@/stores/use-auth-store";
 
 function RootNavigator() {
+  const { t } = useTranslation();
   const session = useAuthStore((state) => state.session);
   const initialized = useAuthStore((state) => state.initialized);
 
@@ -59,13 +61,81 @@ function RootNavigator() {
       <Stack.Protected guard={isAuthenticated} redirectTo="/sign-in">
         <Stack.Screen name="(tabs)" />
 
-        <Stack.Screen name="currency-converter/index" />
+        <Stack.Screen
+          name="workspaces/new"
+          options={{
+            headerShown: true,
+            title: t("workspace.create.title"),
+            presentation: "modal",
+            headerStyle: {
+              backgroundColor: colors.background,
+            },
+            headerTintColor: colors.text,
+            headerShadowVisible: false,
+          }}
+        />
+
+        <Stack.Screen
+          name="workspaces/edit"
+          options={{
+            headerShown: true,
+            title: t("workspace.edit.title"),
+            presentation: "modal",
+            headerStyle: {
+              backgroundColor: colors.background,
+            },
+            headerTintColor: colors.text,
+            headerShadowVisible: false,
+          }}
+        />
+
+        <Stack.Screen
+          name="currency-converter/index"
+          options={{
+            headerShown: true,
+            title: t("currency.title"),
+            presentation: "modal",
+            headerStyle: {
+              backgroundColor: colors.background,
+            },
+            headerTintColor: colors.text,
+            headerShadowVisible: false,
+          }}
+        />
+
+        <Stack.Screen
+          name="transactions/[id]"
+          options={{
+            headerShown: true,
+            title: t("transactions.details.title"),
+            presentation: "modal",
+            headerStyle: {
+              backgroundColor: colors.background,
+            },
+            headerTintColor: colors.text,
+            headerShadowVisible: false,
+          }}
+        />
 
         <Stack.Screen
           name="transactions/new"
           options={{
             headerShown: true,
-            title: "Add transaction",
+            title: t("transactions.accessibility.add"),
+            presentation: "modal",
+            headerStyle: {
+              backgroundColor: colors.background,
+            },
+            headerTintColor: colors.text,
+            headerShadowVisible: false,
+          }}
+        />
+
+        <Stack.Screen
+          name="transactions/edit/[id]"
+          options={{
+            headerShown: true,
+            title: t("transactions.edit.title"),
             presentation: "modal",
             headerStyle: {
               backgroundColor: colors.background,
@@ -108,6 +178,34 @@ function RootNavigator() {
           options={{
             headerShown: true,
             title: "Edit account",
+            presentation: "modal",
+            headerStyle: {
+              backgroundColor: colors.background,
+            },
+            headerTintColor: colors.text,
+            headerShadowVisible: false,
+          }}
+        />
+
+        <Stack.Screen
+          name="budget/new"
+          options={{
+            headerShown: true,
+            title: t("budget.create.title"),
+            presentation: "modal",
+            headerStyle: {
+              backgroundColor: colors.background,
+            },
+            headerTintColor: colors.text,
+            headerShadowVisible: false,
+          }}
+        />
+
+        <Stack.Screen
+          name="budget/manage"
+          options={{
+            headerShown: true,
+            title: t("budget.manage.title"),
             presentation: "modal",
             headerStyle: {
               backgroundColor: colors.background,

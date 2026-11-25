@@ -1,7 +1,5 @@
-import { router } from "expo-router";
 import {
   ArrowDown,
-  ArrowLeft,
   Check,
   ChevronDown,
   Info,
@@ -220,22 +218,6 @@ export default function CurrencyConverterScreen() {
   return (
     <SafeScreen backgroundColor={colors.background} edges={["bottom"]}>
       <View style={styles.screen}>
-        <View style={styles.header}>
-          <Pressable
-            onPress={() => router.back()}
-            style={styles.backButton}
-            hitSlop={8}
-            accessibilityRole="button"
-            accessibilityLabel={t("common.goBack")}
-          >
-            <ArrowLeft color={colors.text} size={22} />
-          </Pressable>
-
-          <Text style={styles.headerTitle}>{t("currency.title")}</Text>
-
-          <View style={styles.headerPlaceholder} />
-        </View>
-
         <KeyboardAwareScrollView
           style={styles.flex}
           contentContainerStyle={styles.content}
@@ -561,34 +543,6 @@ const styles = StyleSheet.create({
 
   flex: {
     flex: 1,
-  },
-
-  /* Header */
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-
-  backButton: {
-    width: 40,
-    height: 40,
-    justifyContent: "center",
-  },
-
-  headerTitle: {
-    color: colors.text,
-    fontSize: typography.size.md,
-    fontWeight: typography.weight.bold,
-  },
-
-  headerPlaceholder: {
-    width: 40,
   },
 
   content: {

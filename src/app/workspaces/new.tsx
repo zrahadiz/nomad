@@ -1,5 +1,5 @@
-import { Stack, useRouter } from "expo-router";
-import { ArrowLeft, Check, Search } from "lucide-react-native";
+import { useRouter } from "expo-router";
+import { Check, Search } from "lucide-react-native";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -12,11 +12,12 @@ import {
   View,
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 import { countries, type Country } from "@/constants/countries";
 import { colors, radius, spacing, typography } from "@/constants/theme";
 import { useWorkspaceStore } from "@/stores/use-workspace-store";
+
+import { SafeScreen } from "@/components/layout/safe-screen";
 
 export default function NewWorkspaceScreen() {
   const router = useRouter();
@@ -89,266 +90,209 @@ export default function NewWorkspaceScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
-      <Stack.Screen options={{ headerShown: false }} />
-
-      <View style={styles.header}>
-        <Pressable
-          style={styles.backButton}
-          onPress={() => router.back()}
-          accessibilityRole="button"
-          accessibilityLabel={t("common.goBack")}
-          hitSlop={8}
+    <SafeScreen backgroundColor={colors.background} edges={["bottom"]}>
+      <View style={styles.screen}>
+        <KeyboardAwareScrollView
+          style={styles.flex}
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          <ArrowLeft size={22} color={colors.text} />
-        </Pressable>
-
-        <Text style={styles.headerTitle}>{t("workspace.create.title")}</Text>
-
-        <View style={styles.headerSpacer} />
-      </View>
-
-      <KeyboardAwareScrollView
-        style={styles.flex}
-        contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.intro}>
-          <View style={styles.illustration}>
-            <Text style={styles.illustrationEmoji}>🌏</Text>
-          </View>
-
-          <View style={styles.introText}>
-            <Text style={styles.title}>
-              {t("workspace.create.intro.title")}
-            </Text>
-            <Text style={styles.description}>
-              {t("workspace.create.intro.description")}
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.fieldGroup}>
-          <Text style={styles.label}>{t("workspace.create.name.label")}</Text>
-
-          <TextInput
-            value={name}
-            onChangeText={(value) => {
-              setName(value);
-              setError(null);
-            }}
-            placeholder={t("workspace.create.name.placeholder")}
-            placeholderTextColor={colors.textSecondary}
-            style={styles.input}
-            maxLength={40}
-            autoCapitalize="words"
-            returnKeyType="done"
-            accessibilityLabel={t("workspace.create.name.accessibilityLabel")}
-          />
-
-          <Text style={styles.helperText}>
-            {t("workspace.create.name.helper")}
-          </Text>
-        </View>
-
-        <View style={styles.fieldGroup}>
-          <Text style={styles.label}>
-            {t("workspace.create.country.label")}
-          </Text>
-
-          <View style={styles.searchContainer}>
-            <Search size={20} color={colors.textSecondary} />
-            <TextInput
-              value={countrySearch}
-              onChangeText={setCountrySearch}
-              placeholder={t("workspace.create.country.searchPlaceholder")}
-              placeholderTextColor={colors.textSecondary}
-              style={styles.searchInput}
-              autoCapitalize="none"
-              autoCorrect={false}
-              accessibilityLabel={t(
-                "workspace.create.country.searchPlaceholder",
-              )}
-            />
-          </View>
-
-          <ScrollView
-            style={styles.countryList}
-            nestedScrollEnabled
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator
-          >
-            {filteredCountries.length > 0 ? (
-              filteredCountries.map((country) => {
-                const isSelected = selectedCountry?.code === country.code;
-
-                return (
-                  <Pressable
-                    key={country.code}
-                    style={[
-                      styles.countryOption,
-                      isSelected && styles.countryOptionSelected,
-                    ]}
-                    onPress={() => {
-                      setSelectedCountry(country);
-                      setError(null);
-                    }}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: isSelected }}
-                  >
-                    <Text style={styles.countryFlag}>{country.flag}</Text>
-                    <View style={styles.countryDetails}>
-                      <Text style={styles.countryName}>{country.name}</Text>
-                      <Text style={styles.countryCurrency}>
-                        {country.currencyCode} · {country.currencyName}
-                      </Text>
-                    </View>
-                    {isSelected && <Check size={20} color={colors.primary} />}
-                  </Pressable>
-                );
-              })
-            ) : (
-              <View style={styles.noResults}>
-                <Text style={styles.noResultsText}>
-                  {t("workspace.create.country.noResults")}
-                </Text>
-              </View>
-            )}
-          </ScrollView>
-
-          <Text style={styles.helperText}>
-            {t("workspace.create.country.helper")}
-          </Text>
-
-          {selectedCountry && (
-            <View style={styles.currencyCard}>
-              <View style={styles.currencyIcon}>
-                <Text style={styles.currencyFlag}>{selectedCountry.flag}</Text>
-              </View>
-              <View style={styles.currencyDetails}>
-                <Text style={styles.currencyLabel}>
-                  {t("workspace.create.currency.label")}
-                </Text>
-                <Text style={styles.currencyValue}>
-                  {selectedCountry.currencyCode}
-                </Text>
-                <Text style={styles.currencyName} numberOfLines={1}>
-                  {selectedCountry.currencyName}
-                </Text>
-              </View>
-              <View style={styles.automaticBadge}>
-                <Text style={styles.automaticBadgeText}>
-                  {t("workspace.create.currency.automatic")}
-                </Text>
-              </View>
+          <View style={styles.intro}>
+            <View style={styles.illustration}>
+              <Text style={styles.illustrationEmoji}>🌏</Text>
             </View>
-          )}
-        </View>
 
-        <View style={styles.infoCard}>
-          <Text style={styles.infoTitle}>
-            {t("workspace.create.next.title")}
-          </Text>
-          <Text style={styles.infoDescription}>
-            {t("workspace.create.next.description")}
-          </Text>
-        </View>
-      </KeyboardAwareScrollView>
+            <View style={styles.introText}>
+              <Text style={styles.title}>
+                {t("workspace.create.intro.title")}
+              </Text>
+              <Text style={styles.description}>
+                {t("workspace.create.intro.description")}
+              </Text>
+            </View>
+          </View>
 
-      <View style={styles.footer}>
-        {error && (
-          <Text style={styles.errorText} accessibilityRole="alert">
-            {error}
-          </Text>
-        )}
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>{t("workspace.create.name.label")}</Text>
 
-        <View style={styles.footerButtons}>
-          <Pressable
-            style={({ pressed }) => [
-              styles.cancelButton,
-              pressed && styles.cancelButtonPressed,
-              isSubmitting && styles.disabledButton,
-            ]}
-            onPress={() => router.back()}
-            disabled={isSubmitting}
-            accessibilityRole="button"
-          >
-            <Text style={styles.cancelButtonText}>{t("common.cancel")}</Text>
-          </Pressable>
+            <TextInput
+              value={name}
+              onChangeText={(value) => {
+                setName(value);
+                setError(null);
+              }}
+              placeholder={t("workspace.create.name.placeholder")}
+              placeholderTextColor={colors.textSecondary}
+              style={styles.input}
+              maxLength={40}
+              autoCapitalize="words"
+              returnKeyType="done"
+              accessibilityLabel={t("workspace.create.name.accessibilityLabel")}
+            />
 
-          <Pressable
-            style={({ pressed }) => [
-              styles.createButton,
-              pressed && styles.createButtonPressed,
-              isSubmitting && styles.disabledButton,
-            ]}
-            onPress={handleCreateWorkspace}
-            disabled={isSubmitting}
-            accessibilityRole="button"
-            accessibilityState={{ disabled: isSubmitting, busy: isSubmitting }}
-          >
-            {isSubmitting && (
-              <ActivityIndicator size="small" color={colors.textOnPrimary} />
-            )}
-            <Text style={styles.createButtonText}>
-              {isSubmitting
-                ? t("workspace.create.actions.creating")
-                : t("workspace.create.actions.create")}
+            <Text style={styles.helperText}>
+              {t("workspace.create.name.helper")}
             </Text>
-          </Pressable>
+          </View>
+
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>
+              {t("workspace.create.country.label")}
+            </Text>
+
+            <View style={styles.searchContainer}>
+              <Search size={20} color={colors.textSecondary} />
+              <TextInput
+                value={countrySearch}
+                onChangeText={setCountrySearch}
+                placeholder={t("workspace.create.country.searchPlaceholder")}
+                placeholderTextColor={colors.textSecondary}
+                style={styles.searchInput}
+                autoCapitalize="none"
+                autoCorrect={false}
+                accessibilityLabel={t(
+                  "workspace.create.country.searchPlaceholder",
+                )}
+              />
+            </View>
+
+            <ScrollView
+              style={styles.countryList}
+              nestedScrollEnabled
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator
+            >
+              {filteredCountries.length > 0 ? (
+                filteredCountries.map((country) => {
+                  const isSelected = selectedCountry?.code === country.code;
+
+                  return (
+                    <Pressable
+                      key={country.code}
+                      style={[
+                        styles.countryOption,
+                        isSelected && styles.countryOptionSelected,
+                      ]}
+                      onPress={() => {
+                        setSelectedCountry(country);
+                        setError(null);
+                      }}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: isSelected }}
+                    >
+                      <Text style={styles.countryFlag}>{country.flag}</Text>
+                      <View style={styles.countryDetails}>
+                        <Text style={styles.countryName}>{country.name}</Text>
+                        <Text style={styles.countryCurrency}>
+                          {country.currencyCode} · {country.currencyName}
+                        </Text>
+                      </View>
+                      {isSelected && <Check size={20} color={colors.primary} />}
+                    </Pressable>
+                  );
+                })
+              ) : (
+                <View style={styles.noResults}>
+                  <Text style={styles.noResultsText}>
+                    {t("workspace.create.country.noResults")}
+                  </Text>
+                </View>
+              )}
+            </ScrollView>
+
+            <Text style={styles.helperText}>
+              {t("workspace.create.country.helper")}
+            </Text>
+
+            {selectedCountry && (
+              <View style={styles.currencyCard}>
+                <View style={styles.currencyIcon}>
+                  <Text style={styles.currencyFlag}>
+                    {selectedCountry.flag}
+                  </Text>
+                </View>
+                <View style={styles.currencyDetails}>
+                  <Text style={styles.currencyLabel}>
+                    {t("workspace.create.currency.label")}
+                  </Text>
+                  <Text style={styles.currencyValue}>
+                    {selectedCountry.currencyCode}
+                  </Text>
+                  <Text style={styles.currencyName} numberOfLines={1}>
+                    {selectedCountry.currencyName}
+                  </Text>
+                </View>
+                <View style={styles.automaticBadge}>
+                  <Text style={styles.automaticBadgeText}>
+                    {t("workspace.create.currency.automatic")}
+                  </Text>
+                </View>
+              </View>
+            )}
+          </View>
+
+          <View style={styles.infoCard}>
+            <Text style={styles.infoTitle}>
+              {t("workspace.create.next.title")}
+            </Text>
+            <Text style={styles.infoDescription}>
+              {t("workspace.create.next.description")}
+            </Text>
+          </View>
+        </KeyboardAwareScrollView>
+
+        <View style={styles.footer}>
+          {error && (
+            <Text style={styles.errorText} accessibilityRole="alert">
+              {error}
+            </Text>
+          )}
+
+          <View style={styles.footerButtons}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.createButton,
+                pressed && styles.createButtonPressed,
+                isSubmitting && styles.disabledButton,
+              ]}
+              onPress={handleCreateWorkspace}
+              disabled={isSubmitting}
+              accessibilityRole="button"
+              accessibilityState={{
+                disabled: isSubmitting,
+                busy: isSubmitting,
+              }}
+            >
+              {isSubmitting && (
+                <ActivityIndicator size="small" color={colors.textOnPrimary} />
+              )}
+              <Text style={styles.createButtonText}>
+                {isSubmitting
+                  ? t("workspace.create.actions.creating")
+                  : t("workspace.create.actions.create")}
+              </Text>
+            </Pressable>
+          </View>
         </View>
       </View>
-    </SafeAreaView>
+    </SafeScreen>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+  },
+
   flex: {
     flex: 1,
   },
 
-  safeArea: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-
-  /* Header */
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.md,
-  },
-
-  backButton: {
-    width: 44,
-    height: 44,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.full,
-    backgroundColor: colors.surface,
-  },
-
-  headerTitle: {
-    color: colors.text,
-    fontSize: typography.size.lg,
-    fontWeight: typography.weight.semibold,
-  },
-
-  headerSpacer: {
-    width: 44,
-  },
-
   content: {
     padding: spacing.lg,
-    paddingTop: spacing.sm,
     paddingBottom: spacing.xl,
-    gap: spacing.xl,
+    gap: spacing.lg,
   },
 
   /* Intro */

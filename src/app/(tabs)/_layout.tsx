@@ -31,12 +31,7 @@ const TAB_LABELS = {
 
 const ADD_BUTTON_SIZE = 56;
 
-function CustomTabBar({
-  state,
-  descriptors,
-  navigateToTab,
-  insets,
-}: CustomTabBarProps) {
+function CustomTabBar({ state, navigateToTab, insets }: CustomTabBarProps) {
   const router = useRouter();
   const { t } = useTranslation();
 

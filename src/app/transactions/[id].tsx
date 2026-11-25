@@ -7,7 +7,6 @@ import {
   ActivityIndicator,
   Alert,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -17,7 +16,6 @@ import {
   AlignLeft,
   ArrowDown,
   ArrowDownLeft,
-  ArrowLeft,
   ArrowLeftRight,
   ArrowUpRight,
   Calendar,
@@ -40,6 +38,7 @@ import { formatMoney } from "@/lib/finance/calculations";
 import { useCategoryStore } from "@/stores/use-category-store";
 import { useFinanceStore } from "@/stores/use-finance-store";
 import { useWorkspaceStore } from "@/stores/use-workspace-store";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
 export default function TransactionDetailsScreen() {
   const router = useRouter();
@@ -286,33 +285,14 @@ export default function TransactionDetailsScreen() {
   const amountSign = isPositive ? "+" : isTransfer ? "" : "−";
 
   return (
-    <SafeScreen backgroundColor={colors.background} edges={["top", "bottom"]}>
+    <SafeScreen backgroundColor={colors.background} edges={["bottom"]}>
       <View style={styles.screen}>
-        <ScrollView
+        <KeyboardAwareScrollView
           style={styles.flex}
           contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Header */}
-          <View style={styles.header}>
-            <Pressable
-              onPress={() => router.back()}
-              accessibilityRole="button"
-              accessibilityLabel={t("common.goBack")}
-              style={styles.backButton}
-              hitSlop={8}
-            >
-              <ArrowLeft size={22} color={colors.text} />
-            </Pressable>
-
-            <Text style={styles.headerTitle}>
-              {t("transactions.details.title")}
-            </Text>
-
-            {/* Keeps the title centered */}
-            <View style={styles.headerSpacer} />
-          </View>
-
           {/* Hero: what happened, how much, when */}
           <View style={styles.heroCard}>
             <View
@@ -573,7 +553,7 @@ export default function TransactionDetailsScreen() {
               })}
             </Text>
           </View>
-        </ScrollView>
+        </KeyboardAwareScrollView>
 
         {/* Actions: always visible. Delete sits apart from Edit so it's harder to hit by accident. */}
         <View style={styles.actionBar}>

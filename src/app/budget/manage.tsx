@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Check, Plus, Trash2 } from "lucide-react-native";
+import { Check, ChevronDown, Lock, Plus, Trash2 } from "lucide-react-native";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -305,6 +305,9 @@ export default function ManageBudgetScreen() {
     );
   };
 
+  // UI-only: the category section starts open here, since you came to edit.
+  const [categoriesOpen, setCategoriesOpen] = useState(true);
+
   if (loading || !isCorrectBudget) {
     return (
       <SafeScreen>
@@ -345,8 +348,20 @@ export default function ManageBudgetScreen() {
     );
   }
 
+  const saveDisabled = saving;
+  const amountPlaceholder =
+    getCurrencyDecimalDigits(currencyCode) === 0 ? "0" : "0.00";
+
+  const allocationRatio =
+    overallAmountMinor !== null && overallAmountMinor > 0
+      ? Math.min(categoryTotalMinor / overallAmountMinor, 1)
+      : 0;
+
+  const showAddRow =
+    !categoriesLoading && !categoriesError && availableCategories.length > 0;
+
   return (
-    <SafeScreen>
+    <SafeScreen backgroundColor={colors.background} edges={["bottom"]}>
       <View style={styles.screen}>
         <KeyboardAwareScrollView
           style={styles.flex}
@@ -354,192 +369,246 @@ export default function ManageBudgetScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <View style={styles.header}>
-            <Text style={styles.title}>{t("budget.manage.title")}</Text>
-            <Text style={styles.subtitle}>
-              {t("budget.manage.subtitle", {
-                month: formatMonthLabel(budgetMonth, locale),
+          <View style={styles.workspaceRow}>
+            <View style={styles.workspaceDot} />
+            <Text style={styles.workspaceName} numberOfLines={1}>
+              {activeWorkspace?.name ?? t("budget.manage.noWorkspace")}
+            </Text>
+            <Text style={styles.workspaceSeparator}>·</Text>
+            <Text style={styles.workspaceCurrency}>{currencyCode}</Text>
+          </View>
+          {/* 1. The one thing most people need: the overall limit */}
+          <View style={styles.amountCard}>
+            <Text style={styles.amountLabel}>
+              {t("budget.manage.overallTitle")}
+            </Text>
+
+            <View style={styles.amountInputContainer}>
+              <Text style={styles.currencyPrefix}>{currencyCode}</Text>
+              <AmountInput
+                value={overallAmount}
+                onChangeText={handleOverallAmountChange}
+                currency={currencyCode}
+                placeholder={amountPlaceholder}
+                placeholderTextColor={colors.textSecondary}
+                style={styles.amountInput}
+              />
+            </View>
+
+            <Text style={styles.hint}>
+              {t("budget.manage.overallHint", {
+                defaultValue:
+                  "Covers all your expenses, with or without a category limit.",
               })}
             </Text>
           </View>
 
-          <View style={styles.workspaceCard}>
-            <Text style={styles.workspaceLabel}>
-              {t("budget.manage.workspace")}
+          {/* 2. Month: read-only here, the lock makes that obvious */}
+          <View style={styles.periodRow}>
+            <Lock size={16} color={colors.textSecondary} />
+            <Text style={styles.periodLabel}>{t("budget.manage.period")}</Text>
+            <Text style={styles.periodValue}>
+              {formatMonthLabel(budgetMonth, locale)}
             </Text>
-            <View style={styles.workspaceValue}>
-              <View style={styles.workspaceDot} />
-              <Text style={styles.workspaceName} numberOfLines={1}>
-                {activeWorkspace?.name ?? t("budget.manage.noWorkspace")}
-              </Text>
-              <Text style={styles.currencyBadge}>{currencyCode}</Text>
-            </View>
           </View>
 
+          {/* 3. Optional category limits: collapsed until needed */}
           <View style={styles.group}>
-            <Text style={styles.sectionTitle}>{t("budget.manage.period")}</Text>
-            <View style={[styles.card, styles.cardPadded]}>
-              <Text style={styles.periodText}>
-                {formatMonthLabel(budgetMonth, locale)}
-              </Text>
-              <Text style={styles.periodHelper}>
-                {t("budget.manage.periodHelp")}
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.group}>
-            <View>
-              <Text style={styles.sectionTitle}>
-                {t("budget.manage.overallTitle")}
-              </Text>
-              <Text style={styles.sectionDescription}>
-                {t("budget.manage.overallDescription")}
-              </Text>
-            </View>
-            <View style={[styles.card, styles.cardPadded]}>
-              <View style={styles.amountInputContainer}>
-                <Text style={styles.currencyPrefix}>{currencyCode}</Text>
-                <AmountInput
-                  value={overallAmount}
-                  onChangeText={handleOverallAmountChange}
-                  currency={currencyCode}
-                  placeholder={
-                    getCurrencyDecimalDigits(currencyCode) === 0 ? "0" : "0.00"
-                  }
-                  placeholderTextColor={colors.textSecondary}
-                  style={styles.amountInput}
-                />
-              </View>
-            </View>
-          </View>
-
-          <View style={styles.group}>
-            <View style={styles.sectionHeader}>
-              <View style={styles.sectionHeaderText}>
-                <Text style={styles.sectionTitle}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.collapseHeader,
+                pressed && styles.collapseHeaderPressed,
+              ]}
+              onPress={() => setCategoriesOpen((open) => !open)}
+              accessibilityRole="button"
+              accessibilityState={{ expanded: categoriesOpen }}
+            >
+              <View style={styles.collapseTitleRow}>
+                <Text style={styles.sectionTitle} numberOfLines={1}>
                   {t("budget.manage.categoryTitle")}
                 </Text>
-                <Text style={styles.sectionDescription}>
-                  {t("budget.manage.categoryDescription")}
+                <Text style={styles.optionalText}>
+                  {t("budget.manage.optional", { defaultValue: "Optional" })}
                 </Text>
               </View>
-              <Pressable
-                style={({ pressed }) => [
-                  styles.addButton,
-                  pressed && styles.addButtonPressed,
-                  availableCategories.length === 0 && styles.addButtonDisabled,
-                ]}
-                onPress={() => setCategoryModalVisible(true)}
-                disabled={availableCategories.length === 0}
-                accessibilityRole="button"
-              >
-                <Plus
-                  size={17}
-                  color={
-                    availableCategories.length === 0
-                      ? colors.textSecondary
-                      : colors.primary
-                  }
-                />
-                <Text
-                  style={[
-                    styles.addButtonText,
-                    availableCategories.length === 0 && styles.disabledText,
-                  ]}
-                >
-                  {t("budget.manage.add")}
-                </Text>
-              </Pressable>
-            </View>
-            {categoriesLoading ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator color={colors.primary} />
-                <Text style={styles.loadingText}>
-                  {t("budget.manage.loadingCategories")}
-                </Text>
-              </View>
-            ) : categoriesError ? (
-              <View style={styles.messageCard}>
-                <Text style={styles.errorText}>{categoriesError}</Text>
-                <Pressable
-                  onPress={() => void fetchCategories()}
-                  accessibilityRole="button"
-                >
-                  <Text style={styles.retryText}>
-                    {t("budget.manage.tryAgain")}
+
+              {categoryDrafts.length > 0 && (
+                <View style={styles.countBadge}>
+                  <Text style={styles.countBadgeText}>
+                    {categoryDrafts.length}
                   </Text>
-                </Pressable>
-              </View>
-            ) : categoryDrafts.length === 0 ? (
-              <View style={styles.emptyCategories}>
-                <Text style={styles.emptyTitle}>
-                  {t("budget.manage.noCategoryLimits")}
+                </View>
+              )}
+
+              <ChevronDown
+                size={20}
+                color={colors.textSecondary}
+                style={categoriesOpen ? styles.chevronOpen : undefined}
+              />
+            </Pressable>
+
+            {categoriesOpen && (
+              <View style={styles.collapseBody}>
+                <Text style={styles.hint}>
+                  {t("budget.manage.categoryHint", {
+                    defaultValue:
+                      "Category limits are part of your overall budget, not extra.",
+                  })}
                 </Text>
-                <Text style={styles.emptyDescription}>
-                  {t("budget.manage.noCategoryLimitsDescription")}
-                </Text>
-              </View>
-            ) : (
-              <View style={styles.categoryList}>
-                {categoryDrafts.map((item) => {
-                  const category = getCategory(item.categoryId);
-                  return (
-                    <View key={item.categoryId} style={styles.categoryCard}>
-                      <View style={styles.categoryHeader}>
-                        <View style={styles.categoryInfo}>
+
+                {categoriesLoading ? (
+                  <View style={styles.loadingContainer}>
+                    <ActivityIndicator color={colors.primary} />
+                    <Text style={styles.loadingText}>
+                      {t("budget.manage.loadingCategories")}
+                    </Text>
+                  </View>
+                ) : categoriesError ? (
+                  <View style={styles.messageCard}>
+                    <Text style={styles.errorText}>{categoriesError}</Text>
+                    <Pressable
+                      onPress={() => void fetchCategories()}
+                      accessibilityRole="button"
+                    >
+                      <Text style={styles.retryText}>
+                        {t("budget.manage.tryAgain")}
+                      </Text>
+                    </Pressable>
+                  </View>
+                ) : (
+                  categoryDrafts.length > 0 && (
+                    <View style={styles.categoryList}>
+                      {categoryDrafts.map((item) => {
+                        const category = getCategory(item.categoryId);
+                        return (
                           <View
-                            style={[
-                              styles.categoryIcon,
-                              {
-                                backgroundColor:
-                                  category?.color ?? colors.primaryLight,
-                              },
-                            ]}
+                            key={item.categoryId}
+                            style={styles.categoryCard}
                           >
-                            <Text style={styles.categoryIconText}>
-                              {category?.icon ?? "•"}
-                            </Text>
+                            <View style={styles.categoryHeader}>
+                              <View style={styles.categoryInfo}>
+                                <View
+                                  style={[
+                                    styles.categoryIcon,
+                                    {
+                                      backgroundColor:
+                                        category?.color ?? colors.primaryLight,
+                                    },
+                                  ]}
+                                >
+                                  <Text style={styles.categoryIconText}>
+                                    {category?.icon ?? "•"}
+                                  </Text>
+                                </View>
+                                <Text
+                                  style={styles.categoryName}
+                                  numberOfLines={1}
+                                >
+                                  {category?.name ??
+                                    t("budget.manage.unknownCategory")}
+                                </Text>
+                              </View>
+                              <Pressable
+                                onPress={() =>
+                                  handleRemoveCategory(item.categoryId)
+                                }
+                                hitSlop={8}
+                                style={styles.removeButton}
+                                accessibilityRole="button"
+                                accessibilityLabel={t(
+                                  "budget.manage.removeCategory",
+                                )}
+                              >
+                                <Trash2 size={17} color={colors.danger} />
+                              </Pressable>
+                            </View>
+                            <View style={styles.categoryAmountContainer}>
+                              <Text style={styles.categoryCurrency}>
+                                {currencyCode}
+                              </Text>
+                              <AmountInput
+                                value={item.amount}
+                                onChangeText={(value) =>
+                                  handleCategoryAmountChange(
+                                    item.categoryId,
+                                    value,
+                                  )
+                                }
+                                currency={currencyCode}
+                                placeholder={amountPlaceholder}
+                                placeholderTextColor={colors.textSecondary}
+                                style={styles.categoryAmountInput}
+                              />
+                            </View>
                           </View>
-                          <Text style={styles.categoryName} numberOfLines={1}>
-                            {category?.name ??
-                              t("budget.manage.unknownCategory")}
-                          </Text>
-                        </View>
-                        <Pressable
-                          onPress={() => handleRemoveCategory(item.categoryId)}
-                          hitSlop={8}
-                          style={styles.removeButton}
-                          accessibilityRole="button"
-                          accessibilityLabel={t("budget.manage.removeCategory")}
-                        >
-                          <Trash2 size={17} color={colors.danger} />
-                        </Pressable>
-                      </View>
-                      <View style={styles.categoryAmountContainer}>
-                        <Text style={styles.categoryCurrency}>
-                          {currencyCode}
-                        </Text>
-                        <AmountInput
-                          value={item.amount}
-                          onChangeText={(value) =>
-                            handleCategoryAmountChange(item.categoryId, value)
-                          }
-                          currency={currencyCode}
-                          placeholder={
-                            getCurrencyDecimalDigits(currencyCode) === 0
-                              ? "0"
-                              : "0.00"
-                          }
-                          placeholderTextColor={colors.textSecondary}
-                          style={styles.categoryAmountInput}
-                        />
-                      </View>
+                        );
+                      })}
                     </View>
-                  );
-                })}
+                  )
+                )}
+
+                {/* The add row doubles as the empty state */}
+                {showAddRow && (
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.addRow,
+                      pressed && styles.addRowPressed,
+                    ]}
+                    onPress={() => setCategoryModalVisible(true)}
+                    accessibilityRole="button"
+                  >
+                    <Plus size={18} color={colors.primary} />
+                    <Text style={styles.addRowText}>
+                      {t("budget.manage.addCategoryTitle")}
+                    </Text>
+                  </Pressable>
+                )}
+
+                {!categoriesLoading &&
+                  !categoriesError &&
+                  categoryDrafts.length === 0 &&
+                  availableCategories.length === 0 && (
+                    <View style={styles.emptyCategories}>
+                      <Text style={styles.emptyTitle}>
+                        {t("budget.manage.noCategoryLimits")}
+                      </Text>
+                    </View>
+                  )}
+
+                {/* Allocation: one slim line, only once there is something to show */}
+                {overallAmountMinor !== null && categoryDrafts.length > 0 && (
+                  <View style={styles.allocation}>
+                    <View style={styles.allocationRow}>
+                      <Text style={styles.allocationLabel}>
+                        {t("budget.manage.categoryLimits")}
+                      </Text>
+                      <Text style={styles.allocationValue}>
+                        {currencyCode}{" "}
+                        {formatAmountInput(categoryTotalMinor, currencyCode)}
+                        {" / "}
+                        {formatAmountInput(overallAmountMinor, currencyCode)}
+                      </Text>
+                    </View>
+
+                    <View style={styles.allocationTrack}>
+                      <View
+                        style={[
+                          styles.allocationFill,
+                          {
+                            width: `${allocationRatio * 100}%`,
+                            backgroundColor: exceedsOverallLimit
+                              ? colors.warning
+                              : colors.primary,
+                          },
+                        ]}
+                      />
+                    </View>
+                  </View>
+                )}
               </View>
             )}
+
+            {/* Shown even when collapsed, since it affects saving */}
             {exceedsOverallLimit && (
               <View style={styles.warningCard}>
                 <Text style={styles.warningTitle}>
@@ -550,37 +619,9 @@ export default function ManageBudgetScreen() {
                 </Text>
               </View>
             )}
-            <Text style={styles.helperText}>
-              {t("budget.manage.categoryHelp")}
-            </Text>
           </View>
 
-          {overallAmountMinor !== null && (
-            <View style={styles.summaryCard}>
-              <Text style={styles.summaryTitle}>
-                {t("budget.manage.summaryTitle")}
-              </Text>
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>
-                  {t("budget.manage.overallLimit")}
-                </Text>
-                <Text style={styles.summaryValue}>
-                  {currencyCode}{" "}
-                  {formatAmountInput(overallAmountMinor, currencyCode)}
-                </Text>
-              </View>
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>
-                  {t("budget.manage.categoryLimits")}
-                </Text>
-                <Text style={styles.summaryValue}>
-                  {currencyCode}{" "}
-                  {formatAmountInput(categoryTotalMinor, currencyCode)}
-                </Text>
-              </View>
-            </View>
-          )}
-
+          {/* Delete: separated from the save actions */}
           <Pressable
             style={({ pressed }) => [
               styles.deleteButton,
@@ -601,28 +642,14 @@ export default function ManageBudgetScreen() {
         <View style={styles.footer}>
           <Pressable
             style={({ pressed }) => [
-              styles.cancelButton,
-              pressed && styles.cancelButtonPressed,
-              saving && styles.disabledButton,
-            ]}
-            onPress={() => router.back()}
-            disabled={saving}
-            accessibilityRole="button"
-          >
-            <Text style={styles.cancelButtonText}>
-              {t("budget.manage.cancel")}
-            </Text>
-          </Pressable>
-          <Pressable
-            style={({ pressed }) => [
               styles.saveButton,
               pressed && styles.saveButtonPressed,
-              saving && styles.disabledButton,
+              saveDisabled && styles.disabledButton,
             ]}
             onPress={handleSave}
-            disabled={saving}
+            disabled={saveDisabled}
             accessibilityRole="button"
-            accessibilityState={{ disabled: saving, busy: saving }}
+            accessibilityState={{ disabled: saveDisabled, busy: saving }}
           >
             {saving ? (
               <>
@@ -688,40 +715,21 @@ export default function ManageBudgetScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   flex: { flex: 1 },
-  content: { padding: spacing.lg, paddingBottom: spacing.xl, gap: spacing.xl },
+  content: { padding: spacing.lg, paddingBottom: spacing.xl, gap: spacing.lg },
   group: { gap: spacing.sm },
-  header: { gap: spacing.xs },
+
+  /* Header */
+  header: {
+    gap: spacing.xs,
+  },
   title: {
     fontSize: typography.size.xl,
     fontWeight: typography.weight.bold,
     color: colors.text,
   },
-  subtitle: {
-    fontSize: typography.size.sm,
-    lineHeight: 21,
-    color: colors.textSecondary,
-  },
-  workspaceCard: {
+  workspaceRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    gap: spacing.md,
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  workspaceLabel: {
-    fontSize: typography.size.caption,
-    color: colors.textSecondary,
-  },
-  workspaceValue: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "flex-end",
     gap: spacing.sm,
   },
   workspaceDot: {
@@ -733,62 +741,61 @@ const styles = StyleSheet.create({
   workspaceName: {
     flexShrink: 1,
     fontSize: typography.size.sm,
-    fontWeight: typography.weight.semibold,
-    color: colors.text,
+    fontWeight: typography.weight.medium,
+    color: colors.textSecondary,
   },
-  currencyBadge: {
-    fontSize: typography.size.xs,
+  workspaceSeparator: {
+    fontSize: typography.size.sm,
+    color: colors.textSecondary,
+  },
+  workspaceCurrency: {
+    fontSize: typography.size.sm,
     fontWeight: typography.weight.semibold,
     color: colors.primary,
-    backgroundColor: colors.primaryLight,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    borderRadius: radius.full,
-    overflow: "hidden",
   },
-  sectionTitle: {
-    fontSize: typography.size.md,
-    fontWeight: typography.weight.semibold,
-    color: colors.text,
-  },
-  sectionDescription: {
-    fontSize: typography.size.caption,
-    lineHeight: 18,
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-  helperText: {
-    fontSize: typography.size.caption,
-    lineHeight: 18,
-    color: colors.textSecondary,
-  },
-  sectionHeader: {
+
+  /* Period (read-only) */
+  periodRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-  },
-  sectionHeaderText: { flex: 1, paddingRight: spacing.sm },
-  card: {
+    gap: spacing.sm,
+    minHeight: 52,
+    paddingHorizontal: spacing.lg,
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
   },
-  cardPadded: { padding: spacing.lg, gap: spacing.md },
-  periodText: {
+  periodLabel: {
+    flex: 1,
+    fontSize: typography.size.sm,
+    color: colors.textSecondary,
+  },
+  periodValue: {
     fontSize: typography.size.md,
     fontWeight: typography.weight.semibold,
     color: colors.text,
   },
-  periodHelper: {
-    fontSize: typography.size.caption,
+
+  /* Overall amount */
+  amountCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.lg,
+    gap: spacing.xs,
+  },
+  amountLabel: {
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.medium,
     color: colors.textSecondary,
   },
   amountInputContainer: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.sm,
-    minHeight: 56,
+    minHeight: 60,
   },
   currencyPrefix: {
     fontSize: typography.size.md,
@@ -797,7 +804,7 @@ const styles = StyleSheet.create({
   },
   amountInput: {
     flex: 1,
-    height: 56,
+    height: 60,
     paddingHorizontal: 0,
     backgroundColor: "transparent",
     borderWidth: 0,
@@ -805,27 +812,80 @@ const styles = StyleSheet.create({
     fontWeight: typography.weight.bold,
     color: colors.text,
   },
-  addButton: {
+  hint: {
+    fontSize: typography.size.caption,
+    lineHeight: 18,
+    color: colors.textSecondary,
+  },
+
+  /* Collapsible categories */
+  collapseHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 5,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.full,
-    backgroundColor: colors.primaryLight,
-  },
-  addButtonPressed: { opacity: 0.8 },
-  addButtonDisabled: {
+    gap: spacing.md,
+    minHeight: 56,
+    paddingHorizontal: spacing.lg,
     backgroundColor: colors.surface,
+    borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
   },
-  addButtonText: {
+  collapseHeaderPressed: { backgroundColor: colors.background },
+  collapseTitleRow: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: spacing.sm,
+  },
+  sectionTitle: {
+    flexShrink: 1,
+    fontSize: typography.size.md,
+    fontWeight: typography.weight.semibold,
+    color: colors.text,
+  },
+  optionalText: {
+    fontSize: typography.size.caption,
+    color: colors.textSecondary,
+  },
+  countBadge: {
+    minWidth: 24,
+    height: 24,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.sm,
+    backgroundColor: colors.primaryLight,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  countBadgeText: {
+    fontSize: typography.size.xs,
+    fontWeight: typography.weight.bold,
+    color: colors.primary,
+  },
+  chevronOpen: { transform: [{ rotate: "180deg" }] },
+  collapseBody: { gap: spacing.md },
+
+  /* Add row (also the empty state) */
+  addRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm,
+    minHeight: 52,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderStyle: "dashed",
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryLight,
+  },
+  addRowPressed: { opacity: 0.8 },
+  addButtonPressed: { opacity: 0.8 },
+  addRowText: {
     color: colors.primary,
     fontSize: typography.size.sm,
     fontWeight: typography.weight.semibold,
   },
-  disabledText: { color: colors.textSecondary },
+
+  /* States */
   loadingContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -856,19 +916,21 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     borderStyle: "dashed",
-    padding: spacing.lg,
-    gap: spacing.xs,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    alignItems: "center",
   },
   emptyTitle: {
     fontSize: typography.size.sm,
-    fontWeight: typography.weight.semibold,
-    color: colors.text,
+    color: colors.textSecondary,
   },
   emptyDescription: {
     fontSize: typography.size.caption,
     lineHeight: 18,
     color: colors.textSecondary,
   },
+
+  /* Category cards */
   categoryList: { gap: spacing.md },
   categoryCard: {
     backgroundColor: colors.surface,
@@ -924,6 +986,37 @@ const styles = StyleSheet.create({
     color: colors.text,
     paddingVertical: spacing.sm,
   },
+
+  /* Allocation */
+  allocation: { gap: spacing.sm },
+  allocationRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: spacing.md,
+  },
+  allocationLabel: {
+    fontSize: typography.size.caption,
+    color: colors.textSecondary,
+  },
+  allocationValue: {
+    flexShrink: 1,
+    fontSize: typography.size.caption,
+    fontWeight: typography.weight.semibold,
+    color: colors.text,
+  },
+  allocationTrack: {
+    height: 6,
+    backgroundColor: colors.border,
+    borderRadius: radius.full,
+    overflow: "hidden",
+  },
+  allocationFill: {
+    height: "100%",
+    borderRadius: radius.full,
+  },
+
+  /* Warning */
   warningCard: {
     backgroundColor: colors.warningLight,
     borderRadius: radius.md,
@@ -940,32 +1033,8 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     color: colors.textSecondary,
   },
-  summaryCard: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    gap: spacing.sm,
-  },
-  summaryTitle: {
-    fontSize: typography.size.md,
-    fontWeight: typography.weight.semibold,
-    color: colors.text,
-    marginBottom: spacing.xs,
-  },
-  summaryRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: spacing.md,
-  },
-  summaryLabel: { fontSize: typography.size.sm, color: colors.textSecondary },
-  summaryValue: {
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.semibold,
-    color: colors.text,
-  },
+
+  /* Delete */
   deleteButton: {
     minHeight: 48,
     flexDirection: "row",
@@ -983,6 +1052,8 @@ const styles = StyleSheet.create({
     fontWeight: typography.weight.semibold,
     color: colors.danger,
   },
+
+  /* Loading / error / empty (full screen) */
   centerContainer: {
     flex: 1,
     alignItems: "center",
@@ -1001,6 +1072,8 @@ const styles = StyleSheet.create({
     fontSize: typography.size.sm,
     fontWeight: typography.weight.semibold,
   },
+
+  /* Footer */
   footer: {
     flexDirection: "row",
     gap: spacing.md,
@@ -1043,6 +1116,8 @@ const styles = StyleSheet.create({
     fontWeight: typography.weight.semibold,
     color: colors.textOnPrimary,
   },
+
+  /* Category sheet */
   modalEmpty: { padding: spacing.lg },
   categoryOption: {
     flexDirection: "row",

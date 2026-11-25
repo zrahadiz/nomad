@@ -249,7 +249,7 @@ export default function CreateBudgetScreen() {
     !categoriesLoading && !categoriesError && availableCategories.length > 0;
 
   return (
-    <SafeScreen>
+    <SafeScreen backgroundColor={colors.background} edges={["bottom"]}>
       <View style={styles.screen}>
         <KeyboardAwareScrollView
           style={styles.flex}
@@ -257,17 +257,13 @@ export default function CreateBudgetScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Header: title and the workspace it applies to */}
-          <View style={styles.header}>
-            <Text style={styles.title}>{t("budget.create.title")}</Text>
-
-            <View style={styles.workspaceChip}>
-              <View style={styles.workspaceDot} />
-              <Text style={styles.workspaceName} numberOfLines={1}>
-                {activeWorkspace?.name ?? t("budget.create.noWorkspace")}
-              </Text>
-              <Text style={styles.currencyBadge}>{currencyCode}</Text>
-            </View>
+          <View style={styles.workspaceRow}>
+            <View style={styles.workspaceDot} />
+            <Text style={styles.workspaceName} numberOfLines={1}>
+              {activeWorkspace?.name ?? t("budget.create.noWorkspace")}
+            </Text>
+            <Text style={styles.workspaceSeparator}>·</Text>
+            <Text style={styles.workspaceCurrency}>{currencyCode}</Text>
           </View>
 
           {/* 1. The one thing most people need: the overall limit */}
@@ -519,20 +515,6 @@ export default function CreateBudgetScreen() {
         <View style={styles.footer}>
           <Pressable
             style={({ pressed }) => [
-              styles.cancelButton,
-              pressed && styles.cancelButtonPressed,
-              saving && styles.disabledButton,
-            ]}
-            onPress={() => router.back()}
-            disabled={saving}
-            accessibilityRole="button"
-          >
-            <Text style={styles.cancelButtonText}>
-              {t("budget.create.cancel")}
-            </Text>
-          </Pressable>
-          <Pressable
-            style={({ pressed }) => [
               styles.saveButton,
               pressed && styles.saveButtonPressed,
               saveDisabled && styles.disabledButton,
@@ -611,29 +593,17 @@ const styles = StyleSheet.create({
 
   /* Header */
   header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: spacing.md,
+    gap: spacing.xs,
   },
   title: {
     fontSize: typography.size.xl,
     fontWeight: typography.weight.bold,
     color: colors.text,
   },
-  workspaceChip: {
-    flexShrink: 1,
-    maxWidth: "58%",
+  workspaceRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.sm,
-    backgroundColor: colors.surface,
-    borderRadius: radius.full,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingVertical: spacing.xs,
-    paddingLeft: spacing.md,
-    paddingRight: spacing.xs,
   },
   workspaceDot: {
     width: 8,
@@ -643,19 +613,18 @@ const styles = StyleSheet.create({
   },
   workspaceName: {
     flexShrink: 1,
-    fontSize: typography.size.caption,
-    fontWeight: typography.weight.semibold,
-    color: colors.text,
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.medium,
+    color: colors.textSecondary,
   },
-  currencyBadge: {
-    fontSize: typography.size.xs,
+  workspaceSeparator: {
+    fontSize: typography.size.sm,
+    color: colors.textSecondary,
+  },
+  workspaceCurrency: {
+    fontSize: typography.size.sm,
     fontWeight: typography.weight.semibold,
     color: colors.primary,
-    backgroundColor: colors.primaryLight,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 3,
-    borderRadius: radius.full,
-    overflow: "hidden",
   },
 
   /* Overall amount */
