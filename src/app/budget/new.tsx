@@ -1,5 +1,4 @@
 import { useRouter } from "expo-router";
-import { Check, ChevronDown, Plus, Trash2 } from "lucide-react-native";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -12,10 +11,18 @@ import {
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
+import {
+  CalendarDays,
+  Check,
+  ChevronDown,
+  Plus,
+  Trash2,
+} from "lucide-react-native";
+
 import { AmountInput } from "@/components/forms/amount-input";
 import { SafeScreen } from "@/components/layout/safe-screen";
 import { BottomSheetModal } from "@/components/ui/bottom-modal";
-import { DatePickerField } from "@/components/ui/date-picker-field";
+import { MonthYearPicker } from "@/components/ui/month-year-picker";
 import { colors, radius, spacing, typography } from "@/constants/theme";
 import { getCurrencyDecimalDigits, toMinorUnits } from "@/lib/finance/currency";
 import { isValidCurrencyAmountInput } from "@/lib/finance/currency-input";
@@ -104,6 +111,7 @@ export default function CreateBudgetScreen() {
     [],
   );
   const [categoryModalVisible, setCategoryModalVisible] = useState(false);
+  const [monthPickerVisible, setMonthPickerVisible] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -248,6 +256,19 @@ export default function CreateBudgetScreen() {
   const showAddRow =
     !categoriesLoading && !categoriesError && availableCategories.length > 0;
 
+  if (monthPickerVisible) {
+    return (
+      <MonthYearPicker
+        value={budgetMonth}
+        onCancel={() => setMonthPickerVisible(false)}
+        onSave={(value) => {
+          setBudgetMonth(value);
+          setMonthPickerVisible(false);
+        }}
+      />
+    );
+  }
+
   return (
     <SafeScreen backgroundColor={colors.background} edges={["bottom"]}>
       <View style={styles.screen}>
@@ -293,14 +314,31 @@ export default function CreateBudgetScreen() {
           </View>
 
           {/* 2. Month */}
-          <DatePickerField
-            label={t("budget.create.budgetMonth")}
-            value={budgetMonth}
-            onChange={(value) => {
-              const normalized = normalizeBudgetMonth(value);
-              if (normalized) setBudgetMonth(normalized);
-            }}
-          />
+          <View style={styles.monthFieldGroup}>
+            <Text style={styles.monthFieldLabel}>
+              {t("budget.create.budgetMonth")}
+            </Text>
+
+            <Pressable
+              style={({ pressed }) => [
+                styles.monthField,
+                pressed && styles.monthFieldPressed,
+              ]}
+              onPress={() => setMonthPickerVisible(true)}
+              accessibilityRole="button"
+              accessibilityLabel={t("budget.create.budgetMonth")}
+            >
+              <View style={styles.monthFieldContent}>
+                <CalendarDays size={20} color={colors.primary} />
+
+                <Text style={styles.monthFieldValue}>
+                  {formatMonthLabel(budgetMonth, locale)}
+                </Text>
+              </View>
+
+              <ChevronDown size={20} color={colors.textSecondary} />
+            </Pressable>
+          </View>
 
           {/* 3. Optional category limits: collapsed until needed */}
           <View style={styles.group}>
@@ -777,6 +815,40 @@ const styles = StyleSheet.create({
     fontSize: typography.size.caption,
     lineHeight: 18,
     color: colors.textSecondary,
+  },
+
+  /* Month picker field */
+  monthFieldGroup: {
+    gap: spacing.sm,
+  },
+  monthFieldLabel: {
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.medium,
+    color: colors.textSecondary,
+  },
+  monthField: {
+    minHeight: 54,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  monthFieldPressed: {
+    backgroundColor: colors.background,
+  },
+  monthFieldContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+  },
+  monthFieldValue: {
+    fontSize: typography.size.md,
+    fontWeight: typography.weight.semibold,
+    color: colors.text,
   },
 
   /* Category cards */

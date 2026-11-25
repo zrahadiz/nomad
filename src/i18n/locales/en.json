@@ -16,6 +16,9 @@
     },
     "goBack": "Go back"
   },
+  "monthYearPicker": {
+    "title": "Select month"
+  },
   "navigation": {
     "home": "Home",
     "transactions": "Transactions",
@@ -612,6 +615,9 @@
         "deleteFailedTitle": "Unable to delete budget",
         "deleteError": "Failed to delete budget."
       }
+    },
+    "accessibility": {
+      "add": "Add Budget"
     }
   },
   "currency": {

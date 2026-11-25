@@ -292,16 +292,6 @@ export default function BudgetScreen() {
               <Text style={styles.emptyDescription}>
                 {t("budget.screen.states.noBudgetDescription")}
               </Text>
-              <Pressable
-                style={styles.createBudgetButton}
-                onPress={() => router.push("/budget/new")}
-                accessibilityRole="button"
-              >
-                <Plus size={18} color={colors.textOnPrimary} />
-                <Text style={styles.createBudgetButtonText}>
-                  {t("budget.screen.states.create")}
-                </Text>
-              </Pressable>
             </View>
           ) : (
             <>
@@ -745,6 +735,15 @@ export default function BudgetScreen() {
             </>
           )}
         </ScrollView>
+
+        <Pressable
+          onPress={() => router.push("/budget/new")}
+          style={({ pressed }) => [styles.fab, pressed && styles.fabPressed]}
+          accessibilityRole="button"
+          accessibilityLabel={t("transactions.accessibility.add")}
+        >
+          <Plus size={26} color={colors.textOnPrimary} />
+        </Pressable>
 
         {/* Month picker */}
         <BottomSheetModal
@@ -1361,5 +1360,25 @@ const styles = StyleSheet.create({
   insightProgressFill: {
     height: "100%",
     borderRadius: radius.full,
+  },
+  fab: {
+    position: "absolute",
+    right: spacing.lg,
+    bottom: spacing.lg,
+    width: 56,
+    height: 56,
+    borderRadius: radius.full,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.primary,
+    shadowColor: "#202824",
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+  },
+
+  fabPressed: {
+    backgroundColor: colors.primaryDark,
   },
 });

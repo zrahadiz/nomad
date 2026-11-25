@@ -1,4 +1,3 @@
-import { ArrowLeft } from "lucide-react-native";
 import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -41,12 +40,13 @@ function WheelColumn<T extends string | number>({
   const scrollToItem = (index: number) => {
     listRef.current?.scrollToIndex({
       index: index + VISIBLE_SIDE_ITEMS,
+      viewPosition: 0.5,
       animated: true,
     });
   };
 
   const handleScrollEnd = (offset: number) => {
-    const index = Math.round(offset / ITEM_HEIGHT) - VISIBLE_SIDE_ITEMS;
+    const index = Math.round(offset / ITEM_HEIGHT);
     const safeIndex = Math.max(0, Math.min(index, items.length - 1));
 
     if (items[safeIndex] !== undefined) {
@@ -101,7 +101,7 @@ function WheelColumn<T extends string | number>({
       showsVerticalScrollIndicator={false}
       snapToInterval={ITEM_HEIGHT}
       decelerationRate="fast"
-      initialScrollIndex={selectedIndex + VISIBLE_SIDE_ITEMS}
+      initialScrollIndex={selectedIndex}
       getItemLayout={(_, index) => ({
         length: ITEM_HEIGHT,
         offset: ITEM_HEIGHT * index,
@@ -177,41 +177,14 @@ export function MonthYearPicker({
     <SafeScreen backgroundColor={colors.background} edges={["top", "bottom"]}>
       <View style={styles.container}>
         <View style={styles.header}>
-          <Pressable
-            onPress={onCancel}
-            hitSlop={12}
-            style={styles.backButton}
-            accessibilityRole="button"
-            accessibilityLabel={t("common.back", {
-              defaultValue: "Back",
-            })}
-          >
-            <ArrowLeft size={25} color={colors.text} />
-          </Pressable>
-
           <Text style={styles.headerTitle}>
             {t("monthYearPicker.title", {
               defaultValue: "Select month",
             })}
           </Text>
-
-          <View style={styles.headerSpacer} />
         </View>
 
         <View style={styles.pickerArea}>
-          <View style={styles.wheelLabels}>
-            <Text style={styles.columnLabel}>
-              {t("monthYearPicker.month", {
-                defaultValue: "MONTH",
-              })}
-            </Text>
-            <Text style={styles.columnLabel}>
-              {t("monthYearPicker.year", {
-                defaultValue: "YEAR",
-              })}
-            </Text>
-          </View>
-
           <View style={styles.wheels}>
             <WheelColumn
               items={months}
@@ -230,6 +203,21 @@ export function MonthYearPicker({
         <View style={styles.footer}>
           <Pressable
             style={({ pressed }) => [
+              styles.cancelButton,
+              pressed && styles.cancelButtonPressed,
+            ]}
+            onPress={onCancel}
+            accessibilityRole="button"
+          >
+            <Text style={styles.cancelButtonText}>
+              {t("common.cancel", {
+                defaultValue: "Cancel",
+              })}
+            </Text>
+          </Pressable>
+
+          <Pressable
+            style={({ pressed }) => [
               styles.saveButton,
               pressed && styles.saveButtonPressed,
             ]}
@@ -237,7 +225,7 @@ export function MonthYearPicker({
             accessibilityRole="button"
           >
             <Text style={styles.saveButtonText}>
-              {t("monthYearPicker.save", {
+              {t("common.save", {
                 defaultValue: "Save",
               })}
             </Text>
@@ -256,7 +244,7 @@ const styles = StyleSheet.create({
     height: 60,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent: "center",
     paddingHorizontal: spacing.lg,
   },
   backButton: {
@@ -324,22 +312,49 @@ const styles = StyleSheet.create({
     opacity: 0.35,
   },
   footer: {
+    flexDirection: "row",
+    gap: spacing.md,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
     paddingBottom: spacing.md,
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
+
+  cancelButton: {
+    flex: 1,
+    minHeight: 54,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  cancelButtonPressed: {
+    backgroundColor: colors.background,
+  },
+
+  cancelButtonText: {
+    fontSize: typography.size.md,
+    fontWeight: typography.weight.medium,
+    color: colors.textSecondary,
+  },
+
   saveButton: {
+    flex: 1,
     minHeight: 54,
     borderRadius: radius.lg,
     backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
   },
+
   saveButtonPressed: {
     backgroundColor: colors.primaryDark,
   },
+
   saveButtonText: {
     fontSize: typography.size.md,
     fontWeight: typography.weight.semibold,

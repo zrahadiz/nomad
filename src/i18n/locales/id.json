@@ -16,6 +16,9 @@
       "generic": "Terjadi kesalahan. Silakan coba lagi."
     }
   },
+  "monthYearPicker": {
+    "title": "Pilih Bulan"
+  },
   "navigation": {
     "home": "Beranda",
     "transactions": "Transaksi",
