@@ -24,6 +24,7 @@ import {
 
 import { WorkspaceGate } from "@/components/feedbacks/workspace-gate";
 import { SafeScreen } from "@/components/layout/safe-screen";
+import { AppIcon } from "@/components/ui/app-icon";
 import { BottomSheetModal } from "@/components/ui/bottom-modal";
 import { colors, radius, spacing, typography } from "@/constants/theme";
 import { formatMoney } from "@/lib/finance/calculations";
@@ -479,20 +480,16 @@ export default function BudgetScreen() {
                       <View key={category.id} style={styles.categoryCard}>
                         <View style={styles.categoryHeader}>
                           <View style={styles.categoryInfo}>
-                            <View
-                              style={[
-                                styles.categoryIcon,
-                                {
-                                  backgroundColor:
-                                    category.categoryColor ??
-                                    colors.primaryLight,
-                                },
-                              ]}
-                            >
-                              <Text style={styles.categoryEmoji}>
-                                {category.categoryIcon ?? "•"}
-                              </Text>
-                            </View>
+                            <AppIcon
+                              name={category.categoryIcon ?? "ellipsis"}
+                              size={36}
+                              iconSize={18}
+                              color={colors.primary}
+                              background
+                              backgroundColor={
+                                category.categoryColor ?? colors.primaryLight
+                              }
+                            />
                             <View style={styles.categoryNameContainer}>
                               <Text
                                 style={styles.categoryName}
@@ -673,26 +670,22 @@ export default function BudgetScreen() {
                         >
                           <View style={styles.insightCategoryHeader}>
                             <View style={styles.insightCategoryNameRow}>
-                              <View
-                                style={[
-                                  styles.insightCategoryDot,
-                                  {
-                                    backgroundColor:
-                                      category.categoryColor ??
-                                      colors.textSecondary,
-                                  },
-                                ]}
+                              <AppIcon
+                                name={category.categoryIcon ?? "ellipsis"}
+                                size={28}
+                                iconSize={14}
+                                color={category.categoryColor ?? colors.primary}
+                                background
+                                backgroundColor={`${category.categoryColor ?? colors.primary}20`}
                               />
                               <Text
                                 style={styles.insightCategoryName}
                                 numberOfLines={1}
                               >
-                                {category.categoryIcon
-                                  ? `${category.categoryIcon} `
-                                  : ""}
                                 {category.categoryName}
                               </Text>
                             </View>
+
                             <View style={styles.insightCategoryAmount}>
                               <Text style={styles.insightAmount}>
                                 {formatCurrency(
@@ -700,6 +693,7 @@ export default function BudgetScreen() {
                                   currencyCode,
                                 )}
                               </Text>
+
                               {formatSecondaryCurrency(
                                 category.amountSpent,
                               ) && (
@@ -709,11 +703,13 @@ export default function BudgetScreen() {
                                   )}
                                 </Text>
                               )}
+
                               <Text style={styles.insightPercentage}>
                                 {category.percentage.toFixed(1)}%
                               </Text>
                             </View>
                           </View>
+
                           <View style={styles.insightProgressTrack}>
                             <View
                               style={[

@@ -19,9 +19,10 @@ import {
   Trash2,
 } from "lucide-react-native";
 
+import { CategorySelectionModal } from "@/components/budgets/category-selection-modal";
 import { AmountInput } from "@/components/forms/amount-input";
 import { SafeScreen } from "@/components/layout/safe-screen";
-import { BottomSheetModal } from "@/components/ui/bottom-modal";
+import { AppIcon } from "@/components/ui/app-icon";
 import { MonthYearPicker } from "@/components/ui/month-year-picker";
 import { colors, radius, spacing, typography } from "@/constants/theme";
 import { getCurrencyDecimalDigits, toMinorUnits } from "@/lib/finance/currency";
@@ -415,19 +416,16 @@ export default function CreateBudgetScreen() {
                           >
                             <View style={styles.categoryHeader}>
                               <View style={styles.categoryInfo}>
-                                <View
-                                  style={[
-                                    styles.categoryIcon,
-                                    {
-                                      backgroundColor:
-                                        category?.color ?? colors.primaryLight,
-                                    },
-                                  ]}
-                                >
-                                  <Text style={styles.categoryIconText}>
-                                    {category?.icon ?? "•"}
-                                  </Text>
-                                </View>
+                                <AppIcon
+                                  name={category?.icon ?? "ellipsis"}
+                                  size={36}
+                                  iconSize={18}
+                                  color={colors.primary}
+                                  background
+                                  backgroundColor={
+                                    category?.color ?? colors.primaryLight
+                                  }
+                                />
                                 <Text
                                   style={styles.categoryName}
                                   numberOfLines={1}
@@ -581,44 +579,15 @@ export default function CreateBudgetScreen() {
         </View>
       </View>
 
-      <BottomSheetModal
+      <CategorySelectionModal
         visible={categoryModalVisible}
         onClose={() => setCategoryModalVisible(false)}
+        onSelect={handleAddCategory}
+        categories={availableCategories}
         title={t("budget.create.addCategoryTitle")}
         subtitle={t("budget.create.addCategorySubtitle")}
-      >
-        {availableCategories.length === 0 ? (
-          <View style={styles.modalEmpty}>
-            <Text style={styles.emptyDescription}>
-              {t("budget.create.allCategoriesAdded")}
-            </Text>
-          </View>
-        ) : (
-          availableCategories.map((category) => (
-            <Pressable
-              key={category.id}
-              style={styles.categoryOption}
-              onPress={() => handleAddCategory(category)}
-              accessibilityRole="button"
-            >
-              <View style={styles.categoryInfo}>
-                <View
-                  style={[
-                    styles.categoryIcon,
-                    { backgroundColor: category.color ?? colors.primaryLight },
-                  ]}
-                >
-                  <Text style={styles.categoryIconText}>
-                    {category.icon ?? "•"}
-                  </Text>
-                </View>
-                <Text style={styles.categoryOptionName}>{category.name}</Text>
-              </View>
-              <Plus size={18} color={colors.primary} />
-            </Pressable>
-          ))
-        )}
-      </BottomSheetModal>
+        emptyMessage={t("budget.create.allCategoriesAdded")}
+      />
     </SafeScreen>
   );
 }

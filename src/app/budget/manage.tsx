@@ -12,9 +12,10 @@ import {
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
+import { CategorySelectionModal } from "@/components/budgets/category-selection-modal";
 import { AmountInput } from "@/components/forms/amount-input";
 import { SafeScreen } from "@/components/layout/safe-screen";
-import { BottomSheetModal } from "@/components/ui/bottom-modal";
+import { AppIcon } from "@/components/ui/app-icon";
 import { colors, radius, spacing, typography } from "@/constants/theme";
 import { getCurrencyDecimalDigits, toMinorUnits } from "@/lib/finance/currency";
 import { isValidCurrencyAmountInput } from "@/lib/finance/currency-input";
@@ -487,19 +488,17 @@ export default function ManageBudgetScreen() {
                           >
                             <View style={styles.categoryHeader}>
                               <View style={styles.categoryInfo}>
-                                <View
-                                  style={[
-                                    styles.categoryIcon,
-                                    {
-                                      backgroundColor:
-                                        category?.color ?? colors.primaryLight,
-                                    },
-                                  ]}
-                                >
-                                  <Text style={styles.categoryIconText}>
-                                    {category?.icon ?? "•"}
-                                  </Text>
-                                </View>
+                                <AppIcon
+                                  name={category?.icon ?? "ellipsis"}
+                                  size={36}
+                                  iconSize={18}
+                                  color={colors.primary}
+                                  background
+                                  backgroundColor={
+                                    category?.color ?? colors.primaryLight
+                                  }
+                                />
+
                                 <Text
                                   style={styles.categoryName}
                                   numberOfLines={1}
@@ -670,44 +669,15 @@ export default function ManageBudgetScreen() {
         </View>
       </View>
 
-      <BottomSheetModal
+      <CategorySelectionModal
         visible={categoryModalVisible}
         onClose={() => setCategoryModalVisible(false)}
+        onSelect={handleAddCategory}
+        categories={availableCategories}
         title={t("budget.manage.addCategoryTitle")}
         subtitle={t("budget.manage.addCategorySubtitle")}
-      >
-        {availableCategories.length === 0 ? (
-          <View style={styles.modalEmpty}>
-            <Text style={styles.emptyDescription}>
-              {t("budget.manage.allCategoriesAdded")}
-            </Text>
-          </View>
-        ) : (
-          availableCategories.map((category) => (
-            <Pressable
-              key={category.id}
-              style={styles.categoryOption}
-              onPress={() => handleAddCategory(category)}
-              accessibilityRole="button"
-            >
-              <View style={styles.categoryInfo}>
-                <View
-                  style={[
-                    styles.categoryIcon,
-                    { backgroundColor: category.color ?? colors.primaryLight },
-                  ]}
-                >
-                  <Text style={styles.categoryIconText}>
-                    {category.icon ?? "•"}
-                  </Text>
-                </View>
-                <Text style={styles.categoryOptionName}>{category.name}</Text>
-              </View>
-              <Plus size={18} color={colors.primary} />
-            </Pressable>
-          ))
-        )}
-      </BottomSheetModal>
+        emptyMessage={t("budget.manage.allCategoriesAdded")}
+      />
     </SafeScreen>
   );
 }

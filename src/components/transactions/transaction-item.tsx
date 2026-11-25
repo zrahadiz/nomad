@@ -14,6 +14,8 @@ import { formatConvertedMoney } from "@/lib/finance/currency-converter";
 import type { workspaceCurrencyConverter } from "@/types/currency-converter";
 import type { transaction } from "@/types/finances";
 
+import { AppIcon } from "../ui/app-icon";
+
 type TransactionItemProps = {
   item: transaction;
   accountName?: string;
@@ -69,7 +71,6 @@ export function TransactionItem({
         : (categoryName ?? (isIncome ? "Income" : "Expense"));
 
   const amountColor = isPositive ? colors.success : colors.danger;
-
   const secondaryAmount =
     converter && item.currency === primaryCurrency
       ? formatConvertedMoney(item.amountMinor, primaryCurrency, converter)
@@ -90,7 +91,13 @@ export function TransactionItem({
     >
       <View style={styles.icon}>
         {categoryIcon && !isTransfer && !isBalanceAdjustment ? (
-          <Text style={styles.categoryIcon}>{categoryIcon}</Text>
+          <AppIcon
+            name={categoryIcon}
+            size={20}
+            iconSize={20}
+            color={colors.primary}
+            background={false}
+          />
         ) : (
           <Icon
             size={20}

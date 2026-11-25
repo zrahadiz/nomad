@@ -5,11 +5,8 @@ import {
   ArrowUpRight,
   Check,
   ChevronRight,
-  Globe,
   Info,
   Plus,
-  Tag,
-  Wallet,
   type LucideIcon,
 } from "lucide-react-native";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
@@ -29,13 +26,12 @@ import { formatMoney } from "@/lib/finance/calculations";
 import { getCurrencyDecimalDigits, toMinorUnits } from "@/lib/finance/currency";
 import { isValidCurrencyAmountInput } from "@/lib/finance/currency-input";
 
-import { AccountIcon } from "@/components/accounts/account-icon";
 import { AmountInput } from "@/components/forms/amount-input";
 import { SafeScreen } from "@/components/layout/safe-screen";
+import { AppIcon } from "@/components/ui/app-icon";
 import { BottomSheetModal } from "@/components/ui/bottom-modal";
 import { DatePickerField } from "@/components/ui/date-picker-field";
 
-import type { accountIconName } from "@/constants/account-options";
 import { getCountryByCode } from "@/constants/countries";
 import { colors, radius, spacing, typography } from "@/constants/theme";
 import { useCategoryStore } from "@/stores/use-category-store";
@@ -307,7 +303,14 @@ export default function NewTransactionScreen() {
     id: account.id,
     label: account.name,
     description: `${formatAccountType(account.type)} · ${account.currency}`,
-    leading: <AccountAvatar account={account} />,
+    leading: (
+      <AppIcon
+        name={account.icon ?? "wallet"}
+        color={account.color ?? colors.primary}
+        size={40}
+        iconSize={20}
+      />
+    ),
   }));
 
   const destinationOptions: SheetOption[] = destinationAccounts.map(
@@ -315,18 +318,35 @@ export default function NewTransactionScreen() {
       id: account.id,
       label: account.name,
       description: `${formatAccountType(account.type)} · ${account.currency}`,
-      leading: <AccountAvatar account={account} />,
+      leading: (
+        <AppIcon
+          name={account.icon ?? "wallet"}
+          color={account.color ?? colors.primary}
+          size={40}
+          iconSize={20}
+        />
+      ),
     }),
   );
 
   const categoryOptions: SheetOption[] = availableCategories.map(
-    (category) => ({
-      id: category.id,
-      label: category.name,
-      description: category.isDefault
-        ? t("transactions.add.defaultCategory")
-        : t("transactions.add.customCategory"),
-      leading: <LetterAvatar text={category.name} />,
+    ({ id, name, icon, isDefault }) => ({
+      id,
+      label: name,
+      description: t(
+        isDefault
+          ? "transactions.add.defaultCategory"
+          : "transactions.add.customCategory",
+      ),
+      leading: (
+        <AppIcon
+          name={icon ?? "ellipsis"}
+          color={colors.primary}
+          size={40}
+          iconSize={20}
+          shape="circle"
+        />
+      ),
     }),
   );
 
@@ -735,11 +755,14 @@ export default function NewTransactionScreen() {
                     }
                     leading={
                       selectedAccount ? (
-                        <AccountAvatar account={selectedAccount} />
+                        <AppIcon
+                          name={selectedAccount.icon ?? "wallet"}
+                          color={selectedAccount.color ?? colors.primary}
+                          size={40}
+                          iconSize={20}
+                        />
                       ) : (
-                        <IconTile>
-                          <Wallet size={20} color={colors.primary} />
-                        </IconTile>
+                        <AppIcon name="wallet" size={40} iconSize={20} />
                       )
                     }
                     onPress={() => setAccountModalVisible(true)}
@@ -791,11 +814,16 @@ export default function NewTransactionScreen() {
                     }
                     leading={
                       selectedDestinationAccount ? (
-                        <AccountAvatar account={selectedDestinationAccount} />
+                        <AppIcon
+                          name={selectedDestinationAccount.icon ?? "wallet"}
+                          color={
+                            selectedDestinationAccount.color ?? colors.primary
+                          }
+                          size={40}
+                          iconSize={20}
+                        />
                       ) : (
-                        <IconTile>
-                          <Wallet size={20} color={colors.primary} />
-                        </IconTile>
+                        <AppIcon name="wallet" size={40} iconSize={20} />
                       )
                     }
                     onPress={() => setDestinationModalVisible(true)}
@@ -1000,11 +1028,14 @@ export default function NewTransactionScreen() {
                     }
                     leading={
                       selectedAccount ? (
-                        <AccountAvatar account={selectedAccount} />
+                        <AppIcon
+                          name={selectedAccount.icon ?? "wallet"}
+                          color={selectedAccount.color ?? colors.primary}
+                          size={40}
+                          iconSize={20}
+                        />
                       ) : (
-                        <IconTile>
-                          <Wallet size={20} color={colors.primary} />
-                        </IconTile>
+                        <AppIcon name="wallet" size={40} iconSize={20} />
                       )
                     }
                     onPress={() => setAccountModalVisible(true)}
@@ -1029,11 +1060,20 @@ export default function NewTransactionScreen() {
                     }
                     leading={
                       selectedCategory ? (
-                        <LetterAvatar text={selectedCategory.name} />
+                        <AppIcon
+                          name={selectedCategory.icon ?? "ellipsis"}
+                          color={colors.primary}
+                          size={40}
+                          iconSize={20}
+                          shape="circle"
+                        />
                       ) : (
-                        <IconTile>
-                          <Tag size={20} color={colors.primary} />
-                        </IconTile>
+                        <AppIcon
+                          name="ellipsis"
+                          size={40}
+                          iconSize={20}
+                          shape="circle"
+                        />
                       )
                     }
                     onPress={() => setCategoryModalVisible(true)}
@@ -1344,53 +1384,20 @@ function FormCard({
   );
 }
 
-function IconTile({
-  children,
-  background = colors.primaryLight,
-}: {
-  children: ReactNode;
-  background?: string;
-}) {
-  return (
-    <View style={[styles.iconTile, { backgroundColor: background }]}>
-      {children}
-    </View>
-  );
-}
-
-function LetterAvatar({ text }: { text: string }) {
-  return (
-    <IconTile>
-      <Text style={styles.letter}>{text.charAt(0).toUpperCase()}</Text>
-    </IconTile>
-  );
-}
-
 function WorkspaceAvatar({ countryCode }: { countryCode?: string | null }) {
   const flag = countryCode ? getCountryByCode(countryCode)?.flag : undefined;
 
-  return (
-    <IconTile background={colors.background}>
-      {flag ? (
-        <Text style={styles.flag}>{flag}</Text>
-      ) : (
-        <Globe size={20} color={colors.primary} />
-      )}
-    </IconTile>
-  );
-}
-
-function AccountAvatar({
-  account,
-}: {
-  account: { icon?: string | null; color?: string | null };
-}) {
-  return (
-    <AccountIcon
-      name={(account.icon ?? "wallet") as accountIconName}
-      color={account.color ?? colors.primary}
+  return flag ? (
+    <View style={[styles.iconTile, { backgroundColor: colors.background }]}>
+      <Text style={styles.flag}>{flag}</Text>
+    </View>
+  ) : (
+    <AppIcon
+      name="globe"
+      color={colors.primary}
       size={40}
       iconSize={20}
+      backgroundColor={colors.background}
     />
   );
 }
@@ -1488,7 +1495,6 @@ function OptionSheet({
       ) : (
         options.map((option) => {
           const selected = option.id === selectedId;
-
           return (
             <Pressable
               key={option.id}
@@ -1721,12 +1727,6 @@ const styles = StyleSheet.create({
 
   flag: {
     fontSize: 20,
-  },
-
-  letter: {
-    color: colors.primary,
-    fontSize: typography.size.md,
-    fontWeight: typography.weight.bold,
   },
 
   eyebrow: {
