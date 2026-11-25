@@ -17,6 +17,7 @@ import { WorkspaceGate } from "@/components/feedbacks/workspace-gate";
 import { SafeScreen } from "@/components/layout/safe-screen";
 import { colors, radius, spacing, typography } from "@/constants/theme";
 import i18n from "@/i18n";
+import { getInitials } from "@/lib/helper/get-initials";
 import { signOut } from "@/services/auth-service";
 import { useAuthStore } from "@/stores/use-auth-store";
 import { useProfileStore } from "@/stores/use-profile-store";
@@ -32,17 +33,9 @@ export default function SettingsScreen() {
   const [signingOut, setSigningOut] = useState(false);
 
   const displayName = profile?.full_name || t("settings.profile.defaultName");
-
   const email = user?.email || t("settings.profile.noEmail");
-
   const avatarUrl = profile?.avatar_url;
-
-  const initials = displayName
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0].toUpperCase())
-    .join("");
+  const initials = getInitials(displayName);
 
   const currentLanguage = (i18n.resolvedLanguage ?? i18n.language).split(
     "-",

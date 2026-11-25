@@ -1,9 +1,6 @@
 import {
-  ArrowDownLeft,
-  ArrowUpRight,
   Check,
   ChevronDown,
-  ChevronRight,
   CircleDollarSign,
   Pencil,
   Plus,
@@ -14,7 +11,7 @@ import {
 import { useTranslation } from "react-i18next";
 
 import { useRouter } from "expo-router";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { useAuthStore } from "@/stores/use-auth-store";
 import { useBudgetStore } from "@/stores/use-budget-store";
@@ -43,138 +40,19 @@ import {
 
 import { formatConvertedMoney } from "@/lib/finance/currency-converter";
 
-import { getCountryByCode } from "@/constants/countries";
 import { colors, radius, spacing, typography } from "@/constants/theme";
 
 import { TransactionList } from "@/components/transactions/transaction-list";
 
 import { WorkspaceGate } from "@/components/feedbacks/workspace-gate";
+import SectionHeading from "@/components/home/section-heading";
 import { SafeScreen } from "@/components/layout/safe-screen";
 import { AppIcon } from "@/components/ui/app-icon";
 import { BottomSheetModal } from "@/components/ui/bottom-modal";
-
-/* -------------------------------------------------------------------------- */
-/* Helpers                                                                     */
-/* -------------------------------------------------------------------------- */
-
-function getCountryFlag(countryCode: string): string {
-  return getCountryByCode(countryCode)?.flag ?? "🌍";
-}
-
-function getInitials(name: string | null | undefined): string {
-  if (!name?.trim()) return "U";
-
-  return name
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part[0].toUpperCase())
-    .join("");
-}
-
-function formatAccountType(type: string, t: (key: string) => string): string {
-  const key = type === "e-wallet" ? "eWallet" : type;
-
-  return t(`home.accountTypes.${key}`);
-}
-
-/* -------------------------------------------------------------------------- */
-/* Small presentational pieces                                                 */
-/* (move into /components/home/* when you're happy with the layout)            */
-/* -------------------------------------------------------------------------- */
-
-function SectionHeading({
-  title,
-  action,
-  caption,
-  onPress,
-}: {
-  title: string;
-  action?: string;
-  caption?: string;
-  onPress?: () => void;
-}) {
-  return (
-    <View style={styles.sectionHeading}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-
-      {action ? (
-        <Pressable
-          onPress={onPress}
-          accessibilityRole="button"
-          accessibilityLabel={action}
-          hitSlop={8}
-          style={styles.sectionAction}
-        >
-          <Text style={styles.sectionActionText}>{action}</Text>
-          <ChevronRight size={16} color={colors.primary} />
-        </Pressable>
-      ) : caption ? (
-        <Text style={styles.sectionCaption}>{caption}</Text>
-      ) : null}
-    </View>
-  );
-}
-
-function FlowStat({
-  label,
-  amount,
-  amountColor,
-  direction,
-  tone,
-  secondary,
-}: {
-  label: string;
-  amount: string;
-  amountColor: string;
-  direction: "in" | "out";
-  tone: "success" | "danger" | "neutral";
-  secondary?: ReactNode;
-}) {
-  const iconColor =
-    tone === "success"
-      ? colors.success
-      : tone === "danger"
-        ? colors.danger
-        : colors.textSecondary;
-
-  const bubbleColor =
-    tone === "success"
-      ? colors.successLight
-      : tone === "danger"
-        ? colors.dangerLight
-        : colors.background;
-
-  return (
-    <View style={styles.flowStat}>
-      <View style={[styles.flowIcon, { backgroundColor: bubbleColor }]}>
-        {direction === "in" ? (
-          <ArrowDownLeft size={16} color={iconColor} />
-        ) : (
-          <ArrowUpRight size={16} color={iconColor} />
-        )}
-      </View>
-
-      <View style={styles.flowStatText}>
-        <Text style={styles.flowLabel}>{label}</Text>
-
-        <Text
-          style={[styles.flowAmount, { color: amountColor }]}
-          numberOfLines={1}
-          adjustsFontSizeToFit
-        >
-          {amount}
-        </Text>
-
-        {secondary}
-      </View>
-    </View>
-  );
-}
-
-/* -------------------------------------------------------------------------- */
-/* Screen                                                                      */
-/* -------------------------------------------------------------------------- */
+import FlowStat from "@/components/ui/flow-stat";
+import { formatAccountType } from "@/lib/helper/format-account-type";
+import { getCountryFlag } from "@/lib/helper/get-country-flag";
+import { getInitials } from "@/lib/helper/get-initials";
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -183,7 +61,6 @@ export default function HomeScreen() {
   const [workspaceSheetVisible, setWorkspaceSheetVisible] = useState(false);
 
   /* ---------------------------------- Stores --------------------------------- */
-
   const workspaces = useWorkspaceStore((state) => state.workspaces);
   const activeWorkspaceId = useWorkspaceStore(
     (state) => state.activeWorkspaceId,
@@ -225,7 +102,6 @@ export default function HomeScreen() {
   const fetchCategories = useCategoryStore((state) => state.fetchCategories);
 
   /* ------------------------------- Derived state ------------------------------ */
-
   const workspace = workspaces.find((item) => item.id === activeWorkspaceId);
   const currency = workspace?.currency_code ?? "MYR";
   const initials = getInitials(profile?.full_name || user?.email);
@@ -322,7 +198,6 @@ export default function HomeScreen() {
     [activeWorkspaceId, transactions],
   );
 
-  // Reactive version (the old one read useBudgetStore.getState() in render).
   const hasCurrentBudget =
     budgetOverview !== null &&
     loadedBudgetWorkspaceId === activeWorkspaceId &&
@@ -409,8 +284,6 @@ export default function HomeScreen() {
       { cancelable: true },
     );
   }
-
-  /* ---------------------------------- Render --------------------------------- */
 
   return (
     <SafeScreen backgroundColor={colors.background} edges={["top"]}>
@@ -1192,40 +1065,6 @@ const styles = StyleSheet.create({
     color: colors.textOnPrimary,
   },
 
-  /* Section heading */
-  sectionHeading: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: spacing.sm,
-    marginTop: spacing.sm,
-    marginBottom: -spacing.xs,
-  },
-
-  sectionTitle: {
-    color: colors.text,
-    fontSize: typography.size.lg,
-    fontWeight: typography.weight.bold,
-  },
-
-  sectionCaption: {
-    color: colors.textSecondary,
-    fontSize: typography.size.caption,
-    fontWeight: typography.weight.medium,
-  },
-
-  sectionAction: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-  },
-
-  sectionActionText: {
-    color: colors.primary,
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.medium,
-  },
-
   /* Cards */
   card: {
     backgroundColor: colors.surface,
@@ -1325,36 +1164,6 @@ const styles = StyleSheet.create({
   flowRow: {
     flexDirection: "row",
     gap: spacing.lg,
-  },
-
-  flowStat: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: spacing.sm,
-  },
-
-  flowIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: radius.full,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  flowStatText: {
-    flex: 1,
-  },
-
-  flowLabel: {
-    color: colors.textSecondary,
-    fontSize: typography.size.caption,
-  },
-
-  flowAmount: {
-    fontSize: typography.size.md,
-    fontWeight: typography.weight.semibold,
-    marginTop: 2,
   },
 
   netRow: {

@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
@@ -12,8 +12,6 @@ import {
 } from "react-native";
 
 import {
-  ArrowDownLeft,
-  ArrowUpRight,
   Filter,
   Plus,
   RefreshCw,
@@ -37,12 +35,13 @@ import {
 } from "@/components/transactions/transaction-filter-modal";
 import { TransactionList } from "@/components/transactions/transaction-list";
 
-import { getCountryByCode } from "@/constants/countries";
 import { colors, radius, spacing, typography } from "@/constants/theme";
 import { formatMoney } from "@/lib/finance/calculations";
 import { getCurrencyDecimalDigits } from "@/lib/finance/currency";
 import { formatConvertedMoney } from "@/lib/finance/currency-converter";
 
+import FlowStat from "@/components/ui/flow-stat";
+import { getCountryFlag } from "@/lib/helper/get-country-flag";
 import { useCategoryStore } from "@/stores/use-category-store";
 import { useCurrencyConverterStore } from "@/stores/use-currency-converter-store";
 import { useFinanceStore } from "@/stores/use-finance-store";
@@ -127,67 +126,6 @@ function getPeriodRange(
       return null;
   }
 }
-
-/* -------------------------------------------------------------------------- */
-/* Flow stat                                                                   */
-/* -------------------------------------------------------------------------- */
-
-function FlowStat({
-  label,
-  amount,
-  amountColor,
-  direction,
-  tone,
-  secondary,
-}: {
-  label: string;
-  amount: string;
-  amountColor: string;
-  direction: "in" | "out";
-  tone: "success" | "danger" | "neutral";
-  secondary?: ReactNode;
-}) {
-  const iconColor =
-    tone === "success"
-      ? colors.success
-      : tone === "danger"
-        ? colors.danger
-        : colors.textSecondary;
-
-  const bubbleColor =
-    tone === "success"
-      ? colors.successLight
-      : tone === "danger"
-        ? colors.dangerLight
-        : colors.background;
-
-  return (
-    <View style={styles.flowStat}>
-      <View style={[styles.flowIcon, { backgroundColor: bubbleColor }]}>
-        {direction === "in" ? (
-          <ArrowDownLeft size={16} color={iconColor} />
-        ) : (
-          <ArrowUpRight size={16} color={iconColor} />
-        )}
-      </View>
-
-      <View style={styles.flowStatText}>
-        <Text style={styles.flowLabel}>{label}</Text>
-
-        <Text
-          style={[styles.flowAmount, { color: amountColor }]}
-          numberOfLines={1}
-          adjustsFontSizeToFit
-        >
-          {amount}
-        </Text>
-
-        {secondary}
-      </View>
-    </View>
-  );
-}
-
 /* -------------------------------------------------------------------------- */
 /* Screen                                                                      */
 /* -------------------------------------------------------------------------- */
@@ -245,7 +183,7 @@ export default function TransactionsScreen() {
 
   const workspace = workspaces.find((item) => item.id === activeWorkspaceId);
   const currency = workspace?.currency_code ?? "MYR";
-  const flag = getCountryByCode(workspace?.country_code ?? "")?.flag ?? "🌍";
+  const flag = getCountryFlag(workspace?.country_code);
 
   const activeConverter =
     loadedWorkspaceId === activeWorkspaceId ? converter : null;

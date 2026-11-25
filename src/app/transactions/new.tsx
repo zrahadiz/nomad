@@ -43,6 +43,7 @@ import type {
 } from "@/types/transaction";
 
 import { colors, radius, spacing, typography } from "@/constants/theme";
+import { formatAccountType } from "@/lib/helper/format-account-type";
 import { useCategoryStore } from "@/stores/use-category-store";
 import { useFinanceStore } from "@/stores/use-finance-store";
 import { useWorkspaceStore } from "@/stores/use-workspace-store";
@@ -240,16 +241,11 @@ export default function NewTransactionScreen() {
   const toCurrency =
     selectedDestinationAccount?.currency ?? toWorkspace?.currency_code ?? "MYR";
 
-  const formatAccountType = (accountType: string) => {
-    const key = accountType === "e-wallet" ? "eWallet" : accountType;
-    return t(`home.accountTypes.${key}`, { defaultValue: accountType });
-  };
-
   const accountOptions: TransactionSheetOption[] = sourceAccounts.map(
     (account) => ({
       id: account.id,
       label: account.name,
-      description: `${formatAccountType(account.type)} · ${account.currency}`,
+      description: `${formatAccountType(account.type, t)} · ${account.currency}`,
       leading: (
         <AppIcon
           name={account.icon ?? "wallet"}
@@ -265,7 +261,7 @@ export default function NewTransactionScreen() {
     (account) => ({
       id: account.id,
       label: account.name,
-      description: `${formatAccountType(account.type)} · ${account.currency}`,
+      description: `${formatAccountType(account.type, t)} · ${account.currency}`,
       leading: (
         <AppIcon
           name={account.icon ?? "wallet"}
@@ -645,7 +641,7 @@ export default function NewTransactionScreen() {
                     placeholder={t("transactions.add.selectAccount")}
                     hint={
                       selectedAccount
-                        ? `${formatAccountType(selectedAccount.type)} · ${selectedAccount.currency}`
+                        ? `${formatAccountType(selectedAccount.type, t)} · ${selectedAccount.currency}`
                         : t("transactions.add.chooseSource")
                     }
                     leading={
@@ -697,7 +693,7 @@ export default function NewTransactionScreen() {
                     placeholder={t("transactions.add.selectDestinationAccount")}
                     hint={
                       selectedDestinationAccount
-                        ? `${formatAccountType(selectedDestinationAccount.type)} · ${selectedDestinationAccount.currency}`
+                        ? `${formatAccountType(selectedDestinationAccount.type, t)} · ${selectedDestinationAccount.currency}`
                         : t("transactions.add.chooseDestination")
                     }
                     leading={
@@ -890,7 +886,7 @@ export default function NewTransactionScreen() {
                     placeholder={t("transactions.add.selectAccount")}
                     hint={
                       selectedAccount
-                        ? `${formatAccountType(selectedAccount.type)} · ${selectedAccount.currency}`
+                        ? `${formatAccountType(selectedAccount.type, t)} · ${selectedAccount.currency}`
                         : t("transactions.add.chooseSource")
                     }
                     leading={

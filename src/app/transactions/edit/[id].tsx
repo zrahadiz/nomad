@@ -28,6 +28,7 @@ import type { TransactionSheetOption } from "@/types/transaction";
 
 import { colors, radius, spacing, typography } from "@/constants/theme";
 import { isValidCurrencyAmountInput } from "@/lib/finance/currency-input";
+import { formatAccountType } from "@/lib/helper/format-account-type";
 import { useCategoryStore } from "@/stores/use-category-store";
 import { useFinanceStore } from "@/stores/use-finance-store";
 
@@ -161,16 +162,6 @@ export default function EditTransactionScreen() {
     (category) => category.id === categoryId,
   );
 
-  const formatAccountType = (type: string) => {
-    const key = type === "e-wallet" ? "eWallet" : type;
-    return t(`home.accountTypes.${key}`, {
-      defaultValue:
-        type === "e-wallet"
-          ? "E-wallet"
-          : type.charAt(0).toUpperCase() + type.slice(1),
-    });
-  };
-
   const getCategoryDescription = (category: (typeof categories)[number]) => {
     if (category.isArchived) {
       return t("transactions.edit.categoryStatus.archived", {
@@ -191,7 +182,7 @@ export default function EditTransactionScreen() {
     (account) => ({
       id: account.id,
       label: account.name,
-      description: `${formatAccountType(account.type)} · ${account.currency}`,
+      description: `${formatAccountType(account.type, t)} · ${account.currency}`,
       leading: (
         <AppIcon
           name={account.icon ?? "wallet"}
@@ -483,7 +474,7 @@ export default function EditTransactionScreen() {
                 })}
                 hint={
                   selectedAccount
-                    ? `${formatAccountType(selectedAccount.type)} · ${selectedAccount.currency}`
+                    ? `${formatAccountType(selectedAccount.type, t)} · ${selectedAccount.currency}`
                     : t("transactions.edit.accountHint", {
                         defaultValue: "Choose an account for this transaction",
                       })
