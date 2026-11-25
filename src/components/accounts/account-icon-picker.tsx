@@ -1,12 +1,12 @@
 import { Check } from "lucide-react-native";
 import { Pressable, StyleSheet, View } from "react-native";
 
-import { AccountIcon } from "@/components/accounts/account-icon";
 import {
   accountIcons,
   type accountIconName,
 } from "@/constants/account-options";
 import { colors, radius, spacing } from "@/constants/theme";
+import { AppIcon } from "../ui/app-icon";
 
 type AccountIconPickerProps = {
   value: accountIconName;
@@ -34,11 +34,12 @@ export function AccountIconPicker({
               accessibilityLabel={`Select ${item.label} icon`}
               accessibilityState={{ selected }}
             >
-              <AccountIcon
+              <AppIcon
                 name={item.name}
                 color={color}
                 size={44}
                 iconSize={21}
+                background
               />
 
               {selected && (

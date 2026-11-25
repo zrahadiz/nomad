@@ -14,7 +14,6 @@ import {
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
 import { AccountColorPicker } from "@/components/accounts/account-color-picker";
-import { AccountIcon } from "@/components/accounts/account-icon";
 import { AccountIconPicker } from "@/components/accounts/account-icon-picker";
 import { AmountInput } from "@/components/forms/amount-input";
 import { SafeScreen } from "@/components/layout/safe-screen";
@@ -33,6 +32,7 @@ import { isValidCurrencyAmountInput } from "@/lib/finance/currency-input";
 import { useFinanceStore } from "@/stores/use-finance-store";
 import { useWorkspaceStore } from "@/stores/use-workspace-store";
 
+import { AppIcon } from "@/components/ui/app-icon";
 import type { accountType } from "@/types/finances";
 
 function parseAmountToMinor(value: string, currency: string) {
@@ -284,8 +284,13 @@ export default function NewAccountScreen() {
             </Text>
 
             <View style={styles.previewCard}>
-              <AccountIcon name={icon} color={color} size={56} iconSize={26} />
-
+              <AppIcon
+                name={icon}
+                color={color}
+                size={56}
+                iconSize={26}
+                background
+              />
               <View style={styles.flex}>
                 <Text
                   style={[

@@ -24,12 +24,11 @@ import {
   Wallet,
 } from "lucide-react-native";
 
-import { AccountIcon } from "@/components/accounts/account-icon";
 import { AmountInput } from "@/components/forms/amount-input";
 import { SafeScreen } from "@/components/layout/safe-screen";
+import { AppIcon } from "@/components/ui/app-icon";
 import { BottomSheetModal } from "@/components/ui/bottom-modal";
 import { DatePickerField } from "@/components/ui/date-picker-field";
-import type { accountIconName } from "@/constants/account-options";
 import { colors, radius, spacing, typography } from "@/constants/theme";
 import { isValidCurrencyAmountInput } from "@/lib/finance/currency-input";
 import { useCategoryStore } from "@/stores/use-category-store";
@@ -823,11 +822,12 @@ function AccountAvatar({
   account: { icon?: string | null; color?: string | null };
 }) {
   return (
-    <AccountIcon
-      name={(account.icon ?? "wallet") as accountIconName}
+    <AppIcon
+      name={account.icon ?? "wallet"}
       color={account.color ?? colors.primary}
       size={40}
       iconSize={20}
+      background
     />
   );
 }

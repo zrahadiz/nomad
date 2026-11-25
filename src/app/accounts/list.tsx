@@ -18,7 +18,6 @@ import {
   Wallet,
 } from "lucide-react-native";
 
-import { AccountIcon } from "@/components/accounts/account-icon";
 import { WorkspaceGate } from "@/components/feedbacks/workspace-gate";
 import { SafeScreen } from "@/components/layout/safe-screen";
 import { BottomSheetModal } from "@/components/ui/bottom-modal";
@@ -30,7 +29,7 @@ import { formatMoney, getAccountBalance } from "@/lib/finance/calculations";
 import { useFinanceStore } from "@/stores/use-finance-store";
 import { useWorkspaceStore } from "@/stores/use-workspace-store";
 
-import type { accountIconName } from "@/constants/account-options";
+import { AppIcon } from "@/components/ui/app-icon";
 import type { financialAccount } from "@/types/finances";
 
 export default function AccountsScreen() {
@@ -229,9 +228,12 @@ export default function AccountsScreen() {
                           pressed && styles.accountRowPressed,
                         ]}
                       >
-                        <AccountIcon
-                          name={(account.icon ?? "wallet") as accountIconName}
+                        <AppIcon
+                          name={account.icon ?? "wallet"}
                           color={account.color ?? colors.primary}
+                          size={44}
+                          iconSize={21}
+                          background
                         />
                         <View style={styles.accountDetails}>
                           <Text style={styles.accountName} numberOfLines={1}>

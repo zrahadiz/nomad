@@ -46,12 +46,11 @@ import { formatConvertedMoney } from "@/lib/finance/currency-converter";
 import { getCountryByCode } from "@/constants/countries";
 import { colors, radius, spacing, typography } from "@/constants/theme";
 
-import { AccountIcon } from "@/components/accounts/account-icon";
 import { TransactionList } from "@/components/transactions/transaction-list";
-import type { accountIconName } from "@/constants/account-options";
 
 import { WorkspaceGate } from "@/components/feedbacks/workspace-gate";
 import { SafeScreen } from "@/components/layout/safe-screen";
+import { AppIcon } from "@/components/ui/app-icon";
 import { BottomSheetModal } from "@/components/ui/bottom-modal";
 
 /* -------------------------------------------------------------------------- */
@@ -621,11 +620,12 @@ export default function HomeScreen() {
                     {index > 0 && <View style={styles.divider} />}
 
                     <View style={styles.accountRow}>
-                      <AccountIcon
-                        name={(account.icon ?? "wallet") as accountIconName}
+                      <AppIcon
+                        name={account.icon ?? "wallet"}
                         color={account.color ?? colors.primary}
                         size={44}
                         iconSize={21}
+                        background
                       />
 
                       <View style={styles.rowDetails}>

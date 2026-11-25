@@ -29,9 +29,8 @@ import {
   Wallet,
 } from "lucide-react-native";
 
-import { AccountIcon } from "@/components/accounts/account-icon";
 import { SafeScreen } from "@/components/layout/safe-screen";
-import type { accountIconName } from "@/constants/account-options";
+import { AppIcon } from "@/components/ui/app-icon";
 import { getCountryByCode } from "@/constants/countries";
 import { colors, radius, spacing, typography } from "@/constants/theme";
 import { formatMoney } from "@/lib/finance/calculations";
@@ -677,11 +676,12 @@ function AccountAvatar({
   account: { icon?: string | null; color?: string | null };
 }) {
   return (
-    <AccountIcon
-      name={(account.icon ?? "wallet") as accountIconName}
+    <AppIcon
+      name={account.icon ?? "wallet"}
       color={account.color ?? colors.primary}
       size={40}
       iconSize={20}
+      background
     />
   );
 }

@@ -14,7 +14,6 @@ import {
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
 import { AccountColorPicker } from "@/components/accounts/account-color-picker";
-import { AccountIcon } from "@/components/accounts/account-icon";
 import { AccountIconPicker } from "@/components/accounts/account-icon-picker";
 import { AmountInput } from "@/components/forms/amount-input";
 import { SafeScreen } from "@/components/layout/safe-screen";
@@ -32,6 +31,7 @@ import { isValidCurrencyAmountInput } from "@/lib/finance/currency-input";
 
 import { useFinanceStore } from "@/stores/use-finance-store";
 
+import { AppIcon } from "@/components/ui/app-icon";
 import type { accountType, updateAccountInput } from "@/types/finances";
 
 const accountTypeOptions: { label: string; value: accountType }[] = [
@@ -366,7 +366,13 @@ export default function EditAccountScreen() {
               {t("accounts.create.accountPreview")}
             </Text>
             <View style={styles.previewCard}>
-              <AccountIcon name={icon} color={color} size={56} iconSize={26} />
+              <AppIcon
+                name={icon}
+                color={color}
+                size={56}
+                iconSize={26}
+                background
+              />
               <View style={styles.flex}>
                 <Text
                   style={[
